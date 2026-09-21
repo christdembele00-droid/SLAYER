@@ -1,27 +1,57 @@
 # SLAYER
 
-Ultra-modern football simulation project built with Unreal Engine.
+Ultra-modern football simulation project built as a code-first web application.
 
-## Engineering status
+## Architecture
 
-- Phase: V0.1 foundation
+SLAYER is engine-independent at the gameplay level. The core simulation is separated from the rendering layer so the football logic can evolve without being tied to a visual editor.
+
+- Core language: TypeScript
+- 3D rendering: Three.js
+- Runtime: modern web browser
 - Repository: christdembele00-droid/SLAYER
 - Default branch: main
-- Core engine: Unreal Engine 5
-- Architecture: C++ gameplay foundation + Blueprint presentation
-- Repository policy: Unreal binary assets tracked with Git LFS
+- Build/deployment target: web first, Android wrapper later if required
+- Assets: external/licensed 3D assets; no requirement to model everything manually
 
-## V0.1 vertical slice
+## 15-phase product architecture
 
-The first playable slice will validate:
+1. Core Match
+2. Player System
+3. Ball System
+4. Player ↔ Ball
+5. Gameplay
+6. AI & Tactics
+7. Animation & Motion
+8. Camera / Broadcast
+9. Stadium / Atmosphere
+10. Audio
+11. Optimization / Netcode
+12. Game Modes
+13. Career
+14. Online
+15. Release / QA
 
-1. Match initialization
-2. Player spawn
-3. Player movement
-4. Ball spawn
-5. Ball physics
-6. Player/ball collision
-7. Basic camera
-8. Performance baseline
+These phases remain the project specification. The rendering technology can change without discarding the gameplay architecture.
 
-Complex systems such as AI, career mode, championships, advanced animation, replay, online multiplayer and production assets are intentionally deferred until the foundation is validated.
+## Current implementation — Phase 1
+
+Phase 1 currently contains:
+
+- Match phases and periods
+- Match configuration
+- Match score
+- Match clock
+- Match event bus
+- Match rules
+- Match engine
+- Initial browser 3D scene
+- Initial pitch and ball rendering
+
+## Development principle
+
+We build the real SLAYER project directly. No separate throwaway engine test project is required.
+
+Next implementation target:
+
+**Phase 1 → restart system → player foundation → ball physics → player ↔ ball interaction.**
