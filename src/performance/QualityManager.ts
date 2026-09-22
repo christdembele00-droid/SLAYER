@@ -17,7 +17,7 @@ export class QualityManager {
     }else if(avg>17.2){
       this.tier="Medium";
       this.stableTime=0;
-    }else if(avg<14.5){
+    }else if(avg<15.8){
       this.stableTime+=delta;
       if(this.stableTime>2)this.tier="Ultra";
     }else{
@@ -35,7 +35,7 @@ export class QualityManager {
       case "Low": return .68;
       case "Medium": return .8;
       case "High": return .95;
-      case "Ultra": return Math.min(window.devicePixelRatio,1.2);
+      case "Ultra": return Math.min(window.devicePixelRatio,1.35);
     }
   }
 
