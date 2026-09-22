@@ -6,6 +6,9 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.Window;
 import android.view.WindowManager;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 public final class MainActivity extends Activity {
     static {
@@ -16,6 +19,7 @@ public final class MainActivity extends Activity {
     private long lastFrameNanos;
 
     private static native void nativeCreate(android.view.Surface surface);
+    private static native boolean nativeLoadPlayer(byte[] data);
     private static native void nativeResize(int width, int height);
     private static native void nativeRender(float deltaSeconds);
     private static native void nativeDestroy();
@@ -34,6 +38,7 @@ public final class MainActivity extends Activity {
             @Override
             public void surfaceCreated(SurfaceHolder holder) {
                 nativeCreate(holder.getSurface());
+                loadBundledPlayer();
                 lastFrameNanos = System.nanoTime();
                 surface.postOnAnimation(frameRunnable);
             }
@@ -51,6 +56,23 @@ public final class MainActivity extends Activity {
         });
 
         setContentView(surface);
+    }
+
+    private void loadBundledPlayer() {
+        try (InputStream input = getAssets().open("models/player.glb");
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[64 * 1024];
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                output.write(buffer, 0, read);
+            }
+            boolean loaded = nativeLoadPlayer(output.toByteArray());
+            if (!loaded) {
+                android.util.Log.w("SLAYER", "models/player.glb could not be loaded");
+            }
+        } catch (IOException e) {
+            android.util.Log.i("SLAYER", "No bundled player.glb yet; keeping native proxy");
+        }
     }
 
     private final Runnable frameRunnable = new Runnable() {
