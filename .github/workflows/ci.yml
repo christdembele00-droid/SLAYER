@@ -77,6 +77,20 @@ jobs:
           tar -xzf /tmp/filament-native.tgz -C /tmp/filament-native
           echo "FILAMENT_DIST_DIR=/tmp/filament-native" >> "$GITHUB_ENV"
 
+      - name: Download Filament host tools for production assets
+        run: |
+          curl -L --fail --retry 3 -o /tmp/filament-linux.tgz https://github.com/google/filament/releases/download/v1.77.0/filament-v1.77.0-linux.tgz
+          mkdir -p /tmp/filament-linux
+          tar -xzf /tmp/filament-linux.tgz -C /tmp/filament-linux
+          CMGEN=$(find /tmp/filament-linux -type f -name cmgen -perm -111 | head -n 1)
+          test -n "$CMGEN"
+          echo "FILAMENT_TOOLS_DIR=$(dirname "$CMGEN")" >> "$GITHUB_ENV"
+          echo "Using cmgen: $CMGEN"
+
+      - name: Prepare Cloudinary HD assets and Filament IBL
+        run: |
+          node scripts/prepare-filament-production-assets.mjs
+
       - name: Build native Filament playable APK
         run: |
           gradle -p benchmarks/filament-v0.1/android assembleDebug --no-daemon
