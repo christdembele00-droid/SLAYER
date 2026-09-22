@@ -8,3 +8,6 @@ dist/
 android/app/build/
 server/__pycache__/
 *.db
+
+# Generated Filament material packages
+benchmarks/filament-v0.1/android/app/src/main/assets/materials/*.filamat
