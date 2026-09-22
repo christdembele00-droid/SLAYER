@@ -135,17 +135,14 @@ if (glb) {
   await extractZipEntry(fieldZip, glb, extractedPitch);
   console.log(`Using GLB pitch source: ${glb}`);
 } else {
-  const gltfpack = await findExecutable("gltfpack");
-  if (!gltfpack) {
-    throw new Error(
-      "soccer_field_cc0.zip contains no GLB. A GLTF/OBJ source requires the Filament gltfpack host tool."
-    );
-  }
-
   await exec("unzip", ["-q", fieldZip, "-d", fieldSourceDir]);
 
   const source = gltf || obj;
   if (gltf || obj) {
+    const gltfpack = await findExecutable("gltfpack");
+    if (!gltfpack) {
+      throw new Error("soccer_field_cc0.zip contains a GLTF/OBJ model. Filament gltfpack is required to convert it to GLB.");
+    }
     const source = gltf || obj;
     const sourcePath = join(fieldSourceDir, source);
     await exec(gltfpack, [
@@ -165,7 +162,7 @@ if (glb) {
     }
     const sourcePath = join(fieldSourceDir, fbx);
     const blenderScript = join(fieldSourceDir, "export_fbx_to_glb.py");
-    await writeFile(blenderScript, `import bpy\\nimport sys\\n\\ninput_path = sys.argv[1]\\noutput_path = sys.argv[2]\\n\\nbpy.ops.wm.read_factory_settings(use_empty=True)\\nbpy.ops.import_scene.fbx(filepath=input_path, use_custom_normals=True)\\nbpy.ops.export_scene.gltf(filepath=output_path, export_format="GLB", export_image_format="AUTO", export_materials="EXPORT", export_cameras=False, export_lights=False)\\n`);
+    await writeFile(blenderScript, `import bpy\nimport sys\n\ninput_path = sys.argv[1]\noutput_path = sys.argv[2]\n\nbpy.ops.wm.read_factory_settings(use_empty=True)\nbpy.ops.import_scene.fbx(filepath=input_path, use_custom_normals=True)\nbpy.ops.export_scene.gltf(filepath=output_path, export_format="GLB", export_image_format="AUTO", export_materials="EXPORT", export_cameras=False, export_lights=False)\n`);
     await exec(blender, [
       "--background",
       "--python",
