@@ -1,0 +1,2 @@
+import { Player } from "../player/Player"; import { WorldSnapshot } from "./WorldModel"; import { PlayerAction } from "../player/PlayerTypes";
+export class UtilityAI{choose(player:Player,w:WorldSnapshot):PlayerAction{const ball=w.ball;const dx=ball.x-player.state.position.x,dz=ball.z-player.state.position.z,d=Math.hypot(dx,dz);if(player.state.ballMode==="Control"){if(d<2)return player.data.mental.composure>70?"Shoot":"Pass";return"Pass";}if(d<3)return"Control";return"None";}}
