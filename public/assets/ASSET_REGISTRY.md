@@ -4,38 +4,42 @@
 
 | Asset | Required | Current state |
 |---|---|---|
-| Player hero | GLB/glTF + PBR + rig | NOT PRESENT |
-| Player LOD | GLB/glTF + PBR | NOT PRESENT |
-| Stadium | GLB/glTF + PBR | NOT PRESENT |
+| Player hero | GLB/glTF + PBR + rig | BUILD-FETCHED / RUNTIME WIRED |
+| Player LOD | Real lower-detail GLB | NOT YET GENERATED |
+| Stadium | GLB/glTF + PBR | BUILD-FETCHED / RUNTIME WIRED |
 | Pitch PBR | textures + masks | NOT PRESENT |
 | Goal/net | GLB/glTF | PROCEDURAL |
 | Crowd | instanced/VAT-ready | PROCEDURAL |
 | Football | GLB/glTF + PBR | PROCEDURAL |
-| Animation clips | GLB/glTF clips | CODE/PROCEDURAL |
+| Animation clips | GLB/glTF clips | BUILD-FETCHED / RUNTIME WIRED |
 
-## Candidate sources
+## Verified sources
 
-- 3DAssets.dev football stadium/club grounds — CC0 1.0.
-- 3DAssets.dev full-size football goal — CC0 1.0.
-- dLeom Soccer Ball — CC0.
-- Meshy football-player listings — individual license must be verified before redistribution.
+### Player
+Quaternius Universal Base Characters, CC0 1.0. Game-ready, rigged humanoid characters compatible with retargeting. Runtime file: `public/assets/3d/players/player-hero.glb`.
+
+### Animation
+Quaternius Universal Animation Library, CC0 1.0. Runtime file: `public/assets/3d/animations/universal-animation-library.glb`. Locomotion includes Idle, Walk, Jog and Sprint clips.
+
+### Stadium
+3DAssets.dev assembled soccer club ground, CC0 1.0 Universal. Runtime file: `public/assets/3d/stadium/stadium.glb`. The published asset is a self-contained GLB with embedded textures.
 
 ## Integration rule
 
-An asset is NOT "integrated" until:
+An asset is **INTEGRATED** only when:
 
-1. The binary asset is stored locally under `public/assets/3d/`.
-2. Its source and license are recorded here.
-3. `AssetPipeline` loads it successfully.
-4. It appears in the actual Three.js scene.
-5. It survives `npm run build`.
-6. It is included in the Android build.
-7. It is visually verified on a real Android device.
-
-Remote CDN assets do not count as production integration because SLAYER's core match must work offline.
+1. the build places the binary under `public/assets/3d/`;
+2. its source and license are recorded here;
+3. GLTFLoader loads it successfully;
+4. it appears in the actual Three.js scene;
+5. `npm run build` succeeds;
+6. it is included in the Android build;
+7. it is visually verified on a real Android device.
 
 ## Current status
 
-**REAL PRODUCTION 3D ASSETS: NOT YET VALIDATED.**
+Real CC0 GLB assets are now wired into the production build/runtime path.
 
-The repository currently has the loading/integration pipeline, but the actual production-quality binary assets still need to be imported.
+Still not validated: Android visual QA, measured 60 FPS, real lower-detail player LODs, professional PBR pitch textures, and football-specific mocap/contact animations.
+
+The build downloads the assets first, then Vite bundles the resulting local files. Runtime does not depend on the remote CDN.
