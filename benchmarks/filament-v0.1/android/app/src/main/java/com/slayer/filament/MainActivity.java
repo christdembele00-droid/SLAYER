@@ -20,6 +20,7 @@ public final class MainActivity extends Activity {
 
     private static native void nativeCreate(android.view.Surface surface);
     private static native boolean nativeLoadTerrainMaterial(byte[] data);
+    private static native boolean nativeLoadEnvironment(byte[] data);
     private static native boolean nativeLoadPlayer(byte[] data);
     private static native void nativeResize(int width, int height);
     private static native void nativeRender(float deltaSeconds);
@@ -60,6 +61,20 @@ public final class MainActivity extends Activity {
         setContentView(surface);
     }
 
+
+    private void loadBundledEnvironment() {
+        try (InputStream input = getAssets().open("ibl/stadium_ibl.ktx");
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[64 * 1024];
+            int read;
+            while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
+            if (!nativeLoadEnvironment(output.toByteArray())) {
+                android.util.Log.w("SLAYER", "ibl/stadium_ibl.ktx could not be loaded");
+            }
+        } catch (IOException e) {
+            android.util.Log.i("SLAYER", "No bundled IBL yet; keeping direct stadium lights");
+        }
+    }
 
     private void loadBundledTerrainMaterial() {
         try (InputStream input = getAssets().open("materials/grass.filamat");
