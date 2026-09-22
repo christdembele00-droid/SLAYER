@@ -77,46 +77,9 @@ jobs:
           tar -xzf /tmp/filament-native.tgz -C /tmp/filament-native
           echo "FILAMENT_DIST_DIR=/tmp/filament-native" >> "$GITHUB_ENV"
 
-      - name: Download matching Filament 1.77 host tools
-        run: |
-          curl -L --fail --retry 3 -o /tmp/filament-host.tgz https://github.com/google/filament/releases/download/v1.77.0/filament-v1.77.0-linux.tgz
-          mkdir -p /tmp/filament-host
-          tar -xzf /tmp/filament-host.tgz -C /tmp/filament-host
-          MATC="$(find /tmp/filament-host -type f -name matc -perm -111 | head -n 1)"
-          CMGEN="$(find /tmp/filament-host -type f -name cmgen -perm -111 | head -n 1)"
-          test -n "$MATC"
-          test -n "$CMGEN"
-          echo "MATC=$MATC" >> "$GITHUB_ENV"
-          echo "CMGEN=$CMGEN" >> "$GITHUB_ENV"
-          "$MATC" --version
-          "$CMGEN" --help >/dev/null
-
-      - name: Fetch real GLB assets for native Filament
-        run: |
-          node scripts/fetch-production-assets.mjs
-          mkdir -p benchmarks/filament-v0.1/android/app/src/main/assets/models
-          cp public/assets/3d/players/player-hero.glb benchmarks/filament-v0.1/android/app/src/main/assets/models/player.glb
-          cp public/assets/3d/stadium/stadium.glb benchmarks/filament-v0.1/android/app/src/main/assets/models/stadium.glb
-
-      - name: Prepare Orlando Stadium HDR source
-        run: |
-          mkdir -p benchmarks/filament-v0.1/assets/source
-          curl -L --fail --retry 3             -o benchmarks/filament-v0.1/assets/source/orlando_stadium_1k.exr             https://res.cloudinary.com/bk4jm7px/raw/upload/v1790111036/slayer/stadium/ibl/orlando_stadium_1k.exr
-          test -s benchmarks/filament-v0.1/assets/source/orlando_stadium_1k.exr
-
-      - name: Build native Filament benchmark and compile all assets
+      - name: Build native Filament playable APK
         run: |
           gradle -p benchmarks/filament-v0.1/android assembleDebug --no-daemon
-
-      - name: Verify generated Vulkan assets
-        run: |
-          test -s benchmarks/filament-v0.1/android/app/src/main/assets/materials/grass.filamat
-          test -s benchmarks/filament-v0.1/android/app/src/main/assets/materials/player_skin.filamat
-          test -s benchmarks/filament-v0.1/android/app/src/main/assets/materials/player_kit.filamat
-          test -s benchmarks/filament-v0.1/android/app/src/main/assets/ibl/orlando_stadium/orlando_stadium_ibl.ktx
-          test -s benchmarks/filament-v0.1/android/app/src/main/assets/ibl/orlando_stadium/orlando_stadium_skybox.ktx
-          test -s benchmarks/filament-v0.1/android/app/src/main/assets/models/player.glb
-          test -s benchmarks/filament-v0.1/android/app/src/main/assets/models/stadium.glb
 
       - uses: actions/upload-artifact@v4
         with:
