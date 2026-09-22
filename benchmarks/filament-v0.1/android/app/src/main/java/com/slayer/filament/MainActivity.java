@@ -22,6 +22,11 @@ public final class MainActivity extends Activity {
     private static native boolean nativeLoadTerrainMaterial(byte[] data);
     private static native boolean nativeLoadEnvironment(byte[] data);
     private static native boolean nativeLoadPlayer(byte[] data);
+    private static native boolean nativeLoadStadium(byte[] data);
+    private static native float nativeGetFps();
+    private static native float nativeGetFrameMs();
+    private static native int nativeGetDrawCalls();
+    private static native int nativeGetPlayerCount();
     private static native void nativeResize(int width, int height);
     private static native void nativeRender(float deltaSeconds);
     private static native void nativeDestroy();
@@ -40,7 +45,9 @@ public final class MainActivity extends Activity {
             @Override
             public void surfaceCreated(SurfaceHolder holder) {
                 nativeCreate(holder.getSurface());
+                loadBundledEnvironment();
                 loadBundledTerrainMaterial();
+                loadBundledStadium();
                 loadBundledPlayer();
                 lastFrameNanos = System.nanoTime();
                 surface.postOnAnimation(frameRunnable);
@@ -73,6 +80,18 @@ public final class MainActivity extends Activity {
             }
         } catch (IOException e) {
             android.util.Log.i("SLAYER", "No bundled IBL yet; keeping direct stadium lights");
+        }
+    }
+
+    private void loadBundledStadium() {
+        try (InputStream input = getAssets().open("models/stadium.glb");
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[64 * 1024];
+            int read;
+            while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
+            nativeLoadStadium(output.toByteArray());
+        } catch (IOException e) {
+            android.util.Log.i("SLAYER", "No bundled stadium.glb");
         }
     }
 
@@ -121,6 +140,9 @@ public final class MainActivity extends Activity {
             lastFrameNanos = now;
 
             nativeRender(dt);
+            statsView.setText(String.format(java.util.Locale.US,
+                    "SLAYER • FILAMENT / VULKAN\\n%.1f FPS • %.2f ms\\nDraws %d • Players %d",
+                    nativeGetFps(), nativeGetFrameMs(), nativeGetDrawCalls(), nativeGetPlayerCount()));
             surface.postOnAnimation(this);
         }
     };
