@@ -1,0 +1,1 @@
+import { GameMode,FriendlyConfig,Competition } from "./GameModeTypes"; export class GameModeSystem{mode:GameMode="Friendly";friendly:FriendlyConfig={homeTeamId:"home",awayTeamId:"away",stadiumId:"stadium-default",weather:"Clear",difficulty:2,duration:90};competitions:Competition[]=[];setMode(mode:GameMode){this.mode=mode;}}
