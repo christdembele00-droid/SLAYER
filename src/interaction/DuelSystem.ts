@@ -27,7 +27,7 @@ export class DuelSystem {
 
     const score = challenge + (tackle - control) * 0.2;
     if (score > 35) {
-      ball.state.state = "Free";
+      ball.state.state = "Controlled";
       ball.state.controlledByPlayerId = defender.data.playerId;
       attacker.state.ballMode = "NoBall";
       defender.state.ballMode = "Control";
