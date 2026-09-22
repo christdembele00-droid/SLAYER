@@ -156,14 +156,18 @@ public final class MainActivity extends Activity {
     }
 
     private void loadBundledStadium() {
-        try (InputStream input = getAssets().open("models/stadium.glb");
-             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            byte[] buffer = new byte[64 * 1024];
-            int read;
-            while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
-            nativeLoadStadium(output.toByteArray());
+        try {
+            byte[] data;
+            try {
+                data = readAssetBytes("models/stadium.glb");
+            } catch (IOException missingGlb) {
+                data = readAssetBytes("models/stadium.gltf");
+            }
+            if (!nativeLoadStadium(data)) {
+                android.util.Log.w("SLAYER", "Bundled stadium asset could not be loaded");
+            }
         } catch (IOException e) {
-            android.util.Log.i("SLAYER", "No bundled stadium.glb");
+            android.util.Log.i("SLAYER", "No bundled stadium asset");
         }
     }
 
@@ -184,19 +188,19 @@ public final class MainActivity extends Activity {
     }
 
     private void loadBundledPlayer() {
-        try (InputStream input = getAssets().open("models/player.glb");
-             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            byte[] buffer = new byte[64 * 1024];
-            int read;
-            while ((read = input.read(buffer)) != -1) {
-                output.write(buffer, 0, read);
+        try {
+            byte[] data;
+            try {
+                data = readAssetBytes("models/player.glb");
+            } catch (IOException missingGlb) {
+                data = readAssetBytes("models/player.gltf");
             }
-            boolean loaded = nativeLoadPlayer(output.toByteArray());
+            boolean loaded = nativeLoadPlayer(data);
             if (!loaded) {
-                android.util.Log.w("SLAYER", "models/player.glb could not be loaded");
+                android.util.Log.w("SLAYER", "Bundled player asset could not be loaded");
             }
         } catch (IOException e) {
-            android.util.Log.i("SLAYER", "No bundled player.glb yet; keeping native proxy");
+            android.util.Log.i("SLAYER", "No bundled player asset");
         }
     }
 
