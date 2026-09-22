@@ -101,8 +101,10 @@ commentary.start(match.events);
 
 const ballMesh=new THREE.Mesh(
   new THREE.SphereGeometry(.11,24,16),
-  new THREE.MeshStandardMaterial({color:0xffffff,roughness:.55})
+  new THREE.MeshStandardMaterial({color:0xffffff,roughness:.42,metalness:.02})
 );
+ballMesh.castShadow=true;
+ballMesh.receiveShadow=true;
 renderer.scene.add(ballMesh);
 
 const controlledId="home-11";
@@ -268,6 +270,9 @@ function frame(now:number){
   }
 
   ballMesh.position.set(ball.state.position.x,ball.state.position.y,ball.state.position.z);
+  const ballVelocity=ball.state.velocity;
+  ballMesh.rotation.x+=ballVelocity.z*delta/.11;
+  ballMesh.rotation.z-=ballVelocity.x*delta/.11;
   camera.update(renderer.camera,ball.state.position);
 
   const snapshot=match.snapshot();
