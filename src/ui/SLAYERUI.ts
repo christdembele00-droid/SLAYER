@@ -122,6 +122,7 @@ export class SlayerUI {
   }
 
   private render(){
+    this.root.className=`slayer-ui ${this.screen==="home"?"home-screen":this.screen==="match"?"match-screen":""}`;
     this.matchScoreEl=this.matchPhaseEl=this.matchClockEl=this.perfEl=this.joystickEl=this.joystickKnobEl=this.radarEl=null;
     if(this.screen==="match"){this.root.innerHTML=this.renderMatch();this.matchScoreEl=this.root.querySelector("[data-match-score]");this.matchPhaseEl=this.root.querySelector("[data-match-phase]");this.matchClockEl=this.root.querySelector("[data-match-clock]");this.perfEl=this.root.querySelector("[data-performance]");this.joystickEl=this.root.querySelector("[data-joystick]");this.joystickKnobEl=this.root.querySelector("[data-joystick-knob]");this.radarEl=this.root.querySelector("[data-radar]");this.bind();return;}
     if(this.screen==="pause"){this.root.innerHTML=this.renderPause();this.bind();return;}
@@ -129,7 +130,6 @@ export class SlayerUI {
     if(this.screen==="setpiece"){this.root.innerHTML=this.renderSetPiece();this.bind();this.bindSetPiece();return;}
     if(this.screen==="team"){this.root.innerHTML=this.renderTeam();this.bind();this.bindTeam();return;}
     const home=this.screen==="home";
-    this.root.className=`slayer-ui ${home?"home-screen":""}`;
     this.root.innerHTML='<div class="ui-backdrop"><div class="ui-grid"></div><div class="ui-noise"></div></div><header class="topbar"><div class="profile-card"><span class="profile-avatar">P1</span><div><b>PLAYER 01</b><small>LV 12 · 4 820 XP</small></div></div><div class="global-energy">ENDURANCE <span></span></div><div class="economy"><b>◈ 12 450</b><strong>✦ 860</strong><button data-screen="settings">⚙</button></div></header>'+ (home?this.renderHome():`<section class="subscreen"><div class="eyebrow">SLAYER / ${this.screen.toUpperCase()}</div><h2>${this.title()}</h2><p>Choisis et personnalise ton expérience SLAYER.</p><div class="feature-grid"><article class="feature-card"><b>MATCH</b><span>Simulation football temps réel.</span></article><article class="feature-card"><b>ÉQUIPE</b><span>Formation et composition.</span></article><article class="feature-card"><b>PROGRESSION</b><span>Objectifs, récompenses et carrière.</span></article></div></section>`)+ '<nav class="main-nav">'+this.nav("Accueil","home")+this.nav("Mon Équipe","team")+this.nav("Modes","modes")+this.nav("Boutique","shop")+this.nav("Missions","missions")+'</nav><div class="news-tile">NEWS / BOUTIQUE <b>Nouveaux maillots · Événement du week-end</b></div>';
     this.bind();
   }
