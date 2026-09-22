@@ -1,0 +1,2 @@
+export interface TeamTactic{formation:string;width:number;depth:number;tempo:number;pressing:number;buildUp:number;attackingRisk:number;}
+export const defaultTactic:TeamTactic={formation:"4-3-3",width:55,depth:50,tempo:50,pressing:50,buildUp:50,attackingRisk:50};
