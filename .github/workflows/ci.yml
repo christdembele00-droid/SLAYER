@@ -18,3 +18,4 @@ jobs:
      with: {python-version: "3.12"}
    - run: pip install -r server/requirements.txt
    - run: python -m compileall server
+   - run: python -m unittest server/test_matchmaking.py
