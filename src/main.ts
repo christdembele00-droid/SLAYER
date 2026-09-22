@@ -164,7 +164,8 @@ function applySlayerSettings(s:SlayerSettings):void{
   document.documentElement.dataset.slayerCursor=String(s.cursor??"semi");
   document.documentElement.dataset.slayerPress=String(s.press??"individual");
   document.documentElement.dataset.slayerAttack=String(s.attack??"balanced");
-  audio.enabled=(Number(s.effects??90)+Number(s.crowd??80)+Number(s.commentaryVolume??85))>0;
+  audio.enabled=(Number(s.effects??90)+Number(s.crowd??80)+Number(s.commentaryVolume??85)+Number(s.music??55))>0;
+  audio.setMixer(Number(s.music??55),Number(s.commentaryVolume??85),Number(s.crowd??80),Number(s.effects??90));
 }
 
 const ui=new SlayerUI(
