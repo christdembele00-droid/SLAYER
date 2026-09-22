@@ -70,6 +70,7 @@ struct NativeRenderer {
     IndirectLight* indirectLight = nullptr;
     Skybox* skybox = nullptr;
     Texture* environmentTexture = nullptr;
+    Texture* skyboxTexture = nullptr;
     VertexBuffer* vertexBuffer = nullptr;
     IndexBuffer* indexBuffer = nullptr;
     VertexBuffer* terrainVertexBuffer = nullptr;
@@ -361,23 +362,65 @@ struct NativeRenderer {
         if (!engine || !scene || !bytes || size < 16) return false;
         auto* bundle = new image::Ktx1Bundle(bytes, static_cast<uint32_t>(size));
         if (!bundle->isCubemap()) { delete bundle; return false; }
-        if (indirectLight) { scene->setIndirectLight(nullptr); engine->destroy(indirectLight); indirectLight = nullptr; }
-        if (skybox) { scene->setSkybox(nullptr); engine->destroy(skybox); skybox = nullptr; }
-        if (environmentTexture) { engine->destroy(environmentTexture); environmentTexture = nullptr; }
+
+        if (indirectLight) {
+            scene->setIndirectLight(nullptr);
+            engine->destroy(indirectLight);
+            indirectLight = nullptr;
+        }
+        if (environmentTexture) {
+            engine->destroy(environmentTexture);
+            environmentTexture = nullptr;
+        }
+
         environmentTexture = ktxreader::Ktx1Reader::createTexture(engine, bundle, false);
         if (!environmentTexture) return false;
+
         indirectLight = filament::IndirectLight::Builder()
             .reflections(environmentTexture)
             .intensity(30000.0f)
             .build(*engine);
-        if (!indirectLight) { engine->destroy(environmentTexture); environmentTexture = nullptr; return false; }
+
+        if (!indirectLight) {
+            engine->destroy(environmentTexture);
+            environmentTexture = nullptr;
+            return false;
+        }
+
+        scene->setIndirectLight(indirectLight);
+        return true;
+    }
+
+    bool loadSkyboxKtx(const uint8_t* bytes, size_t size) {
+        if (!engine || !scene || !bytes || size < 16) return false;
+        auto* bundle = new image::Ktx1Bundle(bytes, static_cast<uint32_t>(size));
+        if (!bundle->isCubemap()) { delete bundle; return false; }
+
+        if (skybox) {
+            scene->setSkybox(nullptr);
+            engine->destroy(skybox);
+            skybox = nullptr;
+        }
+        if (skyboxTexture) {
+            engine->destroy(skyboxTexture);
+            skyboxTexture = nullptr;
+        }
+
+        skyboxTexture = ktxreader::Ktx1Reader::createTexture(engine, bundle, false);
+        if (!skyboxTexture) return false;
+
         skybox = filament::Skybox::Builder()
-            .environment(environmentTexture)
+            .environment(skyboxTexture)
             .showSun(true)
             .intensity(30000.0f)
             .build(*engine);
-        if (!skybox) { engine->destroy(indirectLight); engine->destroy(environmentTexture); indirectLight = nullptr; environmentTexture = nullptr; return false; }
-        scene->setIndirectLight(indirectLight);
+
+        if (!skybox) {
+            engine->destroy(skyboxTexture);
+            skyboxTexture = nullptr;
+            return false;
+        }
+
         scene->setSkybox(skybox);
         return true;
     }
@@ -845,6 +888,19 @@ Java_com_slayer_filament_MainActivity_nativeLoadEnvironment(
     jbyte* raw = env->GetByteArrayElements(data, nullptr);
     if (!raw) return JNI_FALSE;
     const bool ok = g_renderer.loadEnvironmentKtx(
+        reinterpret_cast<const uint8_t*>(raw), static_cast<size_t>(size));
+    env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_slayer_filament_MainActivity_nativeLoadSkybox(JNIEnv* env, jobject, jbyteArray data) {
+    if (!env || !data) return JNI_FALSE;
+    const jsize size = env->GetArrayLength(data);
+    if (size <= 0) return JNI_FALSE;
+    jbyte* raw = env->GetByteArrayElements(data, nullptr);
+    if (!raw) return JNI_FALSE;
+    const bool ok = g_renderer.loadSkyboxKtx(
         reinterpret_cast<const uint8_t*>(raw), static_cast<size_t>(size));
     env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
     return ok ? JNI_TRUE : JNI_FALSE;
