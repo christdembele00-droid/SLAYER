@@ -38,6 +38,8 @@ public final class MainActivity extends Activity {
     private static native float nativeGetFrameMs();
     private static native int nativeGetDrawCalls();
     private static native int nativeGetPlayerCount();
+    private static native int nativeGetHomeScore();
+    private static native int nativeGetAwayScore();
     private static native void nativeResize(int width, int height);
     private static native void nativeRender(float deltaSeconds);
     private static native void nativeDestroy();
@@ -113,9 +115,11 @@ public final class MainActivity extends Activity {
         Button passButton=button(root,"PASS",Gravity.BOTTOM|Gravity.RIGHT,250,36);
         Button shootButton=button(root,"TIR",Gravity.BOTTOM|Gravity.RIGHT,125,130);
         Button sprintButton=button(root,"SPRINT",Gravity.BOTTOM|Gravity.RIGHT,260,150);
+        Button tackleButton=button(root,"TACLE",Gravity.BOTTOM|Gravity.RIGHT,390,36);
         passButton.setOnTouchListener((v,e)->{pass=e.getAction()==MotionEvent.ACTION_UP?0:1;nativeSetInput(moveX,moveY,pass,shoot,sprint,tackle,selectedPlayer);return true;});
         shootButton.setOnTouchListener((v,e)->{shoot=e.getAction()==MotionEvent.ACTION_UP?0:1;nativeSetInput(moveX,moveY,pass,shoot,sprint,tackle,selectedPlayer);return true;});
         sprintButton.setOnTouchListener((v,e)->{sprint=e.getAction()==MotionEvent.ACTION_UP?0:1;nativeSetInput(moveX,moveY,pass,shoot,sprint,tackle,selectedPlayer);return true;});
+        tackleButton.setOnTouchListener((v,e)->{tackle=e.getAction()==MotionEvent.ACTION_UP?0:1;nativeSetInput(moveX,moveY,pass,shoot,sprint,tackle,selectedPlayer);return true;});
         Button reset=button(root,"RESTART",Gravity.TOP|Gravity.LEFT,24,130);
         reset.setOnClickListener(v->nativeResetMatch());
     }
@@ -209,8 +213,8 @@ public final class MainActivity extends Activity {
 
             nativeRender(dt);
             statsView.setText(String.format(java.util.Locale.US,
-                    "SLAYER • FILAMENT / VULKAN\\n%.1f FPS • %.2f ms\\nDraws %d • Players %d",
-                    nativeGetFps(), nativeGetFrameMs(), nativeGetDrawCalls(), nativeGetPlayerCount()));
+                    "SLAYER • FILAMENT / VULKAN\\n%.1f FPS • %.2f ms\\nScore %d - %d\\nDraws %d • Players %d",
+                    nativeGetFps(), nativeGetFrameMs(), nativeGetHomeScore(), nativeGetAwayScore(), nativeGetDrawCalls(), nativeGetPlayerCount()));
             surface.postOnAnimation(this);
         }
     };
