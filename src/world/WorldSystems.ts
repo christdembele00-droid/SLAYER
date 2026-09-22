@@ -11,17 +11,14 @@ export class WorldSystem{
 }
 export class QualityManager{
   tier:QualityTier="High";
-  private lastTier:QualityTier=this.tier;
 
-  update(frameMs:number,_delta=0):boolean{
+  update(frameMs:number):boolean{
     const previous=this.tier;
     if(frameMs>33)this.tier="Low";
     else if(frameMs>22)this.tier="Medium";
     else if(frameMs<15)this.tier="Ultra";
     else this.tier="High";
-    const changed=this.tier!==previous;
-    this.lastTier=this.tier;
-    return changed;
+    return this.tier!==previous;
   }
 
   pixelRatio(){
