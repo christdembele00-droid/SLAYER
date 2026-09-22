@@ -77,15 +77,59 @@ jobs:
           echo "FILAMENT_DIST_DIR=/tmp/filament-native" >> "$GITHUB_ENV"
       - name: Stage Filament ubershader archive
         run: |
+          set -euo pipefail
           mkdir -p benchmarks/filament-v0.1/android/app/src/main/assets/filament
-          UBERZ="$(find /tmp/filament-native -type f -name '*.uberz' | head -n 1)"
-          if [ -z "$UBERZ" ]; then
-            echo "No .uberz archive found in the Filament native distribution"
-            find /tmp/filament-native -maxdepth 5 -type f | grep -E 'uber|gltfio' | head -n 100 || true
+          UBERZ="$(find /tmp/filament-native -type f -name '*.uberz' | head -n 1 || true)"
+          if [ -n "$UBERZ" ]; then
+            echo "Using packaged ubershader archive: $UBERZ"
+            cp "$UBERZ" benchmarks/filament-v0.1/android/app/src/main/assets/filament/default.uberz
+            exit 0
+          fi
+
+          # The Android native distribution ships the generated ubershader as
+          # materials/uberarchive.h rather than as a standalone .uberz file.
+          # Reconstruct the exact binary archive from UBERARCHIVE_DEFAULT_DATA.
+          HEADER="$(find /tmp/filament-native -type f -path '*/include/gltfio/materials/uberarchive.h' | head -n 1 || true)"
+          if [ -z "$HEADER" ]; then
+            echo "No packaged .uberz and no generated uberarchive.h found"
+            find /tmp/filament-native -maxdepth 6 -type f | grep -E 'uber|gltfio' | head -n 120 || true
             exit 1
           fi
-          echo "Using ubershader archive: $UBERZ"
-          cp "$UBERZ" benchmarks/filament-v0.1/android/app/src/main/assets/filament/default.uberz
+
+          python3 - "$HEADER" benchmarks/filament-v0.1/android/app/src/main/assets/filament/default.uberz <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          header = Path(sys.argv[1]).read_text(encoding="utf-8")
+          output = Path(sys.argv[2])
+
+          match = re.search(
+              r'UBERARCHIVE_DEFAULT_DATA\s*\[[^\]]*\]\s*=\s*\{(.*?)\};',
+              header,
+              re.DOTALL,
+          )
+          if not match:
+              raise SystemExit("Could not locate UBERARCHIVE_DEFAULT_DATA in uberarchive.h")
+
+          body = re.sub(r'/\*.*?\*/|//[^\n]*', '', match.group(1), flags=re.DOTALL)
+          tokens = re.findall(r'0[xX][0-9a-fA-F]{1,2}', body)
+          if not tokens:
+              raise SystemExit("UBERARCHIVE_DEFAULT_DATA contains no hexadecimal byte data")
+
+          data = bytes(int(token, 16) for token in tokens)
+
+          size_match = re.search(r'UBERARCHIVE_DEFAULT_SIZE\s*=\s*(\d+)', header)
+          if size_match:
+              expected = int(size_match.group(1))
+              if expected != len(data):
+                  raise SystemExit(
+                      f"Ubershader size mismatch: header={expected}, parsed={len(data)}"
+                  )
+
+          output.write_bytes(data)
+          print(f"Reconstructed ubershader archive: {output} ({len(data)} bytes)")
+          PY
       - name: Build native Filament benchmark APK
         run: gradle -p benchmarks/filament-v0.1/android assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
