@@ -17,6 +17,7 @@
 #include <cmath>
 #include <cstdint>
 #include <vector>
+#include <atomic>
 
 #include <filament/Camera.h>
 #include <filament/Engine.h>
@@ -50,6 +51,7 @@ struct NativeRenderer {
     Entity meshEntity{};
     Entity terrainEntity{};
     Entity sunEntity{};
+    Entity floodlightEntities[4]{};
     VertexBuffer* vertexBuffer = nullptr;
     IndexBuffer* indexBuffer = nullptr;
     VertexBuffer* terrainVertexBuffer = nullptr;
@@ -73,6 +75,11 @@ struct NativeRenderer {
     SlayerFrameStats stats{};
     Clock::time_point lastFrame = Clock::now();
     std::vector<float> history;
+
+    static constexpr uint32_t MAX_PLAYERS = 64;
+    SlayerTransform playerBuffers[2][MAX_PLAYERS]{};
+    uint32_t playerBufferCounts[2]{};
+    std::atomic<uint32_t> activePlayerBuffer{0};
 
     bool initialize(ANativeWindow* nativeWindow) {
         window = nativeWindow;
@@ -223,6 +230,29 @@ struct NativeRenderer {
 
         scene->addEntity(sunEntity);
 
+        // Four stadium floodlights. They provide the night-stadium lighting
+        // foundation while remaining cheap enough for the mobile benchmark.
+        const float lightPositions[4][3] = {
+            {-10.0f, 7.0f, -6.0f}, {10.0f, 7.0f, -6.0f},
+            {-10.0f, 7.0f,  6.0f}, {10.0f, 7.0f,  6.0f}
+        };
+        const float lightDirections[4][3] = {
+            { 0.45f, -0.80f,  0.35f}, {-0.45f, -0.80f,  0.35f},
+            { 0.45f, -0.80f, -0.35f}, {-0.45f, -0.80f, -0.35f}
+        };
+        for (int i = 0; i < 4; ++i) {
+            floodlightEntities[i] = engine->getEntityManager().create();
+            LightManager::Builder(LightManager::Type::SPOT)
+                .color({0.92f, 0.97f, 1.0f})
+                .intensity(18000.0f)
+                .position({lightPositions[i][0], lightPositions[i][1], lightPositions[i][2]})
+                .direction({lightDirections[i][0], lightDirections[i][1], lightDirections[i][2]})
+                .spotLightCone(0.45f, 0.75f)
+                .castShadows(true)
+                .build(*engine, floodlightEntities[i]);
+            scene->addEntity(floodlightEntities[i]);
+        }
+
         setSize(1, 1);
         lastFrame = Clock::now();
         return true;
@@ -324,6 +354,19 @@ struct NativeRenderer {
 
         const float dt = measured > 0.0f ? measured : deltaSeconds;
 
+        // Consume the latest lock-free player snapshot. The render thread never
+        // waits for simulation/FFI writers.
+        const uint32_t active = activePlayerBuffer.load(std::memory_order_acquire);
+        const uint32_t playerCount = playerBufferCounts[active];
+        if (playerAsset && playerCount > 0) {
+            auto &tm = engine->getTransformManager();
+            const Entity root = playerAsset->getEntities()[0];
+            if (tm.hasComponent(root)) {
+                const SlayerTransform &t = playerBuffers[active][0];
+                tm.setTransform(tm.getInstance(root), filament::math::mat4f::translation({t.x, t.y, t.z}));
+            }
+        }
+
         if (playerAnimator && playerAnimator->getAnimationCount() > 0) {
             playerAnimationTime += dt;
             const float duration = playerAnimator->getAnimationDuration(playerAnimationIndex);
@@ -392,6 +435,10 @@ struct NativeRenderer {
         }
 
         if (scene && sunEntity) scene->remove(sunEntity);
+        for (Entity e : floodlightEntities) {
+            if (scene && e) scene->remove(e);
+            if (e) engine->getLightManager().destroy(e);
+        }
         if (scene && terrainEntity) scene->remove(terrainEntity);
         if (scene && meshEntity) scene->remove(meshEntity);
 
@@ -453,7 +500,15 @@ extern "C" void slayer_renderer_resize(uint32_t width, uint32_t height) {
 
 extern "C" void slayer_renderer_set_players(
         const SlayerTransform* transforms, uint32_t count) {
-    g_renderer.stats.player_count = transforms ? count : 0;
+    const uint32_t current = g_renderer.activePlayerBuffer.load(std::memory_order_relaxed);
+    const uint32_t next = current ^ 1u;
+    const uint32_t n = std::min(count, NativeRenderer::MAX_PLAYERS);
+    if (transforms && n > 0) {
+        std::copy_n(transforms, n, g_renderer.playerBuffers[next]);
+    }
+    g_renderer.playerBufferCounts[next] = transforms ? n : 0;
+    g_renderer.activePlayerBuffer.store(next, std::memory_order_release);
+    g_renderer.stats.player_count = transforms ? n : 0;
 }
 
 extern "C" void slayer_renderer_render(float delta_seconds) {
