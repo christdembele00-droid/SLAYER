@@ -42,6 +42,7 @@ export class QualityManager {
     }
   }
 
+  setTier(tier:QualityTier):void{this.tier=tier;this.stableTime=0;this.cooldown=0;this.lastTier=tier;}
   targetFrameMs():number{return 1000/60;}
   get p95Ms():number{
     if(!this.history.length)return 0;
