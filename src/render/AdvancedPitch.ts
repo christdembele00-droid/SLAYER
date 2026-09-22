@@ -1,13 +1,13 @@
 import * as THREE from "three";
 
-function grassTexture(size=512):THREE.CanvasTexture{
+function grassTexture(size=1024):THREE.CanvasTexture{
   const canvas=document.createElement("canvas");
   canvas.width=canvas.height=size;
   const ctx=canvas.getContext("2d");
   if(!ctx) throw new Error("Canvas 2D unavailable");
   const image=ctx.createImageData(size,size);
   for(let i=0;i<image.data.length;i+=4){
-    const n=Math.random();
+    const n=((i/4*1664525+1013904223)%997)/997;
     const base=48+n*22;
     image.data[i]=20;
     image.data[i+1]=base+35;
@@ -19,7 +19,7 @@ function grassTexture(size=512):THREE.CanvasTexture{
   texture.colorSpace=THREE.SRGBColorSpace;
   texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
   texture.repeat.set(7,11);
-  texture.anisotropy=8;
+  texture.anisotropy=16;
   return texture;
 }
 
@@ -31,7 +31,7 @@ export class AdvancedPitch{
   constructor(){
     const map=grassTexture();
     const grassMat=new THREE.MeshStandardMaterial({
-      map,roughness:.62,metalness:0
+      map,roughness:.5,metalness:0,envMapIntensity:.35
     });
     this.grass=new THREE.Mesh(new THREE.PlaneGeometry(68,105,1,1),grassMat);
     this.grass.rotation.x=-Math.PI/2;
