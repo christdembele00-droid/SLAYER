@@ -4,6 +4,7 @@ export type PlayerPosition = "GK" | "CB" | "LB" | "RB" | "LWB" | "RWB" | "DM" | 
 export type PreferredFoot = "left" | "right";
 export type LocomotionState = "Idle" | "Walk" | "Run" | "Sprint" | "Brake" | "Turn";
 export type BallMode = "NoBall" | "Control";
+export type DribbleStyle = "Balanced" | "Close" | "Sprint";
 export type PlayerAction = "None" | "Pass" | "Shoot" | "ThroughBall" | "Cross" | "Clearance" | "Tackle" | "Header" | "Control";
 export type ControlResult = "Perfect" | "Good" | "Loose" | "Bad" | "Missed";
 export type DefensiveAction = "Press" | "Contain" | "Intercept" | "StandingTackle" | "SlideTackle" | "Mark";
@@ -82,6 +83,8 @@ export interface PlayerRuntimeState {
   action: PlayerAction;
   stamina: number;
   controlResult?: ControlResult;
+  dribbleStyle: DribbleStyle;
+  ballProtection: number;
   lastIntent?: PlayerIntent;
 }
 
