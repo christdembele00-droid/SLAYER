@@ -19,6 +19,7 @@ public final class MainActivity extends Activity {
     private long lastFrameNanos;
 
     private static native void nativeCreate(android.view.Surface surface);
+    private static native boolean nativeLoadTerrainMaterial(byte[] data);
     private static native boolean nativeLoadPlayer(byte[] data);
     private static native void nativeResize(int width, int height);
     private static native void nativeRender(float deltaSeconds);
@@ -38,6 +39,7 @@ public final class MainActivity extends Activity {
             @Override
             public void surfaceCreated(SurfaceHolder holder) {
                 nativeCreate(holder.getSurface());
+                loadBundledTerrainMaterial();
                 loadBundledPlayer();
                 lastFrameNanos = System.nanoTime();
                 surface.postOnAnimation(frameRunnable);
@@ -58,6 +60,22 @@ public final class MainActivity extends Activity {
         setContentView(surface);
     }
 
+
+    private void loadBundledTerrainMaterial() {
+        try (InputStream input = getAssets().open("materials/grass.filamat");
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[16 * 1024];
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                output.write(buffer, 0, read);
+            }
+            if (!nativeLoadTerrainMaterial(output.toByteArray())) {
+                android.util.Log.w("SLAYER", "materials/grass.filamat could not be loaded");
+            }
+        } catch (IOException e) {
+            android.util.Log.i("SLAYER", "No compiled grass material yet; keeping default terrain");
+        }
+    }
 
     private void loadBundledPlayer() {
         try (InputStream input = getAssets().open("models/player.glb");
