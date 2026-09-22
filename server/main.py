@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from time import time
 from uuid import uuid4
 
@@ -7,9 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from .auth import require_bearer
+from .db import init_schema
 from .matchmaking import Matchmaking, Ticket
 from .routes import router
-from .db import init_schema
 
 
 def _allowed_origins() -> list[str]:
@@ -22,7 +23,14 @@ def _allowed_origins() -> list[str]:
 
 ALLOWED_ORIGINS = _allowed_origins()
 
-app = FastAPI(title="SLAYER Online Server")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    init_schema()
+    yield
+
+
+app = FastAPI(title="SLAYER Online Server", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -30,14 +38,10 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
-@app.on_event("startup")
-def startup():
-    init_schema()
-
 app.include_router(router)
 
 mm = Matchmaking()
-match_players: dict[str, set[str]] = {}
+match_players: dict[str, dict[str, str]] = {}
 clients: dict[str, dict[str, WebSocket]] = {}
 
 
@@ -65,17 +69,20 @@ def health():
 @app.post("/api/matchmaking/join")
 def join(r: QueueRequest, user=Depends(require_bearer)):
     uid = str(user.get("uid", ""))
-    if not uid or r.playerId != uid:
-        return {"status": "error", "reason": "player_id_must_match_auth"}
+    if not uid or not r.playerId.strip():
+        return {"status": "error", "reason": "invalid_player_id"}
 
     pair = mm.enqueue(
-        Ticket(uid, r.region, r.mode, r.version, r.skill, time())
+        Ticket(r.playerId.strip(), r.region, r.mode, r.version, r.skill, time(), uid)
     )
     if not pair:
         return {"status": "queued", "players": [], "matchId": None}
 
     match_id = uuid4().hex
-    match_players[match_id] = {pair[0].player_id, pair[1].player_id}
+    match_players[match_id] = {
+        pair[0].player_id: pair[0].owner_id or "",
+        pair[1].player_id: pair[1].owner_id or "",
+    }
     clients[match_id] = {}
     return {
         "status": "matched",
@@ -131,7 +138,8 @@ async def ws(
     if not uid:
         return
 
-    if uid != player_id or not match_id or player_id not in match_players.get(match_id, set()):
+    owners = match_players.get(match_id or "", {})
+    if not match_id or owners.get(player_id) != uid:
         await websocket.close(code=4403, reason="match_access_denied")
         return
 
@@ -149,12 +157,9 @@ async def ws(
                 await websocket.close(code=4403, reason="player_id_mismatch")
                 return
 
-            envelope = {
-                "type": "intent",
-                "data": intent.model_dump(),
-            }
+            envelope = {"type": "intent", "data": intent.model_dump()}
             stale: list[str] = []
-            for other_id, client in room.items():
+            for other_id, client in list(room.items()):
                 try:
                     await client.send_json(envelope)
                 except Exception:
