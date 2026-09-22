@@ -2,36 +2,42 @@ import { QualityTier } from "../world/WorldTypes";
 
 export class QualityManager {
   tier: QualityTier = "High";
-  private history: number[] = [];
-  private stableTime = 0;
+  private history:number[]=[];
+  private stableTime=0;
+  private lastTier:QualityTier="High";
 
-  update(frameMs: number, delta = 1 / 60): void {
+  update(frameMs:number,delta=1/60):boolean {
     this.history.push(frameMs);
-    if (this.history.length > 90) this.history.shift();
-    const avg = this.history.reduce((a,b)=>a+b,0)/this.history.length;
-    if (avg > 22.5) {
-      this.tier = "Low";
-      this.stableTime = 0;
-    } else if (avg > 18.5) {
-      this.tier = "Medium";
-      this.stableTime = 0;
-    } else if (avg < 14.5) {
-      this.stableTime += delta;
-      if (this.stableTime > 2) this.tier = "Ultra";
-    } else {
-      this.stableTime = 0;
-      this.tier = "High";
+    if(this.history.length>90)this.history.shift();
+    const avg=this.history.reduce((a,b)=>a+b,0)/this.history.length;
+
+    if(avg>22.2){
+      this.tier="Low";
+      this.stableTime=0;
+    }else if(avg>17.2){
+      this.tier="Medium";
+      this.stableTime=0;
+    }else if(avg<14.5){
+      this.stableTime+=delta;
+      if(this.stableTime>2)this.tier="Ultra";
+    }else{
+      this.stableTime=0;
+      this.tier="High";
     }
+
+    const changed=this.tier!==this.lastTier;
+    this.lastTier=this.tier;
+    return changed;
   }
 
-  pixelRatio(): number {
+  pixelRatio():number{
     switch(this.tier){
-      case "Low": return .72;
-      case "Medium": return .82;
+      case "Low": return .68;
+      case "Medium": return .8;
       case "High": return .95;
-      case "Ultra": return Math.min(window.devicePixelRatio,1.25);
+      case "Ultra": return Math.min(window.devicePixelRatio,1.2);
     }
   }
 
-  targetFrameMs(): number { return 1000/60; }
+  targetFrameMs():number{return 1000/60;}
 }
