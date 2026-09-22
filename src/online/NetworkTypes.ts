@@ -1,0 +1,3 @@
+export interface PlayerIntentPacket{playerId:string;moveX:number;moveZ:number;action:string;power:number;clientTime:number;}
+export interface Snapshot{serverTime:number;sequence:number;players:Array<{id:string;x:number;y:number;z:number;vx:number;vz:number}>;ball:{x:number;y:number;z:number;vx:number;vy:number;vz:number};}
+export interface MatchmakingRequest{playerId:string;region:string;platform:string;skillRating:number;connectionQuality:number;gameVersion:string;mode:string;}
