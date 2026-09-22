@@ -12,7 +12,9 @@ export class PlayerController {
       locomotion: "Idle",
       ballMode: "NoBall",
       action: "None",
-      stamina: data.physical.stamina
+      stamina: data.physical.stamina,
+      dribbleStyle: "Balanced",
+      ballProtection: 0
     };
   }
 
