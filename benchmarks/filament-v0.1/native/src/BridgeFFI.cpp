@@ -1,5 +1,6 @@
 #include "slayer_renderer.h"
 #include "slayer_input.h"
+#include "slayer_settings.h"
 
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
@@ -86,6 +87,7 @@ struct NativeRenderer {
     gltfio::FilamentAsset* stadiumAsset = nullptr;
     std::vector<gltfio::FilamentInstance*> playerInstances;
     gltfio::Animator* playerAnimator = nullptr;
+    slayer::SlayerSettings settings{};
     float playerAnimationTime = 0.0f;
     uint32_t playerAnimationIndex = 0;
 
@@ -107,6 +109,50 @@ struct NativeRenderer {
     std::atomic<uint32_t> renderReadingBuffer{0xffffffffu};
     uint32_t writerBuffer = 1;
     uint32_t playerBoneCount = 0;
+
+    void applySettings() {
+        if (!engine || !view || !camera || !renderer) return;
+        View::DynamicResolutionOptions drs{};
+        drs.enabled = settings.dynamicResolution;
+        drs.homogeneousScaling = true;
+        drs.minScale = settings.quality == slayer::QualityMode::Low ? 0.60f : settings.quality == slayer::QualityMode::Medium ? 0.72f : 0.82f;
+        drs.maxScale = settings.quality == slayer::QualityMode::Ultra ? 1.0f : 0.95f;
+        drs.sharpness = settings.quality == slayer::QualityMode::Low ? 0.55f : 0.72f;
+        drs.quality = settings.quality == slayer::QualityMode::Ultra ? QualityLevel::HIGH : settings.quality == slayer::QualityMode::High ? QualityLevel::MEDIUM : QualityLevel::LOW;
+        view->setDynamicResolutionOptions(drs);
+        View::RenderQuality rq{};
+        rq.hdrColorBuffer = settings.quality == slayer::QualityMode::Low ? View::RenderQuality::HdrColorBuffer::R11F_G11F_B10F : View::RenderQuality::HdrColorBuffer::RGBA16F;
+        view->setRenderQuality(rq);
+        Renderer::FrameRateOptions fps{};
+        fps.interval = settings.targetFps <= 30 ? 2 : 1;
+        fps.headRoomRatio = settings.quality == slayer::QualityMode::Low ? 0.10f : 0.05f;
+        fps.scaleRate = 1.0f / 8.0f;
+        fps.history = 15;
+        renderer->setFrameRateOptions(fps);
+        const bool night = settings.time == slayer::TimeMode::Night;
+        const bool twilight = settings.time == slayer::TimeMode::Twilight;
+        auto& lm = engine->getLightManager();
+        if (lm.hasComponent(sunEntity)) {
+            auto li = lm.getInstance(sunEntity);
+            lm.setIntensity(li, night ? 9000.0f : twilight ? 38000.0f : 90000.0f);
+        }
+        for (Entity e : floodlightEntities) if (lm.hasComponent(e)) {
+            auto li=lm.getInstance(e);
+            lm.setIntensity(li, night ? 36000.0f : twilight ? 22000.0f : 12000.0f);
+        }
+        switch(settings.camera) {
+            case slayer::CameraMode::Broadcast: camera->lookAt({0.0,18.0,24.0},{0.0,0.0,0.0}); break;
+            case slayer::CameraMode::Dynamic: camera->lookAt({0.0,8.5,15.5},{0.0,1.0,0.0}); break;
+            case slayer::CameraMode::Overview: camera->lookAt({0.0,30.0,2.0},{0.0,0.0,0.0}); break;
+            case slayer::CameraMode::Pro: camera->lookAt({0.0,5.0,11.5},{0.0,1.0,0.0}); break;
+            case slayer::CameraMode::Custom: camera->lookAt({6.0,9.0,14.0},{0.0,1.0,0.0}); break;
+        }
+    }
+
+    void setSettings(const slayer::SlayerSettings& next) {
+        settings = next;
+        if (engine) applySettings();
+    }
 
     bool initialize(ANativeWindow* nativeWindow) {
         window = nativeWindow;
@@ -325,6 +371,7 @@ struct NativeRenderer {
         }
 
         setSize(1, 1);
+        applySettings();
         lastFrame = Clock::now();
         return true;
     }
@@ -541,10 +588,11 @@ struct NativeRenderer {
         if (playerCount > 0) playerLocal = readBuffer.transforms[0];
         renderReadingBuffer.store(0xffffffffu, std::memory_order_release);
         if (playerAsset && playerCount > 0) {
-            camera->lookAt(
-                {playerLocal.x, playerLocal.y + 3.2f, playerLocal.z + 10.5f},
-                {playerLocal.x, playerLocal.y + 1.0f, playerLocal.z},
-                {0.0f, 1.0f, 0.0f});
+            if(settings.camera==slayer::CameraMode::Dynamic || settings.camera==slayer::CameraMode::Pro || settings.camera==slayer::CameraMode::Custom) {
+                const double distance=settings.camera==slayer::CameraMode::Pro?8.5:(settings.camera==slayer::CameraMode::Custom?12.0:15.5);
+                const double height=settings.camera==slayer::CameraMode::Pro?2.8:(settings.camera==slayer::CameraMode::Custom?5.5:7.0);
+                camera->lookAt({playerLocal.x,playerLocal.y+height,playerLocal.z+distance},{playerLocal.x,playerLocal.y+1.0,playerLocal.z},{0.0,1.0,0.0});
+            }
             const float distance = std::sqrt(
                 playerLocal.x * playerLocal.x +
                 playerLocal.y * playerLocal.y +
@@ -774,6 +822,8 @@ extern "C" void slayer_renderer_set_players(
     g_renderer.stats.player_count = transforms ? n : 0;
 }
 
+extern "C" void slayer_renderer_set_settings(const slayer::SlayerSettings& settings) { g_renderer.setSettings(settings); }
+
 extern "C" void slayer_renderer_render(float delta_seconds) {
     g_renderer.render(delta_seconds);
 }
@@ -886,6 +936,16 @@ Java_com_slayer_filament_MainActivity_nativeSetInput(
         JNIEnv*, jobject, jfloat moveX, jfloat moveY, jfloat pass,
         jfloat shoot, jfloat sprint, jfloat tackle, jint selected) {
     slayer_game_set_input(moveX, moveY, pass, shoot, sprint, tackle, selected);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_slayer_filament_MainActivity_nativeSetSettings(JNIEnv*, jobject, jint duration, jboolean extraTime, jboolean penalties, jint substitutions, jint conditionRandom, jint timeMode, jint weatherMode, jint grassMode, jint stadium, jint ball, jint control, jint passAssist, jint shotAssist, jint cursor, jint pressing, jint attack, jint targetFps, jint quality, jboolean dynamicResolution, jint cameraMode, jboolean radar, jint commentary, jfloat music, jfloat commentaryVolume, jfloat crowd, jfloat effects) {
+    slayer::SlayerSettings s{};
+    s.durationMinutes=std::clamp((int)duration,5,12); s.extraTime=extraTime; s.penalties=penalties; s.substitutions=std::clamp((int)substitutions,3,5); s.randomCondition=conditionRandom!=0;
+    s.time=(slayer::TimeMode)std::clamp((int)timeMode,0,2); s.weather=(slayer::WeatherMode)std::clamp((int)weatherMode,0,2); s.grass=(slayer::GrassMode)std::clamp((int)grassMode,0,2);
+    s.stadium=stadium; s.ball=ball; s.control=(slayer::ControlMode)std::clamp((int)control,0,2); s.passAssist=std::clamp((int)passAssist,1,4); s.shotAssist=(slayer::ShotAssistMode)std::clamp((int)shotAssist,0,1); s.cursor=(slayer::CursorMode)std::clamp((int)cursor,0,2); s.pressing=(slayer::PressMode)std::clamp((int)pressing,0,1); s.attack=(slayer::TacticalMode)std::clamp((int)attack,0,2); s.targetFps=targetFps; s.quality=(slayer::QualityMode)std::clamp((int)quality,0,3); s.dynamicResolution=dynamicResolution; s.camera=(slayer::CameraMode)std::clamp((int)cameraMode,0,4); s.radar=radar; s.commentaryLanguage=commentary; s.musicVolume=music; s.commentaryVolume=commentaryVolume; s.crowdVolume=crowd; s.effectsVolume=effects;
+    slayer_renderer_set_settings(s);
+    g_game.setSettings(s);
 }
 
 extern "C" JNIEXPORT void JNICALL
