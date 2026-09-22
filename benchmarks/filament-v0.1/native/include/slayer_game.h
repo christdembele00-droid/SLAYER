@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include "slayer_renderer.h"
+#include "slayer_settings.h"
 
 namespace slayer {
 
@@ -51,6 +52,8 @@ public:
     MatchEngine();
     void reset();
     void setInput(const InputState& input);
+    void setSettings(const SlayerSettings& settings);
+    const SlayerSettings& settings() const { return settings_; }
     void update(float dt);
     void snapshot(SlayerTransform* out, uint32_t capacity) const;
     const MatchState& state() const { return state_; }
@@ -66,6 +69,7 @@ private:
     InputState input_{};
     float secondAccumulator_=0;
     float fixedAccumulator_=0;
+    SlayerSettings settings_{};
 };
 
 } // namespace slayer
