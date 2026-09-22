@@ -8,7 +8,7 @@ V0.1 measures the native rendering path with:
 
 - Android ARM64
 - Filament
-- Vulkan when available, with OpenGL ES fallback
+- Vulkan only; no OpenGL ES fallback
 - glTF / GLB assets
 - PBR materials
 - skeletal animation
@@ -21,7 +21,7 @@ V0.1 measures the native rendering path with:
 
 This branch is a **benchmark scaffold**, not yet a validated 60 FPS result.
 
-The official Filament Android build currently requires Android Studio, Android SDK, NDK 29+, Java 21, CMake 3.22.1+ and Ninja. The benchmark therefore keeps Filament as an external build dependency instead of copying its source into SLAYER.
+The official Filament Android build currently requires Android Studio, Android SDK, NDK 29+, Java 21, CMake 3.22.1+ and Ninja. The benchmark keeps Filament as an external build dependency instead of copying its source into SLAYER.
 
 ## Build strategy
 
@@ -32,7 +32,7 @@ The official Filament Android build currently requires Android Studio, Android S
 5. Record FPS, p95 frame time, draw calls, triangles and APK size.
 6. Repeat at 1, 11 and 22 players.
 
-Do not call the benchmark "60 FPS validated" until step 4 has been performed on a physical device.
+The renderer is implemented, but do not call it "60 FPS validated" until step 4 has been performed on a physical device. Devices without Vulkan must fail initialization rather than silently falling back.
 
 ## Architecture
 
