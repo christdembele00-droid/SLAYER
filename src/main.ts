@@ -106,6 +106,7 @@ const ballMesh=new THREE.Mesh(
 renderer.scene.add(ballMesh);
 
 const controlledId="home-11";
+const nextAIActionAt=new Map<string,number>();
 function ensureControlledPlayerPossession(): void {
   const p=players.get(controlledId);
   if(!p || match.snapshot().phase!=="FirstHalf" || ball.state.controlledByPlayerId) return;
@@ -135,6 +136,16 @@ function startMatch(): void {
   matchStarted = true;
   match.start();
   match.kickOff("home");
+  const human=players.get(controlledId);
+  if(human){
+    human.state.position={x:0,y:0,z:-1.45};
+    human.state.rotationY=0;
+    human.state.ballMode="Control";
+    human.state.action="Control";
+    ball.setPosition({x:0,y:.11,z:0});
+    ball.state.state="Controlled";
+    ball.state.controlledByPlayerId=controlledId;
+  }
 }
 window.addEventListener("keydown",event=>{
   if(event.key==="Shift") input.setSprint(true);
@@ -213,8 +224,12 @@ function frame(now:number){
   for(const p of players.all()){
     if(p.data.playerId===controlledId) continue;
     const intent=p.state.lastIntent;
-    if(!intent) continue;
+    if(!intent || intent.action==="None") continue;
+    const nextAt=nextAIActionAt.get(p.data.playerId)??0;
+    if(match.clock.seconds<nextAt) continue;
     executeAction(p.data.playerId,intent.action,intent.targetDirection,intent.power);
+    nextAIActionAt.set(p.data.playerId,match.clock.seconds+0.28);
+    p.state.lastIntent={...intent,action:"None",power:0};
   }
 
   if(human.action!=="None") {
