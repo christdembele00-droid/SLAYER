@@ -25,6 +25,7 @@ import { CommentarySystem } from "./audio/CommentarySystem";
 import { WebSocketClient } from "./online/WebSocketClient";
 import type { PlayerAction, PlayerIntent } from "./player/PlayerTypes";
 import { SlayerUI } from "./ui/SLAYERUI";
+import { PerformanceMonitor } from "./performance/PerformanceMonitor";
 
 const app=document.querySelector<HTMLDivElement>("#app");
 if(!app) throw new Error("SLAYER root element not found");
@@ -43,6 +44,7 @@ renderer.scene.add(nets[0].mesh,nets[1].mesh);
 
 const world=new WorldSystem();
 const quality=new QualityManager();
+const performance=new PerformanceMonitor();
 const match=new MatchEngine({halfDurationSeconds:45*60,extraTimeEnabled:true,penaltiesEnabled:true});
 const players=new PlayerSystem();
 new FullMatchSetup().populate(players);
@@ -136,7 +138,9 @@ function executeAction(playerId:string, action:PlayerAction, direction:{x:number
 }
 
 function frame(now:number){
-  const delta=Math.min((now-last)/1000,.05);
+  const rawFrameMs=now-last;
+  const delta=Math.min(rawFrameMs/1000,.05);
+  const perf=performance.sample(rawFrameMs,delta);
   last=now;
 
   const human=input.snapshot();
@@ -194,7 +198,7 @@ function frame(now:number){
   const snapshot=match.snapshot();
   homeScore.textContent=String(snapshot.score.homeGoals);
   awayScore.textContent=String(snapshot.score.awayGoals);
-  status.textContent=`22 PLAYERS · AI ON · ${world.weather.toUpperCase()} · ${quality.tier} · ${snapshot.phase.toUpperCase()} · ${match.clock.format()}`;
+  status.textContent=`22 PLAYERS · AI ON · ${world.weather.toUpperCase()} · ${quality.tier} · ${perf.fps.toFixed(0)} FPS · ${perf.p95Ms.toFixed(1)}ms P95 · ${snapshot.phase.toUpperCase()} · ${match.clock.format()}`;
   commentaryEl.textContent=commentary.recent.at(-1)??"";
   if(online) online.send({type:"snapshot",ball:{...ball.state.position},time:snapshot.timeSeconds});
 
