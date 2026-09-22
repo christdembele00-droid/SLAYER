@@ -1,7 +1,7 @@
 import "./ui.css";
 
 export type SlayerScreen = "home"|"match"|"team"|"career"|"competitions"|"online"|"settings";
-export type SlayerMatchAction = "Pass"|"Shoot"|"Control";
+export type SlayerMatchAction = "Pass"|"Shoot"|"Control"|"Dribble"|"StandingTackle";
 export interface SlayerMoveInput { x:number; z:number; }
 
 export class SlayerUI {
