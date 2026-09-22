@@ -20,7 +20,8 @@ export class MatchPresentation{
   }
   update(dt:number,wetness:number):void{
     this.time+=dt;
-    this.ring.material.opacity=.035+Math.sin(this.time*.8)*.008;
+    const material=this.ring.material as THREE.MeshBasicMaterial;
+    material.opacity=.035+Math.sin(this.time*.8)*.008;
     for(const light of this.floodlights) light.intensity=.28+wetness*.08+Math.sin(this.time*1.7)*.025;
   }
 }
