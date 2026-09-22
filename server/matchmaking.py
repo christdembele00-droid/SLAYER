@@ -11,6 +11,7 @@ class Ticket:
     version: str
     skill: float
     created_at: float
+    owner_id: str | None = None
 
 
 class Matchmaking:
@@ -20,7 +21,11 @@ class Matchmaking:
 
     def enqueue(self, ticket: Ticket) -> Optional[tuple[Ticket, Ticket]]:
         with self._lock:
-            self.queue = [t for t in self.queue if t.player_id != ticket.player_id]
+            self.queue = [
+                t for t in self.queue
+                if t.player_id != ticket.player_id
+                and (ticket.owner_id is None or t.owner_id != ticket.owner_id)
+            ]
             self.queue.append(ticket)
             return self.match()
 
@@ -38,6 +43,7 @@ class Matchmaking:
                         and a.version == b.version
                         and self._regions_compatible(a, b)
                         and abs(a.skill - b.skill) <= 250
+                        and (a.owner_id is None or b.owner_id is None or a.owner_id != b.owner_id)
                     ):
                         self.queue.pop(j)
                         self.queue.pop(i)
