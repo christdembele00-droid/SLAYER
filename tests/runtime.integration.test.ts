@@ -7,6 +7,7 @@ import { InteractionSystem } from "../src/interaction/InteractionSystem";
 import { GameplaySystem } from "../src/gameplay/GameplaySystem";
 import { FootballAI } from "../src/ai/FootballAI";
 import { WorldSystem } from "../src/world/WorldSystems";
+import { GameplaySystem } from "../src/gameplay/GameplaySystem";
 
 describe("SLAYER runtime integration",()=>{
   it("creates exactly 22 match players",()=>{
