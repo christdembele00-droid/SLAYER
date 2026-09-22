@@ -79,6 +79,11 @@ struct NativeRenderer {
     MaterialInstance* materialInstance = nullptr;
     Material* terrainMaterial = nullptr;
     MaterialInstance* terrainMaterialInstance = nullptr;
+    Entity weatherEntity{};
+    VertexBuffer* weatherVertexBuffer = nullptr;
+    IndexBuffer* weatherIndexBuffer = nullptr;
+    MaterialInstance* weatherMaterialInstance = nullptr;
+    float weatherTime = 0.0f;
 
     gltfio::MaterialProvider* gltfMaterials = nullptr;
     gltfio::AssetLoader* assetLoader = nullptr;
@@ -111,6 +116,20 @@ struct NativeRenderer {
     uint32_t writerBuffer = 1;
     uint32_t playerBoneCount = 0;
 
+    void applyWeatherVisuals() {
+        if (!engine || !weatherEntity) return;
+        auto& rm = engine->getRenderableManager();
+        if (!rm.hasComponent(weatherEntity)) return;
+        auto& tm = engine->getTransformManager();
+        auto ti = tm.getInstance(weatherEntity);
+        if (settings.weather == slayer::WeatherMode::Clear) {
+            tm.setTransform(ti, filament::math::mat4f::translation({0.0f, -100.0f, 0.0f}));
+        } else {
+            const float y = -1.0f + std::fmod(weatherTime * (settings.weather == slayer::WeatherMode::Rain ? 5.5f : 1.2f), 12.0f);
+            tm.setTransform(ti, filament::math::mat4f::translation({0.0f, y, 0.0f}));
+        }
+    }
+
     void applySettings() {
         if (!engine || !view || !camera || !renderer) return;
         slayer::applyMobileQuality(engine, view, renderer, settings);
@@ -132,6 +151,7 @@ struct NativeRenderer {
             case slayer::CameraMode::Pro: camera->lookAt({0.0,5.0,11.5},{0.0,1.0,0.0}); break;
             case slayer::CameraMode::Custom: camera->lookAt({6.0,9.0,14.0},{0.0,1.0,0.0}); break;
         }
+        applyWeatherVisuals();
     }
 
     void setSettings(const slayer::SlayerSettings& next) {
@@ -266,6 +286,32 @@ struct NativeRenderer {
             .build(*engine, terrainEntity);
 
         scene->addEntity(terrainEntity);
+
+        // Lightweight native weather pass: real line geometry is used instead of a UI placeholder.
+        static constexpr float weatherVertices[] = {
+            -10.0f, 11.0f, -7.0f, -10.0f,  9.0f, -7.0f,
+             -5.0f, 12.0f, -2.0f,  -5.0f, 10.0f, -2.0f,
+              0.0f, 11.5f,  3.0f,   0.0f,  9.5f,  3.0f,
+              5.0f, 12.0f,  6.0f,   5.0f, 10.0f,  6.0f,
+              9.0f, 10.5f, -5.0f,   9.0f,  8.5f, -5.0f
+        };
+        static constexpr uint16_t weatherIndices[] = {0,1,2,3,4,5,6,7,8,9};
+        weatherVertexBuffer = VertexBuffer::Builder().vertexCount(10).bufferCount(1)
+            .attribute(VertexAttribute::POSITION,0,VertexBuffer::AttributeType::FLOAT3).build(*engine);
+        weatherIndexBuffer = IndexBuffer::Builder().indexCount(10).bufferType(IndexBuffer::IndexType::USHORT).build(*engine);
+        weatherEntity = engine->getEntityManager().create();
+        if (weatherVertexBuffer && weatherIndexBuffer) {
+            weatherVertexBuffer->setBufferAt(*engine,0,VertexBuffer::BufferDescriptor(weatherVertices,sizeof(weatherVertices),nullptr));
+            weatherIndexBuffer->setBuffer(*engine,IndexBuffer::BufferDescriptor(weatherIndices,sizeof(weatherIndices),nullptr));
+            weatherMaterialInstance = material ? material->createInstance() : nullptr;
+            if (weatherMaterialInstance) {
+                RenderableManager::Builder(1).boundingBox({{-12,-2,-8},{12,14,8}})
+                    .material(0,weatherMaterialInstance)
+                    .geometry(0,RenderableManager::PrimitiveType::LINES,weatherVertexBuffer,weatherIndexBuffer,0,10)
+                    .culling(false).castShadows(false).build(*engine,weatherEntity);
+                scene->addEntity(weatherEntity);
+            }
+        }
 
         // One dominant stadium key light for this first lighting milestone.
         sunEntity = engine->getEntityManager().create();
@@ -508,6 +554,8 @@ struct NativeRenderer {
         lastFrame = now;
 
         const float dt = measured > 0.0f ? measured : deltaSeconds;
+        weatherTime += dt;
+        applyWeatherVisuals();
 
         // Triple-buffered immutable snapshot. The renderer copies only from
         // the published buffer while the writer uses a different buffer.
@@ -648,6 +696,7 @@ struct NativeRenderer {
             if (e) engine->getLightManager().destroy(e);
         }
         if (scene && terrainEntity) scene->remove(terrainEntity);
+        if (scene && weatherEntity) scene->remove(weatherEntity);
         if (scene && meshEntity) scene->remove(meshEntity);
 
         if (sunEntity) engine->getLightManager().destroy(sunEntity);
@@ -658,6 +707,9 @@ struct NativeRenderer {
         if (materialInstance) engine->destroy(materialInstance);
         if (vertexBuffer) engine->destroy(vertexBuffer);
         if (indexBuffer) engine->destroy(indexBuffer);
+        if (weatherMaterialInstance) engine->destroy(weatherMaterialInstance);
+        if (weatherVertexBuffer) engine->destroy(weatherVertexBuffer);
+        if (weatherIndexBuffer) engine->destroy(weatherIndexBuffer);
         if (terrainVertexBuffer) engine->destroy(terrainVertexBuffer);
         if (terrainIndexBuffer) engine->destroy(terrainIndexBuffer);
         if (material) {
@@ -667,6 +719,7 @@ struct NativeRenderer {
 
         if (meshEntity) engine->getEntityManager().destroy(meshEntity);
         if (terrainEntity) engine->getEntityManager().destroy(terrainEntity);
+        if (weatherEntity) engine->getEntityManager().destroy(weatherEntity);
         if (sunEntity) engine->getEntityManager().destroy(sunEntity);
         if (cameraEntity) {
             engine->destroyCameraComponent(cameraEntity);
