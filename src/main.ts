@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import "./styles.css";
 import { MatchEngine } from "./core/MatchEngine";
 import { SceneRenderer } from "./render/SceneRenderer";
@@ -38,6 +39,25 @@ const stadium=new AAAStadium();
 const presentation=new MatchPresentation();
 renderer.scene.add(presentation.group);
 renderer.scene.add(stadium.group);
+void (async()=>{
+  try{
+    const gltf=await new GLTFLoader().loadAsync("/assets/3d/stadium/stadium.glb");
+    gltf.scene.traverse(object=>{
+      const mesh=object as THREE.Mesh;
+      if(!mesh.isMesh) return;
+      mesh.castShadow=true;mesh.receiveShadow=true;mesh.frustumCulled=true;
+      const materials=Array.isArray(mesh.material)?mesh.material:[mesh.material];
+      for(const raw of materials){
+        const material=raw as THREE.MeshStandardMaterial;
+        if(material.isMeshStandardMaterial && material.map) material.map.colorSpace=THREE.SRGBColorSpace;
+      }
+    });
+    renderer.scene.add(gltf.scene);
+    stadium.group.visible=false;
+  }catch(error){
+    console.warn("[SLAYER] Production stadium GLB unavailable; procedural stadium retained.",error);
+  }
+})();
 const pitch=new AdvancedPitch();
 renderer.scene.add(pitch.group);
 const crowd=new CrowdSystem();
