@@ -20,6 +20,7 @@ import { GoalNetCloth } from "./world/GoalNetCloth";
 import { AudioEngine } from "./audio/AudioEngine";
 import { CommentarySystem } from "./audio/CommentarySystem";
 import { WebSocketClient } from "./online/WebSocketClient";
+import type { PlayerAction, PlayerIntent } from "./player/PlayerTypes";
 
 const app=document.querySelector<HTMLDivElement>("#app");
 if(!app) throw new Error("SLAYER root element not found");
@@ -109,6 +110,7 @@ function detectGoal(): void {
     ball.setPosition({x:0,y:.11,z:0});
     ball.state.velocity={x:0,y:0,z:0};
     ball.state.state="Free";
+    ball.state.controlledByPlayerId=undefined;
     return;
   }
   if(p.z>=52.5) {
@@ -116,6 +118,17 @@ function detectGoal(): void {
     ball.setPosition({x:0,y:.11,z:0});
     ball.state.velocity={x:0,y:0,z:0};
     ball.state.state="Free";
+    ball.state.controlledByPlayerId=undefined;
+  }
+}
+
+function executeAction(playerId:string, action:PlayerAction, direction:{x:number;y:number;z:number}, power:number): void {
+  if(action==="Control"||action==="Dribble") {
+    gameplay.execute(players,ball,playerId,"Control",direction,power);
+    return;
+  }
+  if(action==="Shoot"||action==="Pass"||action==="ThroughBall"||action==="Cross"||action==="Clearance") {
+    gameplay.execute(players,ball,playerId,action,direction,power);
   }
 }
 
@@ -127,7 +140,7 @@ function frame(now:number){
   ai.update(players,ball,match.clock.seconds);
   tactical.update(players,ball);
 
-  const intents=new Map<string, import("./player/PlayerTypes").PlayerIntent>();
+  const intents=new Map<string, PlayerIntent>();
   for(const p of players.all()) {
     if(p.data.playerId!==controlledId && p.state.lastIntent) intents.set(p.data.playerId,p.state.lastIntent);
   }
@@ -136,17 +149,13 @@ function frame(now:number){
 
   for(const p of players.all()){
     if(p.data.playerId===controlledId) continue;
-    const action=p.state.lastIntent?.action??"None";
-    if(action==="Control") gameplay.execute(players,ball,p.data.playerId,"Control",{x:0,y:0,z:0},0);
-    if(action==="Shoot"||action==="Pass") {
-      const dx=ball.state.position.x-p.state.position.x;
-      const dz=ball.state.position.z-p.state.position.z;
-      gameplay.execute(players,ball,p.data.playerId,action,{x:dx,y:action==="Shoot"?.15:.03,z:dz},action==="Shoot"?.85:.55);
-    }
+    const intent=p.state.lastIntent;
+    if(!intent) continue;
+    executeAction(p.data.playerId,intent.action,intent.targetDirection,intent.power);
   }
 
   if(human.action!=="None") {
-    gameplay.execute(players,ball,controlledId,human.action,human.targetDirection,human.power);
+    executeAction(controlledId,human.action,human.targetDirection,human.power);
     input.setAction("None",0);
   }
 
