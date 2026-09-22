@@ -31,7 +31,6 @@
 #include <filament/View.h>
 #include <filament/Viewport.h>
 #include <filament/TransformManager.h>
-#include <filament/Box.h>
 #include <math/mat4.h>
 #include <filament/LightManager.h>
 #include <utils/EntityManager.h>
