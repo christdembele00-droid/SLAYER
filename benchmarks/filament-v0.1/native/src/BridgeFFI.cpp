@@ -1,4 +1,5 @@
 #include "slayer_renderer.h"
+#include "slayer_input.h"
 
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
@@ -482,6 +483,10 @@ struct NativeRenderer {
     }
 
     void render(float deltaSeconds) {
+        slayer_game_update(deltaSeconds);
+        SlayerTransform gameTransforms[22]{};
+        slayer_game_get_transforms(gameTransforms, 22);
+        slayer_renderer_set_players(gameTransforms, 22);
         if (!renderer || !swapChain || !view) return;
 
         const auto now = Clock::now();
@@ -750,6 +755,7 @@ Java_com_slayer_filament_MainActivity_nativeCreate(
     ANativeWindow* window = ANativeWindow_fromSurface(env, surface);
     if (!window) return;
     if (g_renderer.initialize(window)) {
+        slayer_game_reset();
         g_renderer.loadUbershaderArchive();
         g_runtime.start();
     }
@@ -836,6 +842,19 @@ Java_com_slayer_filament_MainActivity_nativeDestroy(
     slayer_renderer_destroy();
 }
 
+
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_slayer_filament_MainActivity_nativeSetInput(
+        JNIEnv*, jobject, jfloat moveX, jfloat moveY, jfloat pass,
+        jfloat shoot, jfloat sprint, jfloat tackle, jint selected) {
+    slayer_game_set_input(moveX, moveY, pass, shoot, sprint, tackle, selected);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_slayer_filament_MainActivity_nativeResetMatch(JNIEnv*, jobject) {
+    slayer_game_reset();
+}
 
 extern "C" JNIEXPORT jfloat JNICALL
 Java_com_slayer_filament_MainActivity_nativeGetFps(JNIEnv*, jobject) {
