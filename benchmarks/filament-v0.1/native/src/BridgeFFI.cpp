@@ -99,7 +99,6 @@ struct NativeRenderer {
     gltfio::FilamentAsset* playerAsset = nullptr;
     gltfio::FilamentAsset* stadiumAsset = nullptr;
     std::vector<gltfio::FilamentInstance*> playerInstances;
-    gltfio::Animator* playerAnimator = nullptr;
     slayer::SlayerSettings settings{};
     float playerAnimationTime = 0.0f;
     uint32_t playerAnimationIndex = 0;
