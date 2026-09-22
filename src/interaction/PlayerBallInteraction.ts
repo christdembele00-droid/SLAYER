@@ -13,7 +13,6 @@ export class PlayerBallInteraction {
     const dy = ball.state.position.y - (player.state.position.y + 0.45);
     const dz = ball.state.position.z - player.state.position.z;
     const distance = Math.hypot(dx, dy, dz);
-    const horizontal = Math.hypot(dx, dz) || 1;
     const targetAngle = Math.atan2(dx, dz);
     let angleDelta = Math.atan2(Math.sin(targetAngle - player.state.rotationY), Math.cos(targetAngle - player.state.rotationY));
     angleDelta = Math.abs(angleDelta);
@@ -23,13 +22,12 @@ export class PlayerBallInteraction {
     let level: 0 | 1 | 2 = distance > ACCESS_RADIUS ? 0 : distance > EFFECTIVE_RADIUS ? 1 : 2;
     if (level === 2 && Math.abs(dy) > 0.8) level = 1;
 
-    const anglePenalty = normalizedAngle;
-    const qualityScore = Math.max(0, 1 - distance / ACCESS_RADIUS) * 0.65 + (1 - anglePenalty) * 0.35;
+    const qualityScore = Math.max(0, 1 - distance / ACCESS_RADIUS) * 0.65 + (1 - normalizedAngle) * 0.35;
     let quality: ContactEvaluation["quality"] = "Good";
     if (distance > ACCESS_RADIUS) quality = "Miss";
     else if (qualityScore > 0.82) quality = "Perfect";
     else if (qualityScore > 0.58) quality = "Good";
-    else if (anglePenalty > 0.72) quality = "BadAngle";
+    else if (normalizedAngle > 0.72) quality = "BadAngle";
     else if (distance > EFFECTIVE_RADIUS) quality = "Late";
 
     const foot = this.selectFoot(player, dx, dz);
@@ -50,6 +48,10 @@ export class PlayerBallInteraction {
     ball.state.velocity.y *= 0.35;
     ball.state.velocity.z *= controlFactor;
     ball.state.state = "Controlled";
+    ball.state.controlledByPlayerId = player.data.playerId;
+    ball.state.lastContactPlayerId = player.data.playerId;
+    ball.state.lastContactTeamId = player.data.teamId;
+    ball.state.lastContactType = "Control";
     player.state.ballMode = "Control";
     player.state.controlResult = evaluation.controlResult;
     player.state.action = "Control";
@@ -63,19 +65,20 @@ export class PlayerBallInteraction {
     const technique = this.technicalModifier(player, type);
     const quality = this.qualityModifier(evaluation.quality);
     const adjustedPower = Math.min(1, Math.max(0, power * technique * quality));
-    const origin = { ...ball.state.position };
+    const directionLength = Math.hypot(direction.x,direction.y,direction.z)||1;
+    const impulseScale=8+20*adjustedPower;
     ball.physics.applyImpulse(ball.state, {
-      x: direction.x * (8 + 20 * adjustedPower),
-      y: direction.y * (4 + 8 * adjustedPower),
-      z: direction.z * (8 + 20 * adjustedPower)
+      x: direction.x/directionLength*impulseScale,
+      y: direction.y/directionLength*(4+8*adjustedPower),
+      z: direction.z/directionLength*impulseScale
     }, {
       x: 0,
       y: (player.data.preferredFoot === "right" ? 1 : -1) * adjustedPower * 3,
       z: 0
     }, { playerId: player.data.playerId, teamId: player.data.teamId, type, time: performance.now() / 1000 });
+    ball.state.controlledByPlayerId = undefined;
     player.state.ballMode = "NoBall";
     player.state.action = type === "Shot" ? "Shoot" : type === "Pass" ? "Pass" : type === "ThroughBall" ? "ThroughBall" : type === "Cross" ? "Cross" : type === "Clearance" ? "Clearance" : "None";
-    void origin;
     return true;
   }
 
@@ -89,8 +92,7 @@ export class PlayerBallInteraction {
   }
 
   private selectFoot(player: Player, dx: number, dz: number) {
-    if (player.data.preferredFoot === "left") return "left" as const;
-    return Math.abs(dx) > Math.abs(dz) ? "right" as const : "right" as const;
+    return player.data.preferredFoot;
   }
 
   private technicalModifier(player: Player, type: BallContactType): number {
