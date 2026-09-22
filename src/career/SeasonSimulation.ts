@@ -1,0 +1,2 @@
+export interface Standing{teamId:string;played:number;won:number;drawn:number;lost:number;gf:number;ga:number;points:number}
+export class SeasonSimulation{standings=new Map<string,Standing>();record(team:string,gf:number,ga:number){let s=this.standings.get(team)||{teamId:team,played:0,won:0,drawn:0,lost:0,gf:0,ga:0,points:0};s.played++;s.gf+=gf;s.ga+=ga;if(gf>ga){s.won++;s.points+=3}else if(gf===ga){s.drawn++;s.points++}else s.lost++;this.standings.set(team,s);}}
