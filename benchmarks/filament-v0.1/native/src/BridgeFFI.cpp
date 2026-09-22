@@ -417,6 +417,11 @@ struct NativeRenderer {
         playerAnimator = playerAsset->getInstance()->getAnimator();
         playerAnimationTime = 0.0f;
         playerAnimationIndex = 0;
+        playerBoneCount = 0;
+        if (playerAsset->getInstance()->getSkinCount() > 0) {
+            playerBoneCount = static_cast<uint32_t>(
+                playerAsset->getInstance()->getJointCountAt(0));
+        }
 
         stats.player_count = 1;
         return true;
@@ -461,11 +466,20 @@ struct NativeRenderer {
         if (playerCount > 0) playerLocal = readBuffer.transforms[0];
         renderReadingBuffer.store(0xffffffffu, std::memory_order_release);
         if (playerAsset && playerCount > 0) {
-            auto &tm = engine->getTransformManager();
-            const Entity root = playerAsset->getEntities()[0];
+            const float distance = std::sqrt(
+                playerLocal.x * playerLocal.x +
+                playerLocal.y * playerLocal.y +
+                playerLocal.z * playerLocal.z);
+            const uint32_t lod = distance < 12.0f ? 0u : (distance < 28.0f ? 1u : 2u);
+            (void)lod; // Mesh switching activates when player_lod1/lod2 assets are supplied.
+
+            auto& tm = engine->getTransformManager();
+            const Entity root = playerAsset->getInstance()->getRoot();
             if (tm.hasComponent(root)) {
-                tm.setTransform(tm.getInstance(root), filament::math::mat4f::translation(filament::math::float3{
-                    playerLocal.x, playerLocal.y, playerLocal.z}));
+                tm.setTransform(tm.getInstance(root),
+                    filament::math::mat4f::translation(
+                        filament::math::float3{
+                            playerLocal.x, playerLocal.y, playerLocal.z}));
             }
         }
 
@@ -683,6 +697,20 @@ Java_com_slayer_filament_MainActivity_nativeCreate(
     if (g_renderer.initialize(window)) {
         g_renderer.loadUbershaderArchive();
     }
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_slayer_filament_MainActivity_nativeLoadEnvironment(
+        JNIEnv* env, jobject, jbyteArray data) {
+    if (!env || !data) return JNI_FALSE;
+    const jsize size = env->GetArrayLength(data);
+    if (size <= 0) return JNI_FALSE;
+    jbyte* raw = env->GetByteArrayElements(data, nullptr);
+    if (!raw) return JNI_FALSE;
+    const bool ok = g_renderer.loadEnvironmentKtx(
+        reinterpret_cast<const uint8_t*>(raw), static_cast<size_t>(size));
+    env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
+    return ok ? JNI_TRUE : JNI_FALSE;
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
