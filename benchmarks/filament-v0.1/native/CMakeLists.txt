@@ -26,6 +26,7 @@ add_library(slayer_filament_benchmark SHARED
     src/MatchEngine.cpp
     src/GameFFI.cpp
     src/SLAYERGameSystems.cpp
+    src/SLAYERFeatureRuntime.cpp
 )
 
 target_include_directories(slayer_filament_benchmark PRIVATE
