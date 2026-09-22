@@ -35,7 +35,7 @@ export class QualityManager {
       case "Low": return .68;
       case "Medium": return .8;
       case "High": return .95;
-      case "Ultra": return Math.min(window.devicePixelRatio,1.35);
+      case "Ultra": return Math.min(window.devicePixelRatio,1.5);
     }
   }
 
