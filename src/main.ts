@@ -101,6 +101,9 @@ window.addEventListener("keyup",event=>{
 match.start();
 match.kickOff("home");
 let last=performance.now();
+// Goal-net reaction: feed impacts from fast shots into the nearest net.
+let previousBallZ=ball.state.position.z;
+
 
 function detectGoal(): void {
   const p=ball.state.position;
@@ -161,6 +164,10 @@ function frame(now:number){
 
   interactions.update(players,ball);
   ballSystem.update(delta);
+  const ballSpeed=Math.hypot(ball.state.velocity.x,ball.state.velocity.y,ball.state.velocity.z);
+  const crossedGoalLine=(previousBallZ < -52.0 && ball.state.position.z >= -52.0) || (previousBallZ > 52.0 && ball.state.position.z <= 52.0);
+  if(ballSpeed>10 && crossedGoalLine) nets[ball.state.position.z<0?0:1].impact(new THREE.Vector3(ball.state.position.x,ball.state.position.y,0),Math.min(2,ballSpeed/15));
+  previousBallZ=ball.state.position.z;
   detectGoal();
   match.update(delta);
   world.update(delta);
