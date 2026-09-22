@@ -1,23 +1,10 @@
-# Unreal Engine
-Binaries/
-DerivedDataCache/
-Intermediate/
-Saved/
-Build/
-.vs/
-.idea/
-*.sln
-*.suo
-*.VC.db
-*.VC.opendb
-*.opensdf
-*.sdf
-*.xcodeproj
-*.xcworkspace
-
-# OS
-.DS_Store
-Thumbs.db
-
-# IDE / generated
-.vscode/
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+android/app/build/
+server/__pycache__/
+*.db
