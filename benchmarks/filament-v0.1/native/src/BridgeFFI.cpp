@@ -30,6 +30,9 @@
 #include <filament/VertexBuffer.h>
 #include <filament/View.h>
 #include <filament/Viewport.h>
+#include <filament/TransformManager.h>
+#include <filament/Box.h>
+#include <math/mat4.h>
 #include <filament/LightManager.h>
 #include <utils/EntityManager.h>
 
@@ -77,9 +80,9 @@ struct NativeRenderer {
     std::vector<float> history;
 
     static constexpr uint32_t MAX_PLAYERS = 64;
-    SlayerTransform playerBuffers[2][MAX_PLAYERS]{};
-    uint32_t playerBufferCounts[2]{};
-    std::atomic<uint32_t> activePlayerBuffer{0};
+    SlayerTransform playerSnapshot[MAX_PLAYERS]{};
+    uint32_t playerSnapshotCount = 0;
+    std::atomic<uint64_t> playerSnapshotSequence{0};
 
     bool initialize(ANativeWindow* nativeWindow) {
         window = nativeWindow;
@@ -356,14 +359,24 @@ struct NativeRenderer {
 
         // Consume the latest lock-free player snapshot. The render thread never
         // waits for simulation/FFI writers.
-        const uint32_t active = activePlayerBuffer.load(std::memory_order_acquire);
-        const uint32_t playerCount = playerBufferCounts[active];
+        SlayerTransform playerLocal{};
+        uint32_t playerCount = 0;
+        // Lock-free sequence snapshot: the render thread retries only if a
+        // writer modified the snapshot while it was being copied.
+        for (;;) {
+            const uint64_t before = playerSnapshotSequence.load(std::memory_order_acquire);
+            if (before & 1u) continue;
+            playerCount = playerSnapshotCount;
+            if (playerCount > 0) playerLocal = playerSnapshot[0];
+            const uint64_t after = playerSnapshotSequence.load(std::memory_order_acquire);
+            if (before == after) break;
+        }
         if (playerAsset && playerCount > 0) {
             auto &tm = engine->getTransformManager();
             const Entity root = playerAsset->getEntities()[0];
             if (tm.hasComponent(root)) {
-                const SlayerTransform &t = playerBuffers[active][0];
-                tm.setTransform(tm.getInstance(root), filament::math::mat4f::translation({t.x, t.y, t.z}));
+                tm.setTransform(tm.getInstance(root), filament::math::mat4f::translation({
+                    playerLocal.x, playerLocal.y, playerLocal.z}));
             }
         }
 
@@ -500,14 +513,13 @@ extern "C" void slayer_renderer_resize(uint32_t width, uint32_t height) {
 
 extern "C" void slayer_renderer_set_players(
         const SlayerTransform* transforms, uint32_t count) {
-    const uint32_t current = g_renderer.activePlayerBuffer.load(std::memory_order_relaxed);
-    const uint32_t next = current ^ 1u;
     const uint32_t n = std::min(count, NativeRenderer::MAX_PLAYERS);
+    g_renderer.playerSnapshotSequence.fetch_add(1, std::memory_order_acq_rel);
     if (transforms && n > 0) {
-        std::copy_n(transforms, n, g_renderer.playerBuffers[next]);
+        std::copy_n(transforms, n, g_renderer.playerSnapshot);
     }
-    g_renderer.playerBufferCounts[next] = transforms ? n : 0;
-    g_renderer.activePlayerBuffer.store(next, std::memory_order_release);
+    g_renderer.playerSnapshotCount = transforms ? n : 0;
+    g_renderer.playerSnapshotSequence.fetch_add(1, std::memory_order_release);
     g_renderer.stats.player_count = transforms ? n : 0;
 }
 
