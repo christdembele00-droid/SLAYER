@@ -26,4 +26,5 @@ export interface BallRuntimeState {
   lastContactTeamId?: string;
   lastContactType?: BallContactType;
   lastContactTime: number;
+  controlledByPlayerId?: string;
 }
