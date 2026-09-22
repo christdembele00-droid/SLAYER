@@ -260,9 +260,9 @@ function frame(now:number){
   detectGoal();
   match.update(delta);
   world.update(delta);
-  ball.setSurface(world.weather==="Rain" ? "GrassWet" : "GrassDry",world.wetness);
-  pitch.setWetness(world.wetness);
-  presentation.update(delta,world.wetness);
+  ball.setSurface(world.weather==="Rain" ? "GrassWet" : "GrassDry",world.pitch.wetness);
+  pitch.setWetness(world.pitch.wetness);
+  presentation.update(delta,world.pitch.wetness);
   if(quality.update(rawFrameMs)) renderer.setQuality(quality.pixelRatio());
   crowd.update(delta,Math.min(1,ball.state.velocity.x**2+ball.state.velocity.z**2)/100);
   nets.forEach(n=>n.update(delta));
