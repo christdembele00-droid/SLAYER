@@ -6,9 +6,13 @@ export class QualityManager {
   private stableTime=0;
   private lastTier:QualityTier="High";
   private cooldown=0;
+  private adaptive=true;
+
+  setAdaptive(enabled:boolean):void{this.adaptive=enabled;}
 
   update(frameMs:number,delta=1/60):boolean {
     this.history.push(Math.max(.01,frameMs));
+    if(!this.adaptive)return false;
     if(this.history.length>120)this.history.shift();
     if(this.cooldown>0)this.cooldown-=delta;
     const sorted=[...this.history].sort((a,b)=>a-b);
