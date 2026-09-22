@@ -34,3 +34,20 @@
 .home-screen .ui-backdrop{background:linear-gradient(180deg,rgba(2,7,9,.38),rgba(2,7,9,.16) 55%,rgba(2,7,9,.52));}
 .home-screen .hero-visual{background:radial-gradient(circle at 50% 50%,rgba(40,255,170,.08),transparent 55%);}
 .match-screen{pointer-events:auto;}
+
+
+/* SLAYER six-screen navigation */
+.six-screen{position:absolute;inset:0;z-index:25;padding:110px 5vw 105px;box-sizing:border-box;overflow:auto;background:linear-gradient(120deg,rgba(3,8,10,.97),rgba(6,18,17,.94));}
+.screen-header{display:flex;align-items:center;gap:24px;margin-bottom:34px;position:relative}
+.screen-header h2{margin:0;font-size:clamp(34px,5vw,64px);letter-spacing:-.06em}
+.screen-header .icon-button{position:relative;left:auto;flex:none}
+.mode-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;max-width:1100px}
+.mode-card{min-height:170px;padding:24px;text-align:left;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.035);color:#fff;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;gap:10px;transition:.2s}
+.mode-card:hover,.mode-card.featured{border-color:rgba(105,255,183,.4);background:linear-gradient(145deg,rgba(105,255,183,.1),rgba(255,255,255,.025));transform:translateY(-3px)}
+.mode-card b{font-size:15px;letter-spacing:.08em}.mode-card span{font-size:11px;color:rgba(255,255,255,.48)}
+.career-season{margin-left:auto;color:#69ffb7;font-size:10px;letter-spacing:.18em}
+.career-hero{max-width:1100px;padding:28px;border:1px solid rgba(105,255,183,.2);background:linear-gradient(110deg,rgba(105,255,183,.08),rgba(255,255,255,.025));display:flex;justify-content:space-between;align-items:center}
+.career-hero h3{margin:0 0 8px;font-size:25px}.career-hero p{margin:0;color:rgba(255,255,255,.5);font-size:12px}.career-hero>strong{font-size:42px;text-align:right;color:#69ffb7}.career-hero small{font-size:8px;letter-spacing:.15em;color:rgba(255,255,255,.45)}
+.career-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:1100px;margin-top:14px}.career-grid article,.settings-grid article{padding:22px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.035);min-height:120px;display:flex;flex-direction:column;gap:11px}.career-grid b,.settings-grid article>b{font-size:9px;letter-spacing:.16em;color:#69ffb7}.career-grid strong{font-size:16px}.career-grid span{font-size:11px;color:rgba(255,255,255,.5)}.progress{height:5px;background:rgba(255,255,255,.08)}.progress i{display:block;height:100%;background:#69ffb7}
+.settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,520px));gap:14px;max-width:1100px}.settings-grid label{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:11px;color:rgba(255,255,255,.58)}.settings-grid label strong{color:#fff}.settings-grid button{height:42px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#fff;font-size:9px;font-weight:800;letter-spacing:.1em;text-align:left;padding:0 14px}
+@media(max-width:800px){.six-screen{padding:82px 18px 90px}.mode-grid,.career-grid,.settings-grid{grid-template-columns:1fr}.mode-card{min-height:130px}.career-hero{align-items:flex-start;gap:18px}.career-hero h3{font-size:19px}.career-hero>strong{font-size:28px}.career-season{font-size:8px}}
