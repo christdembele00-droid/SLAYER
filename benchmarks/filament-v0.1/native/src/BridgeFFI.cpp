@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <vector>
 #include <atomic>
+#include <thread>
 
 #include <filament/Camera.h>
 #include <filament/IndirectLight.h>
