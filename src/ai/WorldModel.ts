@@ -1,0 +1,3 @@
+import { PlayerSystem } from "../player/PlayerSystem"; import { Ball } from "../ball/Ball";
+export interface WorldSnapshot{time:number;ball:{x:number;y:number;z:number;speed:number};players:Array<{id:string;team:string;x:number;z:number;stamina:number}>;}
+export class WorldModel{snapshot(players:PlayerSystem,ball:Ball,time:number):WorldSnapshot{return{time,ball:{...ball.state.position,speed:Math.hypot(ball.state.velocity.x,ball.state.velocity.y,ball.state.velocity.z)},players:players.all().map(p=>({id:p.data.playerId,team:p.data.teamId,x:p.state.position.x,z:p.state.position.z,stamina:p.state.stamina}))};}}
