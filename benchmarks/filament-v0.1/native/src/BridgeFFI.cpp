@@ -81,6 +81,7 @@ struct NativeRenderer {
     gltfio::ResourceLoader* resourceLoader = nullptr;
     gltfio::TextureProvider* stbDecoder = nullptr;
     gltfio::FilamentAsset* playerAsset = nullptr;
+    gltfio::FilamentAsset* stadiumAsset = nullptr;
     gltfio::Animator* playerAnimator = nullptr;
     float playerAnimationTime = 0.0f;
     uint32_t playerAnimationIndex = 0;
@@ -369,6 +370,42 @@ struct NativeRenderer {
         return gltfMaterials != nullptr;
     }
 
+    bool loadStadiumGlb(const uint8_t* bytes, size_t size) {
+        if (!engine || !bytes || size == 0 || !gltfMaterials) return false;
+        if (!assetLoader) assetLoader = gltfio::AssetLoader::create({engine, gltfMaterials});
+        if (!assetLoader) return false;
+
+        if (stadiumAsset) {
+            scene->removeEntities(stadiumAsset->getEntities(), stadiumAsset->getEntityCount());
+            assetLoader->destroyAsset(stadiumAsset);
+            stadiumAsset = nullptr;
+        }
+
+        stadiumAsset = assetLoader->createAsset(bytes, static_cast<uint32_t>(size));
+        if (!stadiumAsset) return false;
+
+        if (!resourceLoader) {
+            gltfio::ResourceConfiguration config{};
+            config.engine = engine;
+            config.normalizeSkinningWeights = true;
+            resourceLoader = new gltfio::ResourceLoader(config);
+            stbDecoder = gltfio::createStbProvider(engine);
+            if (stbDecoder) {
+                resourceLoader->addTextureProvider("image/png", stbDecoder);
+                resourceLoader->addTextureProvider("image/jpeg", stbDecoder);
+            }
+        }
+
+        if (!resourceLoader->loadResources(stadiumAsset)) {
+            assetLoader->destroyAsset(stadiumAsset);
+            stadiumAsset = nullptr;
+            return false;
+        }
+
+        scene->addEntities(stadiumAsset->getEntities(), stadiumAsset->getEntityCount());
+        return true;
+    }
+
     bool loadPlayerGlb(const uint8_t* bytes, size_t size) {
         if (!engine || !bytes || size == 0 || !gltfMaterials) return false;
 
@@ -438,8 +475,8 @@ struct NativeRenderer {
                 0.1, 100.0,
                 Camera::Fov::VERTICAL);
             camera->lookAt(
-                {0.0f, 0.0f, 5.0f},
-                {0.0f, 0.0f, 0.0f},
+                {0.0f, 3.2f, 10.5f},
+                {0.0f, 1.0f, 0.0f},
                 {0.0f, 1.0f, 0.0f});
         }
     }
@@ -466,6 +503,10 @@ struct NativeRenderer {
         if (playerCount > 0) playerLocal = readBuffer.transforms[0];
         renderReadingBuffer.store(0xffffffffu, std::memory_order_release);
         if (playerAsset && playerCount > 0) {
+            camera->lookAt(
+                {playerLocal.x, playerLocal.y + 3.2f, playerLocal.z + 10.5f},
+                {playerLocal.x, playerLocal.y + 1.0f, playerLocal.z},
+                {0.0f, 1.0f, 0.0f});
             const float distance = std::sqrt(
                 playerLocal.x * playerLocal.x +
                 playerLocal.y * playerLocal.y +
@@ -549,10 +590,17 @@ struct NativeRenderer {
         if (playerAsset && scene) {
             scene->removeEntities(playerAsset->getEntities(), playerAsset->getEntityCount());
         }
+        if (stadiumAsset && scene) {
+            scene->removeEntities(stadiumAsset->getEntities(), stadiumAsset->getEntityCount());
+        }
         if (playerAsset && assetLoader) {
             assetLoader->destroyAsset(playerAsset);
             playerAsset = nullptr;
             playerAnimator = nullptr;
+        }
+        if (stadiumAsset && assetLoader) {
+            assetLoader->destroyAsset(stadiumAsset);
+            stadiumAsset = nullptr;
         }
         if (resourceLoader) {
             delete resourceLoader;
@@ -728,6 +776,19 @@ Java_com_slayer_filament_MainActivity_nativeLoadTerrainMaterial(
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
+Java_com_slayer_filament_MainActivity_nativeLoadStadium(
+        JNIEnv* env, jobject, jbyteArray data) {
+    if (!env || !data) return JNI_FALSE;
+    const jsize size = env->GetArrayLength(data);
+    if (size <= 0) return JNI_FALSE;
+    jbyte* raw = env->GetByteArrayElements(data, nullptr);
+    if (!raw) return JNI_FALSE;
+    const bool ok = g_renderer.loadStadiumGlb(reinterpret_cast<const uint8_t*>(raw), static_cast<size_t>(size));
+    env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
 Java_com_slayer_filament_MainActivity_nativeLoadPlayer(
         JNIEnv* env, jobject, jbyteArray data) {
     if (!env || !data) return JNI_FALSE;
@@ -764,4 +825,25 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_slayer_filament_MainActivity_nativeDestroy(
         JNIEnv*, jobject) {
     slayer_renderer_destroy();
+}
+
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_slayer_filament_MainActivity_nativeGetFps(JNIEnv*, jobject) {
+    return g_renderer.stats.fps;
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_slayer_filament_MainActivity_nativeGetFrameMs(JNIEnv*, jobject) {
+    return g_renderer.stats.frame_ms;
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_slayer_filament_MainActivity_nativeGetDrawCalls(JNIEnv*, jobject) {
+    return static_cast<jint>(g_renderer.stats.draw_calls);
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_slayer_filament_MainActivity_nativeGetPlayerCount(JNIEnv*, jobject) {
+    return static_cast<jint>(g_renderer.stats.player_count);
 }
