@@ -14,7 +14,6 @@ set(FILAMENT_INCLUDE_DIR "${FILAMENT_DIST_DIR}/include")
 
 add_library(slayer_filament_benchmark SHARED
     src/BridgeFFI.cpp
-    src/FilamentRenderer.cpp
 )
 
 target_include_directories(slayer_filament_benchmark PRIVATE
