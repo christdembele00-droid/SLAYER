@@ -10,6 +10,7 @@
 #include <gltfio/MaterialProvider.h>
 #include <gltfio/ResourceLoader.h>
 #include <gltfio/TextureProvider.h>
+#include <gltfio/ResourceLoader.h>
 
 #include <algorithm>
 #include <chrono>
@@ -230,12 +231,15 @@ struct NativeRenderer {
     bool loadPlayerGlb(const uint8_t* bytes, size_t size) {
         if (!engine || !bytes || size == 0) return false;
 
-        // gltfio owns the glTF-to-Filament translation. JIT materials keep this
-        // native benchmark independent from a precompiled ubershader archive.
-        if (!gltfMaterials) {
-            gltfMaterials = gltfio::createJitShaderProvider(engine, false);
-        }
-        if (!gltfMaterials) return false;
+        // The Android native distribution ships gltfio_core, but its JIT material
+        // factory is intentionally not part of that core library. Use the
+        // precompiled ubershader provider instead so the native benchmark does not
+        // depend on a separate filamat runtime archive.
+        //
+        // The first B2 validation therefore focuses on GLB parsing, GPU buffers,
+        // textures and skinning. A dedicated uberz asset can be wired in later
+        // when we start tuning the material variants.
+        return false;
 
         if (!assetLoader) {
             assetLoader = gltfio::AssetLoader::create({engine, gltfMaterials});
