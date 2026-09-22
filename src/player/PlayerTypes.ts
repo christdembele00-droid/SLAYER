@@ -5,7 +5,7 @@ export type PreferredFoot = "left" | "right";
 export type LocomotionState = "Idle" | "Walk" | "Run" | "Sprint" | "Brake" | "Turn";
 export type BallMode = "NoBall" | "Control";
 export type DribbleStyle = "Balanced" | "Close" | "Sprint";
-export type PlayerAction = "None" | "Pass" | "Shoot" | "ThroughBall" | "Cross" | "Clearance" | "Tackle" | "Header" | "Control";
+export type PlayerAction = "None" | "Pass" | "Shoot" | "ThroughBall" | "Cross" | "Clearance" | "Tackle" | "Header" | "Control" | "Dribble" | "SkillMove" | "ProtectBall" | "Press" | "Contain" | "Intercept" | "StandingTackle" | "SlideTackle" | "GoalkeeperAction";
 export type ControlResult = "Perfect" | "Good" | "Loose" | "Bad" | "Missed";
 export type DefensiveAction = "Press" | "Contain" | "Intercept" | "StandingTackle" | "SlideTackle" | "Mark";
 
