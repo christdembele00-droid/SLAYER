@@ -93,3 +93,19 @@
 .player-indicator{padding:8px 14px;background:rgba(2,10,8,.55);border:1px solid rgba(0,255,102,.25);backdrop-filter:blur(10px)}
 @media(max-width:1000px){.realistic-mode-grid{grid-template-columns:repeat(2,1fr)}.settings-panel{grid-template-columns:1fr}}
 @media(max-width:800px){.realistic-mode-grid{grid-template-columns:1fr}.settings-panel{grid-template-columns:1fr}.mode-tabs{overflow:auto}.match-score{min-width:150px;padding:7px 10px}.match-score strong{font-size:22px}.radar{width:96px;height:60px}}
+
+/* Functional touch-layout editor */
+.match-controls{position:absolute!important;inset:0!important;display:block!important;padding:0!important;pointer-events:none}
+.layout-control{position:absolute!important;transform:scale(var(--control-scale,1));transform-origin:center;pointer-events:auto!important;z-index:8}
+.layout-control .control-resize{display:none;position:absolute;right:-5px;bottom:-5px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.82);border:1px solid #00ff66;color:#00ff66;font-size:11px;line-height:17px;text-align:center}
+.layout-editing .layout-control{outline:1px dashed rgba(0,255,102,.7);cursor:move;touch-action:none}
+.layout-editing .layout-control .control-resize{display:block}
+.layout-editor-banner{position:absolute;z-index:40;left:50%;top:92px;transform:translateX(-50%);padding:10px 16px;border:1px solid rgba(0,255,102,.4);background:rgba(2,12,9,.88);backdrop-filter:blur(12px);color:#dffff0;font-size:8px;font-weight:900;letter-spacing:.12em;pointer-events:none;white-space:nowrap}
+.layout-edit-cta,.layout-reset-cta{width:100%;min-height:44px;margin-top:10px;border:1px solid rgba(0,255,102,.35);background:rgba(0,255,102,.07);color:#fff;font-size:8px;font-weight:900;letter-spacing:.1em;cursor:pointer;text-align:left;padding:8px 12px}
+.layout-edit-cta small{display:block;margin-top:5px;color:rgba(255,255,255,.45);font-size:7px;font-weight:500;letter-spacing:.03em}
+.layout-reset-cta{border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.035);color:rgba(255,255,255,.65)}
+.touch-diamond{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;pointer-events:none!important}
+.touch-diamond .layout-control{margin:0!important}
+.touch-diamond .up,.touch-diamond .left,.touch-diamond .down,.touch-diamond .right{left:auto;top:auto}
+.layout-editing .touch-diamond{pointer-events:none!important}
+@media(max-width:800px){.layout-editor-banner{top:72px;max-width:90vw;overflow:hidden;text-overflow:ellipsis}.layout-control{transform:scale(var(--control-scale,1))}.control-resize{display:block}}
