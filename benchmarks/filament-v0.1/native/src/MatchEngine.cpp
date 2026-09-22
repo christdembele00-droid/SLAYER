@@ -87,6 +87,25 @@ void MatchEngine::updateControlled(float dt){
     p.x=clampf(p.x+p.vx*dt,-52.5f,52.5f);
     p.z=clampf(p.z+p.vz*dt,-34.0f,34.0f);
     float dx=state_.ball.x-p.x,dz=state_.ball.z-p.z;
+    if(input_.tackle>0.5f){
+        for(int i=0;i<22;i++){
+            auto& opponent=state_.players[i];
+            if(opponent.team==p.team) continue;
+            const float odx=opponent.x-p.x, odz=opponent.z-p.z;
+            if(len(odx,odz)<1.6f){
+                const float inv=1.0f/std::max(0.001f,len(odx,odz));
+                state_.ball.x=opponent.x + odx*0.25f;
+                state_.ball.z=opponent.z + odz*0.25f;
+                state_.ball.y=0.22f;
+                state_.ball.vx=odx*inv*7.0f;
+                state_.ball.vz=odz*inv*7.0f;
+                state_.ball.vy=1.0f;
+                opponent.vx*=0.35f;
+                opponent.vz*=0.35f;
+                break;
+            }
+        }
+    }
     if(len(dx,dz)<1.45f){
         if(input_.pass>0.5f){
             const float assist=1.0f+0.08f*clampf(static_cast<float>(settings_.passAssist),0.0f,4.0f);
