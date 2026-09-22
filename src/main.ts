@@ -198,7 +198,7 @@ function detectGoal(): void {
 function executeAction(playerId:string, action:PlayerAction, direction:{x:number;y:number;z:number}, power:number): void {
   const supported:PlayerAction[]=[
     "Control","Dribble","ProtectBall","Shoot","Pass","ThroughBall","Cross","Clearance",
-    "StandingTackle","SlideTackle","Intercept","Press","Contain"
+    "Tackle","StandingTackle","SlideTackle","Intercept","Press","Contain"
   ];
   if(supported.includes(action)){
     gameplay.execute(players,ball,playerId,action,direction,power);
