@@ -19,7 +19,8 @@
 #include <filament/SwapChain.h>
 #include <filament/VertexBuffer.h>
 #include <filament/View.h>
-#include <backend/DriverEnums.h>
+#include <filament/Viewport.h>
+#include <filament/LightManager.h>
 #include <utils/EntityManager.h>
 
 namespace {
@@ -38,8 +39,12 @@ struct NativeRenderer {
 
     Entity cameraEntity{};
     Entity meshEntity{};
+    Entity terrainEntity{};
+    Entity sunEntity{};
     VertexBuffer* vertexBuffer = nullptr;
     IndexBuffer* indexBuffer = nullptr;
+    VertexBuffer* terrainVertexBuffer = nullptr;
+    IndexBuffer* terrainIndexBuffer = nullptr;
     Material* material = nullptr;
     MaterialInstance* materialInstance = nullptr;
 
@@ -74,6 +79,20 @@ struct NativeRenderer {
         view->setScene(scene);
         view->setCamera(camera);
         view->setPostProcessingEnabled(true);
+        view->setAntiAliasing(View::AntiAliasing::FXAA);
+        View::TemporalAntiAliasingOptions taa{};
+        taa.enabled = true;
+        taa.feedback = 0.12f;
+        taa.filterWidth = 1.0f;
+        view->setTemporalAntiAliasingOptions(taa);
+        View::DynamicResolutionOptions drs{};
+        drs.enabled = true;
+        drs.homogeneousScaling = true;
+        drs.minScale = 0.70f;
+        drs.maxScale = 1.0f;
+        drs.sharpness = 0.7f;
+        view->setDynamicResolutionOptions(drs);
+        view->setDynamicLightingOptions(1.0f, 80.0f);
 
         // A minimal real 3D primitive proves that the native Filament pipeline
         // is rendering geometry rather than merely displaying an Android view.
@@ -127,6 +146,65 @@ struct NativeRenderer {
 
         scene->addEntity(meshEntity);
 
+        // Stadium-style ground plane for the first PBR lighting milestone.
+        static constexpr float terrainVertices[] = {
+            -12.0f, 0.0f, -8.0f,
+             12.0f, 0.0f, -8.0f,
+             12.0f, 0.0f,  8.0f,
+            -12.0f, 0.0f,  8.0f
+        };
+        static constexpr uint16_t terrainIndices[] = {0, 1, 2, 0, 2, 3};
+
+        terrainVertexBuffer = VertexBuffer::Builder()
+            .vertexCount(4)
+            .bufferCount(1)
+            .attribute(VertexAttribute::POSITION, 0,
+                       VertexBuffer::AttributeType::FLOAT3)
+            .build(*engine);
+
+        terrainIndexBuffer = IndexBuffer::Builder()
+            .indexCount(6)
+            .bufferType(IndexBuffer::IndexType::USHORT)
+            .build(*engine);
+
+        if (!terrainVertexBuffer || !terrainIndexBuffer) return false;
+
+        terrainVertexBuffer->setBufferAt(
+            *engine, 0,
+            VertexBuffer::BufferDescriptor(
+                terrainVertices, sizeof(terrainVertices), nullptr));
+        terrainIndexBuffer->setBuffer(
+            *engine,
+            IndexBuffer::BufferDescriptor(
+                terrainIndices, sizeof(terrainIndices), nullptr));
+
+        terrainEntity = engine->getEntityManager().create();
+
+        RenderableManager::Builder(1)
+            .boundingBox({{-12.0f, -0.05f, -8.0f}, {12.0f, 0.05f, 8.0f}})
+            .material(0, materialInstance)
+            .geometry(0, RenderableManager::PrimitiveType::TRIANGLES,
+                      terrainVertexBuffer, terrainIndexBuffer, 0, 6)
+            .culling(false)
+            .castShadows(false)
+            .receiveShadows(true)
+            .build(*engine, terrainEntity);
+
+        scene->addEntity(terrainEntity);
+
+        // One dominant stadium key light for this first lighting milestone.
+        sunEntity = engine->getEntityManager().create();
+
+        LightManager::Builder(LightManager::Type::SUN)
+            .color({1.0f, 0.94f, 0.88f})
+            .intensity(90000.0f)
+            .direction({0.45f, -0.85f, -0.35f})
+            .sunAngularRadius(1.0f)
+            .castShadows(true)
+            .build(*engine, sunEntity);
+
+        scene->addEntity(sunEntity);
+
         setSize(1, 1);
         lastFrame = Clock::now();
         return true;
@@ -161,8 +239,8 @@ struct NativeRenderer {
         stats.frame_ms = dt * 1000.0f;
         stats.fps = dt > 0.0f ? 1.0f / dt : 0.0f;
         stats.player_count = 0;
-        stats.draw_calls = 1;
-        stats.triangles = 6;
+        stats.draw_calls = 2;
+        stats.triangles = 8;
 
         history.push_back(stats.frame_ms);
         if (history.size() > 120) history.erase(history.begin());
@@ -188,17 +266,24 @@ struct NativeRenderer {
     void shutdown() {
         if (!engine) return;
 
+        if (scene && sunEntity) scene->remove(sunEntity);
+        if (scene && terrainEntity) scene->remove(terrainEntity);
         if (scene && meshEntity) scene->remove(meshEntity);
 
+        if (sunEntity) engine->getLightManager().destroy(sunEntity);
         if (materialInstance) engine->destroy(materialInstance);
         if (vertexBuffer) engine->destroy(vertexBuffer);
         if (indexBuffer) engine->destroy(indexBuffer);
+        if (terrainVertexBuffer) engine->destroy(terrainVertexBuffer);
+        if (terrainIndexBuffer) engine->destroy(terrainIndexBuffer);
         if (material) {
             // Default material is engine-owned; do not destroy it.
             material = nullptr;
         }
 
         if (meshEntity) engine->getEntityManager().destroy(meshEntity);
+        if (terrainEntity) engine->getEntityManager().destroy(terrainEntity);
+        if (sunEntity) engine->getEntityManager().destroy(sunEntity);
         if (cameraEntity) {
             engine->destroyCameraComponent(cameraEntity);
             engine->getEntityManager().destroy(cameraEntity);
@@ -223,6 +308,8 @@ struct NativeRenderer {
         camera = nullptr;
         vertexBuffer = nullptr;
         indexBuffer = nullptr;
+        terrainVertexBuffer = nullptr;
+        terrainIndexBuffer = nullptr;
         materialInstance = nullptr;
     }
 };
