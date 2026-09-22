@@ -11,6 +11,7 @@ import { GKSystem } from "../src/interaction/GKSystem";
 import { DuelSystem } from "../src/interaction/DuelSystem";
 import { TransitionSystem } from "../src/gameplay/TransitionSystem";
 import { GameplaySystem } from "../src/gameplay/GameplaySystem";
+import { AnimationSystem } from "../src/animation/AnimationSystem";
 
 describe("SLAYER runtime integration",()=>{
   it("creates exactly 22 match players",()=>{
@@ -78,6 +79,28 @@ describe("SLAYER runtime integration",()=>{
     bs.ball.setPosition({x:0,y:.11,z:30});
     const ai=new FootballAI();
     expect(ai.choose(p,ai.world(ps,bs.ball,10))).toBe("Shoot");
+  });
+
+  it("drives animation state from acceleration, turning and ball context",()=>{
+    const ps=new PlayerSystem();
+    const p=ps.create(PlayerFactory.createPlayerData("anim","Anim","home","ST"),{x:0,y:0,z:0});
+    const animation=new AnimationSystem();
+    p.state.velocity={x:0,z:7};
+    p.state.rotationY=0;
+    p.state.ballMode="NoBall";
+    const sprint=animation.update(p,1/60,{x:10,y:0,z:10});
+    expect(sprint.state).toBe("Sprint");
+    p.state.velocity={x:0,z:2};
+    const brake=animation.update(p,1/60,{x:10,y:0,z:10});
+    expect(brake.state).toBe("Brake");
+    p.state.velocity={x:2,z:2};
+    p.state.rotationY=Math.PI/2;
+    const turn=animation.update(p,1/60,{x:2,y:0,z:2});
+    expect(["Turn","Run","Walk"]).toContain(turn.state);
+    p.state.ballMode="Control";
+    p.state.action="None";
+    const control=animation.update(p,1/60,{x:p.state.position.x+.5,y:0,z:p.state.position.z+.5});
+    expect(control.state).toBe("Control");
   });
 
   it("switches team phase when possession changes",()=>{
