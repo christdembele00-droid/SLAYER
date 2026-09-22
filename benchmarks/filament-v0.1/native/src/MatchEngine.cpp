@@ -37,7 +37,14 @@ void MatchEngine::reset(){
     secondAccumulator_=fixedAccumulator_=0;
 }
 
-void MatchEngine::setInput(const InputState& input){ input_=input; }
+void MatchEngine::setInput(const InputState& input){
+    input_=input;
+    if(input_.selectedPlayer>=0 && input_.selectedPlayer<22){
+        state_.selected=static_cast<uint32_t>(input_.selectedPlayer);
+    }
+    for(auto& p:state_.players) p.controlled=false;
+    state_.players[state_.selected].controlled=true;
+}
 
 void MatchEngine::update(float dt){
     if(state_.paused || state_.phase==MatchPhase::FullTime) return;
@@ -126,9 +133,28 @@ void MatchEngine::updateBall(float dt){
     state_.ball.vx += state_.ball.spinY*state_.ball.vz*0.0015f*dt;
     state_.ball.vz -= state_.ball.spinY*state_.ball.vx*0.0015f*dt;
     state_.ball.x+=state_.ball.vx*dt; state_.ball.y+=state_.ball.vy*dt; state_.ball.z+=state_.ball.vz*dt;
-    if(state_.ball.y<0.22f){state_.ball.y=0.22f; if(std::abs(state_.ball.vy)>1) state_.ball.vy=-state_.ball.vy*0.48f; else state_.ball.vy=0;}
+    if(state_.ball.y<0.22f){
+        state_.ball.y=0.22f;
+        if(std::abs(state_.ball.vy)>1) state_.ball.vy=-state_.ball.vy*0.48f;
+        else { state_.ball.vy=0; state_.ball.airborne=false; }
+    }
     if(std::abs(state_.ball.x)>52.5f){state_.ball.x=clampf(state_.ball.x,-52.5f,52.5f);state_.ball.vx=-state_.ball.vx*0.65f;}
-    if(std::abs(state_.ball.z)>34.0f){state_.ball.z=clampf(state_.ball.z,-34.0f,34.0f);state_.ball.vz=-state_.ball.vz*0.65f;}
+    if(std::abs(state_.ball.z)>34.0f){
+        const bool goalMouth=std::abs(state_.ball.x)<3.66f && state_.ball.y<2.44f;
+        const bool crossedGoalLine=std::abs(state_.ball.z)>=34.0f;
+        if(crossedGoalLine && goalMouth && std::abs(state_.ball.vz)>0.2f){
+            if((state_.ball.z>0 && state_.ball.vz>0) || (state_.ball.z<0 && state_.ball.vz<0)){
+                if(state_.ball.z>0) ++state_.homeScore; else ++state_.awayScore;
+                state_.ball={0,0.22f,0,0,0,0,0,0,0,false};
+                state_.selected=9;
+                for(auto& p:state_.players) p.controlled=false;
+                state_.players[9].controlled=true;
+                return;
+            }
+        }
+        state_.ball.z=clampf(state_.ball.z,-34.0f,34.0f);
+        state_.ball.vz=-state_.ball.vz*0.65f;
+    }
 }
 
 void MatchEngine::updateFatigue(float dt){
