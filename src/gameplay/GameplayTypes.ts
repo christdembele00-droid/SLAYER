@@ -1,3 +1,3 @@
-export type GameplayAction="None"|"Move"|"Sprint"|"Pass"|"ThroughBall"|"Cross"|"Shoot"|"FinesseShot"|"ChipShot"|"Dribble"|"SkillMove"|"ProtectBall"|"Press"|"Contain"|"Intercept"|"StandingTackle"|"SlideTackle"|"Header"|"Clearance"|"GoalkeeperAction";
+export type GameplayAction="None"|"Control"|"Move"|"Sprint"|"Pass"|"ThroughBall"|"Cross"|"Shoot"|"FinesseShot"|"ChipShot"|"Dribble"|"SkillMove"|"ProtectBall"|"Press"|"Contain"|"Intercept"|"StandingTackle"|"SlideTackle"|"Header"|"Clearance"|"GoalkeeperAction";
 export interface GameplayContext{pressure:number;fatigue:number;distance:number;angle:number;stability:number;surface:number;}
 export interface GameplayResult{success:boolean;action:GameplayAction;quality:number;reason:string;}
