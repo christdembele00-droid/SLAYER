@@ -33,7 +33,7 @@ jobs:
           python-version: "3.12"
       - run: pip install -r server/requirements.txt
       - run: python -m compileall server
-      - run: python -m unittest server/test_matchmaking.py server/test_career.py server/test_training.py server/test_competition.py
+      - run: python -m unittest discover -s server -p "test_*.py"
 
   filament:
     runs-on: ubuntu-latest
@@ -67,7 +67,7 @@ jobs:
           echo "FILAMENT_TOOLS_DIR=$(dirname "$CMGEN")" >> "$GITHUB_ENV"
       - name: Prepare Cloudinary assets and Filament IBL
         run: node scripts/prepare-filament-production-assets.mjs
-      - name: Build native Filament debug APK and release AAB
+      - name: Build native Filament debug APK
         run: gradle -p benchmarks/filament-v0.1/android assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
