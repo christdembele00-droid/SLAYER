@@ -27,7 +27,6 @@ export class SceneRenderer {
     this.renderer.outputColorSpace=THREE.SRGBColorSpace;
     this.renderer.toneMapping=THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure=1.08;
-    this.renderer.toneMappingExposure=1.12;
     this.renderer.shadowMap.autoUpdate=true;
     this.renderer.shadowMap.enabled=true;
     this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
