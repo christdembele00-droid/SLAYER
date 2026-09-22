@@ -370,8 +370,8 @@ struct NativeRenderer {
 
     bool loadEnvironmentKtx(const uint8_t* bytes, size_t size) {
         if (!engine || !scene || !bytes || size < 16) return false;
-        auto* bundle = new image::Ktx1Bundle(bytes, static_cast<uint32_t>(size));
-        if (!bundle->isCubemap()) { delete bundle; return false; }
+        image::Ktx1Bundle bundle(bytes, static_cast<uint32_t>(size));
+        if (!bundle.isCubemap()) return false;
 
         if (indirectLight) {
             scene->setIndirectLight(nullptr);
@@ -383,7 +383,7 @@ struct NativeRenderer {
             environmentTexture = nullptr;
         }
 
-        environmentTexture = ktxreader::Ktx1Reader::createTexture(engine, bundle, false);
+        environmentTexture = ktxreader::Ktx1Reader::createTexture(engine, &bundle, false);
         if (!environmentTexture) return false;
 
         indirectLight = filament::IndirectLight::Builder()
@@ -403,8 +403,8 @@ struct NativeRenderer {
 
     bool loadSkyboxKtx(const uint8_t* bytes, size_t size) {
         if (!engine || !scene || !bytes || size < 16) return false;
-        auto* bundle = new image::Ktx1Bundle(bytes, static_cast<uint32_t>(size));
-        if (!bundle->isCubemap()) { delete bundle; return false; }
+        image::Ktx1Bundle bundle(bytes, static_cast<uint32_t>(size));
+        if (!bundle.isCubemap()) return false;
 
         if (skybox) {
             scene->setSkybox(nullptr);
@@ -416,7 +416,7 @@ struct NativeRenderer {
             skyboxTexture = nullptr;
         }
 
-        skyboxTexture = ktxreader::Ktx1Reader::createTexture(engine, bundle, false);
+        skyboxTexture = ktxreader::Ktx1Reader::createTexture(engine, &bundle, false);
         if (!skyboxTexture) return false;
 
         skybox = filament::Skybox::Builder()
