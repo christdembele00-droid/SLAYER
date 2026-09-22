@@ -8,7 +8,7 @@ export class SceneRenderer {
   private readonly container:HTMLElement;
   private readonly sun:THREE.DirectionalLight;
   private qualityRatio=1;
-  private readonly exposureByTier={low:1.02,medium:1.06,high:1.08,ultra:1.1};
+
 
   constructor(container:HTMLElement){
     this.container=container;
@@ -75,6 +75,7 @@ export class SceneRenderer {
   setQuality(pixelRatio:number){
     this.qualityRatio=Math.min(Math.max(pixelRatio,.65),1.35);
     this.renderer.setPixelRatio(this.qualityRatio);
+    this.renderer.toneMappingExposure=this.qualityRatio>=1.15?1.1:this.qualityRatio>=.9?1.07:1.03;
     const enableShadows=this.qualityRatio>=.8;
     this.renderer.shadowMap.enabled=enableShadows;
     this.sun.castShadow=enableShadows;
