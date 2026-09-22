@@ -1,2 +1,19 @@
-import {PlayerSystem} from "../player/PlayerSystem";import {Ball} from "../ball/Ball";import {defaultTactic} from "./FootballAI";
-export class TacticalBrain{readonly tactic=defaultTactic;update(ps:PlayerSystem,b:Ball){const bx=b.state.position.x,bz=b.state.position.z;for(const p of ps.all()){const dx=bx-p.state.position.x,dz=bz-p.state.position.z,d=Math.hypot(dx,dz);if(d>2){const side=p.data.teamId==="home"?1:-1;p.state.lastIntent.moveDirection={x:dx*side,z:dz*side};}}}}
+import { PlayerSystem } from "../player/PlayerSystem";
+import { Ball } from "../ball/Ball";
+import { defaultTactic } from "./FootballAI";
+export class TacticalBrain {
+  readonly tactic = defaultTactic;
+  update(ps: PlayerSystem, b: Ball) {
+    const bx=b.state.position.x,bz=b.state.position.z;
+    for (const p of ps.all()) {
+      const dx=bx-p.state.position.x,dz=bz-p.state.position.z,d=Math.hypot(dx,dz);
+      if (d>2) {
+        const side=p.data.teamId==="home"?1:-1;
+        p.state.lastIntent={...(p.state.lastIntent ?? {
+          moveDirection:{x:0,y:0,z:0},moveMagnitude:0,sprintPressed:false,action:"None",
+          targetDirection:{x:0,y:0,z:0},power:0,timestamp:0
+        }),moveDirection:{x:dx*side,y:0,z:dz*side}};
+      }
+    }
+  }
+}
