@@ -87,7 +87,8 @@ function frame(now:number){
   const human=input.snapshot();
   matchAI.update(players,ball,delta);
   tactical.update(players,ball);
-  const intents=new Map(players.all().map(p=>[p.data.playerId,p.state.lastIntent]).filter((x):x is [string,NonNullable<typeof x[1]>]=>!!x[1]));
+  const intents=new Map<string, import("./player/PlayerTypes").PlayerIntent>();
+  for (const p of players.all()) { if (p.state.lastIntent) intents.set(p.data.playerId, p.state.lastIntent); }
   intents.set(controlledId,human);
   players.updateIntents(intents,delta);
 
@@ -101,7 +102,8 @@ function frame(now:number){
   }
   if(input.snapshot().action!=="None"){
     const h=players.get(controlledId)!;
-    gameplay.execute(players,ball,controlledId,input.snapshot().action,input.snapshot().targetDirection,input.snapshot().power);
+    const action=input.snapshot().action;
+    if (action==="Pass" || action==="Shoot" || action==="ThroughBall" || action==="Cross" || action==="Clearance" || action==="Tackle" || action==="Header" || action==="Control") gameplay.execute(players,ball,controlledId,action,input.snapshot().targetDirection,input.snapshot().power);
   }
   interactions.update(players,ball);
   ballSystem.update(delta);
