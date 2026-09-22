@@ -23,6 +23,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <memory>
 #include <vector>
 #include <atomic>
 #include <thread>
@@ -584,7 +585,8 @@ struct NativeRenderer {
         width = std::max(1u, w);
         height = std::max(1u, h);
         if (view) view->setViewport({0, 0, width, height});
-        if (camera) {
+        if (broadcastCamera) broadcastCamera->setAspectRatio(static_cast<float>(width) / static_cast<float>(height));
+        if (camera && !broadcastCamera) {
             camera->setProjection(
                 45.0,
                 static_cast<double>(width) / static_cast<double>(height),
