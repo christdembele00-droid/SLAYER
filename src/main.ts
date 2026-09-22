@@ -171,7 +171,7 @@ function frame(now:number){
   match.update(delta);
   world.update(delta);
   ball.setSurface(world.weather==="Rain" ? "GrassWet" : "GrassDry",world.wetness);
-  quality.update(delta*1000,delta);
+  if(quality.update(delta*1000,delta)) renderer.setQuality(quality.pixelRatio());
   crowd.update(delta,Math.min(1,ball.state.velocity.x**2+ball.state.velocity.z**2)/100);
   nets.forEach(n=>n.update(delta));
 
