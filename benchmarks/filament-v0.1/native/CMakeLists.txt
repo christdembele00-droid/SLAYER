@@ -9,7 +9,6 @@ if(NOT DEFINED FILAMENT_DIST_DIR OR FILAMENT_DIST_DIR STREQUAL "")
     message(FATAL_ERROR "FILAMENT_DIST_DIR must point to the extracted Filament Android native distribution")
 endif()
 
-set(FILAMENT_LIB_DIR "${FILAMENT_DIST_DIR}/lib/${ANDROID_ABI}")
 set(FILAMENT_INCLUDE_DIR "${FILAMENT_DIST_DIR}/include")
 
 add_library(slayer_filament_benchmark SHARED
@@ -21,8 +20,33 @@ target_include_directories(slayer_filament_benchmark PRIVATE
     ${FILAMENT_INCLUDE_DIR}
 )
 
-find_library(FILAMENT_LIB filament PATHS ${FILAMENT_LIB_DIR} NO_DEFAULT_PATH REQUIRED)
-find_library(UTILS_LIB utils PATHS ${FILAMENT_LIB_DIR} NO_DEFAULT_PATH REQUIRED)
+# The release archive may contain a top-level distribution directory.
+# Search recursively so the build does not depend on that layout.
+file(GLOB_RECURSE FILAMENT_LIB_CANDIDATES CONFIGURE_DEPENDS
+    "${FILAMENT_DIST_DIR}/lib/${ANDROID_ABI}/libfilament.a"
+    "${FILAMENT_DIST_DIR}/*/lib/${ANDROID_ABI}/libfilament.a"
+)
+file(GLOB_RECURSE UTILS_LIB_CANDIDATES CONFIGURE_DEPENDS
+    "${FILAMENT_DIST_DIR}/lib/${ANDROID_ABI}/libutils.a"
+    "${FILAMENT_DIST_DIR}/*/lib/${ANDROID_ABI}/libutils.a"
+)
+
+list(LENGTH FILAMENT_LIB_CANDIDATES FILAMENT_LIB_COUNT)
+list(LENGTH UTILS_LIB_CANDIDATES UTILS_LIB_COUNT)
+
+if(FILAMENT_LIB_COUNT EQUAL 0)
+    message(FATAL_ERROR "Could not find libfilament.a under FILAMENT_DIST_DIR=${FILAMENT_DIST_DIR} for ABI=${ANDROID_ABI}")
+endif()
+
+if(UTILS_LIB_COUNT EQUAL 0)
+    message(FATAL_ERROR "Could not find libutils.a under FILAMENT_DIST_DIR=${FILAMENT_DIST_DIR} for ABI=${ANDROID_ABI}")
+endif()
+
+list(GET FILAMENT_LIB_CANDIDATES 0 FILAMENT_LIB)
+list(GET UTILS_LIB_CANDIDATES 0 UTILS_LIB)
+
+message(STATUS "SLAYER Filament library: ${FILAMENT_LIB}")
+message(STATUS "SLAYER Filament utils library: ${UTILS_LIB}")
 
 target_link_libraries(slayer_filament_benchmark
     ${FILAMENT_LIB}
