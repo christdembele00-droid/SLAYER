@@ -8,7 +8,9 @@
         android:theme="@style/AppTheme"
         android:label="SLAYER Filament Vulkan"
         android:allowBackup="false"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:icon="@drawable/ic_slayer"
+        android:roundIcon="@drawable/ic_slayer">
         <activity
             android:name=".MainActivity"
             android:screenOrientation="landscape"
