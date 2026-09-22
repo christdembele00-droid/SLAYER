@@ -1,17 +1,18 @@
 # SLAYER
 
-Ultra-modern football simulation project built as a code-first web application.
+Native high-end football simulation targeting Android with Filament + Vulkan.
 
 ## Architecture
 
 SLAYER is engine-independent at the gameplay level. The core simulation is separated from the rendering layer so the football logic can evolve without being tied to a visual editor.
 
-- Core language: TypeScript
-- 3D rendering: Three.js
-- Runtime: modern web browser
+- Gameplay/simulation: native C++ systems
+- 3D rendering: Google Filament
+- Graphics backend: Vulkan on Android
+- Runtime: native Android + CMake/NDK
 - Repository: christdembele00-droid/SLAYER
 - Default branch: main
-- Build/deployment target: web first, Android wrapper later if required
+- Canonical renderer: benchmarks/filament-v0.1/
 - Assets: external/licensed 3D assets; no requirement to model everything manually
 
 ## 15-phase product architecture
@@ -32,7 +33,7 @@ SLAYER is engine-independent at the gameplay level. The core simulation is separ
 14. Online
 15. Release / QA
 
-These phases remain the project specification. The rendering technology can change without discarding the gameplay architecture.
+These phases remain the project specification. Filament is the rendering engine and Vulkan is the graphics backend. Three.js/WebGL is no longer part of the canonical renderer.
 
 ## Current implementation — Phase 1
 
@@ -45,8 +46,12 @@ Phase 1 currently contains:
 - Match event bus
 - Match rules
 - Match engine
-- Initial browser 3D scene
-- Initial pitch and ball rendering
+- Native Android/Vulkan renderer scaffold
+- Filament PBR/IBL pipeline
+- glTF/GLB player and stadium loading path
+- 22-player instancing path
+- Dynamic resolution, TAA/FXAA, GTAO and bloom
+- Native match/gameplay bridge
 
 ## Development principle
 
