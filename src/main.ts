@@ -10,6 +10,7 @@ import { FootballAI } from "./ai/FootballAI";
 import { TacticalBrain } from "./ai/TacticalBrain";
 import { BallSystem } from "./ball/BallSystem";
 import { InteractionSystem } from "./interaction/InteractionSystem";
+import { GKSystem } from "./interaction/GKSystem";
 import { GameplaySystem } from "./gameplay/GameplaySystem";
 import { AnimationSystem, CameraDirector } from "./animation/PresentationSystems";
 import { FootballIK } from "./animation/FootballIK";
@@ -52,6 +53,7 @@ const ballSystem=new BallSystem();
 const ball=ballSystem.ball;
 ball.setPosition({x:0,y:.11,z:0});
 const interactions=new InteractionSystem();
+const goalkeepers=new GKSystem();
 const gameplay=new GameplaySystem(interactions);
 const ai=new FootballAI();
 const tactical=new TacticalBrain();
@@ -164,6 +166,7 @@ function frame(now:number){
 
   interactions.update(players,ball);
   ballSystem.update(delta, players);
+  goalkeepers.update(players,ball);
   const ballSpeed=Math.hypot(ball.state.velocity.x,ball.state.velocity.y,ball.state.velocity.z);
   const crossedGoalLine=(previousBallZ < -52.0 && ball.state.position.z >= -52.0) || (previousBallZ > 52.0 && ball.state.position.z <= 52.0);
   if(ballSpeed>10 && crossedGoalLine) nets[ball.state.position.z<0?0:1].impact(new THREE.Vector3(ball.state.position.x,ball.state.position.y,0),Math.min(2,ballSpeed/15));
