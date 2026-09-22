@@ -49,11 +49,21 @@ void MatchEngine::setInput(const InputState& input){
 void MatchEngine::update(float dt){
     if(state_.paused || state_.phase==MatchPhase::FullTime) return;
     dt=clampf(dt,0.0f,0.05f);
-    fixedAccumulator_+=dt;
-    while(fixedAccumulator_>=0.008f){
-        const float h=0.008f;
-        updateControlled(h); updateAI(h); updateBall(h); updateFatigue(h); resolveRules();
-        fixedAccumulator_-=h;
+    fixedAccumulator_ += dt;
+    constexpr float FIXED_STEP = 1.0f / 60.0f;
+    constexpr int MAX_STEPS = 4;
+    int steps = 0;
+    while (fixedAccumulator_ >= FIXED_STEP && steps < MAX_STEPS) {
+        updateControlled(FIXED_STEP);
+        updateAI(FIXED_STEP);
+        updateBall(FIXED_STEP);
+        updateFatigue(FIXED_STEP);
+        resolveRules();
+        fixedAccumulator_ -= FIXED_STEP;
+        ++steps;
+    }
+    if (steps == MAX_STEPS && fixedAccumulator_ > FIXED_STEP * MAX_STEPS) {
+        fixedAccumulator_ = 0.0f;
     }
     secondAccumulator_+=dt;
     if(secondAccumulator_>=1.0f){
