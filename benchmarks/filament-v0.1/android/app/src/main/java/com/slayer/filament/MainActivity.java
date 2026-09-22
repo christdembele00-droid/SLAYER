@@ -19,6 +19,7 @@ public final class MainActivity extends Activity {
     private long lastFrameNanos;
 
     private static native void nativeCreate(android.view.Surface surface);
+    private static native boolean nativeLoadUberArchive(byte[] data);
     private static native boolean nativeLoadPlayer(byte[] data);
     private static native void nativeResize(int width, int height);
     private static native void nativeRender(float deltaSeconds);
@@ -38,6 +39,7 @@ public final class MainActivity extends Activity {
             @Override
             public void surfaceCreated(SurfaceHolder holder) {
                 nativeCreate(holder.getSurface());
+                loadBundledMaterials();
                 loadBundledPlayer();
                 lastFrameNanos = System.nanoTime();
                 surface.postOnAnimation(frameRunnable);
@@ -56,6 +58,23 @@ public final class MainActivity extends Activity {
         });
 
         setContentView(surface);
+    }
+
+    private void loadBundledMaterials() {
+        try (InputStream input = getAssets().open("filament/default.uberz");
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[64 * 1024];
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                output.write(buffer, 0, read);
+            }
+            boolean loaded = nativeLoadUberArchive(output.toByteArray());
+            if (!loaded) {
+                android.util.Log.e("SLAYER", "Filament ubershader archive failed to load");
+            }
+        } catch (IOException e) {
+            android.util.Log.e("SLAYER", "Missing filament/default.uberz", e);
+        }
     }
 
     private void loadBundledPlayer() {
