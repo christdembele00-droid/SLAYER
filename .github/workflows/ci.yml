@@ -69,6 +69,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.5.0"
+      - name: Download Filament 1.77 Android native distribution
+        run: |
+          curl -L --fail --retry 3 -o /tmp/filament-native.tgz https://github.com/google/filament/releases/download/v1.77.0/filament-v1.77.0-android-native.tgz
+          mkdir -p /tmp/filament-native
+          tar -xzf /tmp/filament-native.tgz -C /tmp/filament-native
+          echo "FILAMENT_DIST_DIR=/tmp/filament-native" >> "$GITHUB_ENV"
       - name: Build native Filament benchmark APK
         run: gradle -p benchmarks/filament-v0.1/android assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
