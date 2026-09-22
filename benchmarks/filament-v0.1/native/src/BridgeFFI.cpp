@@ -683,7 +683,14 @@ struct NativeRenderer {
     }
 };
 
+class RuntimeThreads {
+    std::atomic<bool> running{false}; std::thread physics; std::thread gameplay;
+public:
+    void start(){ if(running.exchange(true)) return; physics=std::thread([this]{using namespace std::chrono_literals; while(running){std::this_thread::sleep_for(8ms);}}); gameplay=std::thread([this]{using namespace std::chrono_literals; while(running){std::this_thread::sleep_for(16ms);}}); }
+    void stop(){running=false; if(physics.joinable())physics.join(); if(gameplay.joinable())gameplay.join();}
+};
 NativeRenderer g_renderer;
+RuntimeThreads g_runtime;
 
 } // namespace
 
@@ -744,6 +751,7 @@ Java_com_slayer_filament_MainActivity_nativeCreate(
     if (!window) return;
     if (g_renderer.initialize(window)) {
         g_renderer.loadUbershaderArchive();
+        g_runtime.start();
     }
 }
 
@@ -824,6 +832,7 @@ Java_com_slayer_filament_MainActivity_nativeRender(
 extern "C" JNIEXPORT void JNICALL
 Java_com_slayer_filament_MainActivity_nativeDestroy(
         JNIEnv*, jobject) {
+    g_runtime.stop();
     slayer_renderer_destroy();
 }
 
