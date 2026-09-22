@@ -123,7 +123,7 @@ function detectGoal(): void {
 }
 
 function executeAction(playerId:string, action:PlayerAction, direction:{x:number;y:number;z:number}, power:number): void {
-  if(action==="Control"||action==="Dribble") {
+  if(action==="Control") {
     gameplay.execute(players,ball,playerId,"Control",direction,power);
     return;
   }
