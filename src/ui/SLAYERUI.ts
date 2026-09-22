@@ -76,6 +76,22 @@ export class SlayerUI {
     </section>`;
   }
 
+  private renderModes(){
+    return `<section class="six-screen modes-dashboard"><div class="screen-header"><button class="icon-button" data-screen="home">←</button><div><div class="eyebrow">SLAYER / 02</div><h2>MODES DE JEU</h2></div></div>
+    <div class="mode-grid"><button class="mode-card featured" data-start="1"><b>⚡ MATCH RAPIDE</b><span>11v11 · Coup d'envoi immédiat</span></button><button class="mode-card"><b>🏆 COUPE</b><span>Tableau à élimination</span></button><button class="mode-card"><b>📅 CHAMPIONNAT</b><span>Saison complète</span></button><button class="mode-card" data-screen="career"><b>👑 CARRIÈRE</b><span>Construis ton club</span></button><button class="mode-card"><b>🎯 ENTRAÎNEMENT</b><span>Maîtrise les contrôles</span></button><button class="mode-card"><b>🌐 EN LIGNE</b><span>Infrastructure prête pour le multijoueur</span></button></div></section>`;
+  }
+
+  private renderCareer(){
+    return `<section class="six-screen career-dashboard"><div class="screen-header"><button class="icon-button" data-screen="home">←</button><div><div class="eyebrow">SLAYER / 05</div><h2>CARRIÈRE</h2></div><span class="career-season">SAISON 01</span></div>
+    <div class="career-hero"><div><span class="eyebrow">OBJECTIF</span><h3>CONSTRUIRE UNE ÉQUIPE COMPÉTITIVE</h3><p>Gestion d'effectif, tactique, progression et résultats.</p></div><strong>12<br><small>JOURNÉES</small></strong></div>
+    <div class="career-grid"><article><b>PROCHAIN MATCH</b><strong>SLAYER FC vs ABIDJAN XI</strong><span>Dimanche · 18:00</span></article><article><b>OBJECTIFS</b><span>Gagner 3 matchs</span><span>Marquer 8 buts</span><span>Conserver 2 clean sheets</span></article><article><b>PROGRESSION</b><strong>LV 12 → LV 13</strong><div class="progress"><i style="width:72%"></i></div><span>7 200 / 10 000 XP</span></article></div></section>`;
+  }
+
+  private renderSettings(){
+    return `<section class="six-screen settings-dashboard"><div class="screen-header"><button class="icon-button" data-screen="home">←</button><div><div class="eyebrow">SLAYER / 06</div><h2>PARAMÈTRES</h2></div></div>
+    <div class="settings-grid"><article><b>GRAPHISMES</b><label>Qualité <strong>ÉLEVÉE</strong></label><label>Résolution dynamique <strong>ON</strong></label><label>Ombres <strong>ÉLEVÉES</strong></label><label>FPS <strong>60</strong></label></article><article><b>COMMANDES</b><label>Disposition <strong>CLASSIQUE</strong></label><label>Vibration <strong>ON</strong></label><label>Aide au tir <strong>OFF</strong></label></article><article><b>AUDIO</b><label>Stade <strong>80%</strong></label><label>Effets <strong>90%</strong></label><label>Musique <strong>55%</strong></label></article><article><b>DONNÉES</b><button>SAUVEGARDER</button><button>RESTAURER</button><button>RÉINITIALISER LES PARAMÈTRES</button></article></div></section>`;
+  }
+
   private renderTeam(){
     const starters=this.team.filter(p=>p.starter);
     const bench=this.team.filter(p=>!p.starter);
@@ -130,7 +146,7 @@ export class SlayerUI {
     if(this.screen==="setpiece"){this.root.innerHTML=this.renderSetPiece();this.bind();this.bindSetPiece();return;}
     if(this.screen==="team"){this.root.innerHTML=this.renderTeam();this.bind();this.bindTeam();return;}
     const home=this.screen==="home";
-    this.root.innerHTML='<div class="ui-backdrop"><div class="ui-grid"></div><div class="ui-noise"></div></div><header class="topbar"><div class="profile-card"><span class="profile-avatar">P1</span><div><b>PLAYER 01</b><small>LV 12 · 4 820 XP</small></div></div><div class="global-energy">ENDURANCE <span></span></div><div class="economy"><b>◈ 12 450</b><strong>✦ 860</strong><button data-screen="settings">⚙</button></div></header>'+ (home?this.renderHome():`<section class="subscreen"><div class="eyebrow">SLAYER / ${this.screen.toUpperCase()}</div><h2>${this.title()}</h2><p>Choisis et personnalise ton expérience SLAYER.</p><div class="feature-grid"><article class="feature-card"><b>MATCH</b><span>Simulation football temps réel.</span></article><article class="feature-card"><b>ÉQUIPE</b><span>Formation et composition.</span></article><article class="feature-card"><b>PROGRESSION</b><span>Objectifs, récompenses et carrière.</span></article></div></section>`)+ '<nav class="main-nav">'+this.nav("Accueil","home")+this.nav("Mon Équipe","team")+this.nav("Modes","modes")+this.nav("Boutique","shop")+this.nav("Missions","missions")+'</nav><div class="news-tile">NEWS / BOUTIQUE <b>Nouveaux maillots · Événement du week-end</b></div>';
+    this.root.innerHTML='<div class="ui-backdrop"><div class="ui-grid"></div><div class="ui-noise"></div></div><header class="topbar"><div class="profile-card"><span class="profile-avatar">P1</span><div><b>PLAYER 01</b><small>LV 12 · 4 820 XP</small></div></div><div class="global-energy">ENDURANCE <span></span></div><div class="economy"><b>◈ 12 450</b><strong>✦ 860</strong><button data-screen="settings">⚙</button></div></header>'+ (home?this.renderHome():this.screen==="modes"?this.renderModes():this.screen==="career"?this.renderCareer():this.screen==="settings"?this.renderSettings():`<section class="subscreen"><div class="eyebrow">SLAYER / ${this.screen.toUpperCase()}</div><h2>${this.title()}</h2><p>Choisis et personnalise ton expérience SLAYER.</p><div class="feature-grid"><article class="feature-card"><b>MATCH</b><span>Simulation football temps réel.</span></article><article class="feature-card"><b>ÉQUIPE</b><span>Formation et composition.</span></article><article class="feature-card"><b>PROGRESSION</b><span>Objectifs, récompenses et carrière.</span></article></div></section>`)+ '<nav class="main-nav">'+this.nav("Accueil","home")+this.nav("Mon Équipe","team")+this.nav("Modes","modes")+this.nav("Carrière","career")+this.nav("Paramètres","settings")+'</nav><div class="news-tile">SLAYER / LIVE <b>Match · Équipe · Modes · Carrière · Paramètres</b></div>';
     this.bind();
   }
 
