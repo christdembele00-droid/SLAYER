@@ -45,6 +45,8 @@ export class GameplaySystem {
       const chance=(tackling/100)*(.55+Math.min(1,p.data.physical.agility/100)*.25);
       if(Math.random()>chance)return {success:false,action,quality:chance,reason:"tackle_missed"};
       owner.state.ballMode="NoBall";
+      owner.state.ballProtection=0;
+      p.state.ballProtection=Math.min(100,p.data.technical.ballControl*0.5+p.data.physical.strength*0.5);
       owner.state.action=action;
       ball.state.controlledByPlayerId=undefined;
       ball.state.state="Free";
