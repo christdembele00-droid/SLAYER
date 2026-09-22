@@ -16,7 +16,6 @@ export class SlayerUI {
   private joystickPointerId: number | null = null;
   private perfEl: HTMLElement | null = null;
   private modalFromMatch = false;
-  private perfEl: HTMLElement | null = null;
 
   constructor(
     app: HTMLDivElement,
@@ -54,6 +53,22 @@ export class SlayerUI {
       this.matchPhaseEl.textContent = phase;
       this.matchClockEl.textContent = clock;
     }
+  }
+
+  private title(): string {
+    const titles: Record<SlayerScreen,string> = {home:"Accueil",match:"Match",team:"Mon Équipe",modes:"Modes",shop:"Boutique",missions:"Missions",career:"Carrière",competitions:"Compétitions",online:"En ligne",settings:"Paramètres",pause:"Pause",result:"Résultat",setpiece:"Coup de pied arrêté"};
+    return titles[this.screen];
+  }
+
+  private description(): string {
+    const descriptions: Record<SlayerScreen,string> = {home:"Prépare ton prochain match.",match:"Match en direct.",team:"Formation et gestion de ton équipe.",modes:"Choisis ton expérience de jeu.",shop:"Personnalisation et contenus.",missions:"Objectifs et progression.",career:"Construis ta carrière.",competitions:"Compétitions et tournois.",online:"Fonctions multijoueur.",settings:"Réglages de l'application.",pause:"Le match est temporairement arrêté.",result:"Résumé de la rencontre.",setpiece:"Prépare ton coup de pied arrêté."};
+    return descriptions[this.screen];
+  }
+
+  private cards(): string {
+    return '<article class="feature-card"><b>SLAYER ENGINE</b><span>Simulation football et rendu temps réel.</span></article>' +
+      '<article class="feature-card"><b>22 PLAYERS</b><span>Architecture prête pour une équipe complète.</span></article>' +
+      '<article class="feature-card"><b>ANDROID</b><span>Pipeline natif en préparation avec Filament.</span></article>';
   }
 
   private nav(label: string, screen: SlayerScreen) {
