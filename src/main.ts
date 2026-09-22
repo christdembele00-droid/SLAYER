@@ -81,6 +81,16 @@ const ballMesh=new THREE.Mesh(
 renderer.scene.add(ballMesh);
 
 const controlledId="home-1";
+function ensureControlledPlayerPossession(): void {
+  const p=players.get(controlledId);
+  if(!p || match.snapshot().phase!=="FirstHalf" || ball.state.controlledByPlayerId) return;
+  const d=Math.hypot(p.state.position.x-ball.state.position.x,p.state.position.z-ball.state.position.z);
+  if(d<2.2) {
+    p.state.ballMode="Control";
+    ball.state.state="Controlled";
+    ball.state.controlledByPlayerId=controlledId;
+  }
+}
 const ui=new SlayerUI(
   app,
   startMatch,
@@ -132,6 +142,7 @@ function detectGoal(): void {
     ball.state.controlledByPlayerId=undefined;
     match.restartAfterGoal("away");
     match.completeRestart();
+    ensureControlledPlayerPossession();
     return;
   }
   if(p.z<=-52.5) {
@@ -142,6 +153,7 @@ function detectGoal(): void {
     ball.state.controlledByPlayerId=undefined;
     match.restartAfterGoal("home");
     match.completeRestart();
+    ensureControlledPlayerPossession();
   }
 }
 
@@ -189,6 +201,7 @@ function frame(now:number){
   ballSystem.update(delta, players);
   transitions.update(players,ball,delta);
   goalkeepers.update(players,ball);
+  ensureControlledPlayerPossession();
   const ballSpeed=Math.hypot(ball.state.velocity.x,ball.state.velocity.y,ball.state.velocity.z);
   const crossedGoalLine=(previousBallZ > -52.0 && ball.state.position.z <= -52.0) || (previousBallZ < 52.0 && ball.state.position.z >= 52.0);
   if(ballSpeed>10 && crossedGoalLine) nets[ball.state.position.z<0?0:1].impact(new THREE.Vector3(ball.state.position.x,ball.state.position.y,0),Math.min(2,ballSpeed/15));
