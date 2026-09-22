@@ -89,13 +89,13 @@ public final class MainActivity extends Activity {
         statsView = new TextView(this);
         statsView.setTextColor(Color.WHITE);
         statsView.setTextSize(12f);
-        statsView.setPadding(18, 12, 18, 12);
+        statsView.setPadding(uiPx(18), uiPx(12), uiPx(18), uiPx(12));
         statsView.setBackgroundColor(0x66000000);
         statsView.setVisibility(View.GONE);
         FrameLayout.LayoutParams statsParams =
                 new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.RIGHT);
-        statsParams.topMargin = 18;
-        statsParams.rightMargin = 18;
+        statsParams.topMargin = uiPx(18);
+        statsParams.rightMargin = uiPx(18);
         root.addView(statsView, statsParams);
 
         surface.getHolder().addCallback(new SurfaceHolder.Callback() {
@@ -143,8 +143,8 @@ public final class MainActivity extends Activity {
 
         TextView sub = menuLabel("FOOTBALL 2026", 14f, false);
         sub.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(-1, 50, Gravity.CENTER);
-        sp.topMargin = 92;
+        FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(-1, uiPx(50), Gravity.CENTER);
+        sp.topMargin = uiPx(92);
         splash.addView(sub, sp);
 
         root.addView(splash, new FrameLayout.LayoutParams(-1, -1));
@@ -160,25 +160,25 @@ public final class MainActivity extends Activity {
 
         TextView title = menuLabel("SLAYER", 30f, true);
         title.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-1, 70, Gravity.TOP);
-        tp.topMargin = 42;
+        FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-1, uiPx(70), Gravity.TOP);
+        tp.topMargin = uiPx(42);
         loading.addView(title, tp);
 
         TextView scene = menuLabel("STADE  •  ATLAS FC  ×  LAGOON UNITED", 13f, false);
         scene.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams sc = new FrameLayout.LayoutParams(-1, 50, Gravity.CENTER);
-        sc.topMargin = -40;
+        FrameLayout.LayoutParams sc = new FrameLayout.LayoutParams(-1, uiPx(50), Gravity.CENTER);
+        sc.topMargin = -uiPx(40);
         loading.addView(scene, sc);
 
         loadingText = menuLabel("CHARGEMENT\n\n● ● ●", 18f, true);
         loadingText.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(-1, 180, Gravity.CENTER);
+        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(-1, uiPx(180), Gravity.CENTER);
         loading.addView(loadingText, cp);
 
         TextView status = menuLabel("Préparation de l'expérience SLAYER", 12f, false);
         status.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams st = new FrameLayout.LayoutParams(-1, 50, Gravity.BOTTOM);
-        st.bottomMargin = 48;
+        FrameLayout.LayoutParams st = new FrameLayout.LayoutParams(-1, uiPx(50), Gravity.BOTTOM);
+        st.bottomMargin = uiPx(48);
         loading.addView(status, st);
 
         root.addView(loading, new FrameLayout.LayoutParams(-1, -1));
@@ -233,13 +233,13 @@ public final class MainActivity extends Activity {
         hero.setTextColor(0xFFFFFF66);
         hero.setGravity(Gravity.CENTER);
         FrameLayout.LayoutParams hp = new FrameLayout.LayoutParams(-1, 40, Gravity.TOP);
-        hp.topMargin = 112;
+        hp.topMargin = uiPx(112);
         menuOverlay.addView(hero, hp);
 
         TextView teams = menuLabel("ATLAS FC     VS     LAGOON UNITED", 20f, true);
         teams.setGravity(Gravity.CENTER);
         FrameLayout.LayoutParams teamsP = new FrameLayout.LayoutParams(-1, 60, Gravity.TOP);
-        teamsP.topMargin = 142;
+        teamsP.topMargin = uiPx(142);
         menuOverlay.addView(teams, teamsP);
 
         Button quick = menuButton("▶  MATCH RAPIDE", 18f);
@@ -421,13 +421,6 @@ public final class MainActivity extends Activity {
         b.setGravity(Gravity.CENTER);
         b.setBackgroundColor(0xB31B1D22);
         return b;
-    }
-
-    private void addMenuButton(Button b, int gravity, int left, int top, int width, int height) {
-        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(width, height, gravity);
-        p.leftMargin = left;
-        p.topMargin = top;
-        menuOverlay.addView(b, p);
     }
 
     private void showModeMessage(String title, String details) {
