@@ -1,0 +1,4 @@
+export type AnimationState="Idle"|"Walk"|"Jog"|"Run"|"Sprint"|"Brake"|"Turn"|"Backpedal"|"Strafe"|"Control"|"Pass"|"Shoot"|"Tackle"|"Header"|"Fall"|"Recover";
+export class AnimationSystem{state(player:any):AnimationState{if(player.state.action==="Shoot")return"Shoot";if(player.state.action==="Pass")return"Pass";const s=Math.hypot(player.state.velocity.x,player.state.velocity.z);if(s<.1)return"Idle";if(s<2)return"Walk";if(s<5.5)return"Run";return"Sprint";}}
+export class CameraDirector{update(camera:any,target:any){camera.position.lerp({x:target.x,y:18,z:target.z+28},.08);camera.lookAt(target.x,0,target.z);}}
+export class AudioSystem{enabled=true;setEnabled(v:boolean){this.enabled=v;}emit(_event:string,_intensity=1){if(!this.enabled)return;}}
