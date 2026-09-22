@@ -12,6 +12,7 @@ import { BallSystem } from "./ball/BallSystem";
 import { InteractionSystem } from "./interaction/InteractionSystem";
 import { GKSystem } from "./interaction/GKSystem";
 import { GameplaySystem } from "./gameplay/GameplaySystem";
+import { TransitionSystem } from "./gameplay/TransitionSystem";
 import { AnimationSystem, CameraDirector } from "./animation/PresentationSystems";
 import { FootballIK } from "./animation/FootballIK";
 import { WorldSystem, QualityManager } from "./world/WorldSystems";
@@ -55,6 +56,7 @@ ball.setPosition({x:0,y:.11,z:0});
 const interactions=new InteractionSystem();
 const goalkeepers=new GKSystem();
 const gameplay=new GameplaySystem(interactions);
+const transitions=new TransitionSystem();
 const ai=new FootballAI();
 const tactical=new TacticalBrain();
 const animation=new AnimationSystem();
@@ -166,6 +168,7 @@ function frame(now:number){
 
   interactions.update(players,ball);
   ballSystem.update(delta, players);
+  transitions.update(players,ball,delta);
   goalkeepers.update(players,ball);
   const ballSpeed=Math.hypot(ball.state.velocity.x,ball.state.velocity.y,ball.state.velocity.z);
   const crossedGoalLine=(previousBallZ < -52.0 && ball.state.position.z >= -52.0) || (previousBallZ > 52.0 && ball.state.position.z <= 52.0);
