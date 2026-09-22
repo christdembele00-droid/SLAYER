@@ -19,3 +19,28 @@ jobs:
    - run: pip install -r server/requirements.txt
    - run: python -m compileall server
    - run: python -m unittest server/test_matchmaking.py
+ android:
+  needs: web
+  runs-on: ubuntu-latest
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-node@v4
+     with: {node-version: 20}
+   - uses: actions/setup-java@v4
+     with: {distribution: temurin, java-version: "21"}
+   - run: npm install
+   - run: npm install @capacitor/core @capacitor/cli @capacitor/android
+   - run: npm run build
+   - run: npx cap add android
+   - run: npx cap sync android
+   - name: Build Android debug APK and release AAB
+     run: |
+      cd android
+      chmod +x gradlew
+      ./gradlew assembleDebug bundleRelease
+   - uses: actions/upload-artifact@v4
+     with:
+      name: SLAYER-Android-\${{ github.sha }}
+      path: |
+       android/app/build/outputs/apk/debug/*.apk
+       android/app/build/outputs/bundle/release/*.aab
