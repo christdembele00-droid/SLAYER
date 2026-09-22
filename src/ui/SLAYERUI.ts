@@ -64,6 +64,7 @@ export class SlayerUI {
             '<div class="match-clock" data-match-clock>' + this.score.clock + "</div>" +
           "</div>" +
           '<div class="match-controls">' +
+            '<div class="virtual-joystick" data-joystick aria-label="Movement joystick"><div class="joystick-knob" data-joystick-knob></div></div>' +
             '<div class="radar"><i></i><b></b></div>' +
             '<div class="touch-actions">' +
               '<button type="button" data-action="Control">CONTROL</button><button type="button" data-action="Pass">PASS</button>' +
