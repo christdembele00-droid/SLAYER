@@ -1,0 +1,1 @@
+export interface ReleaseChecks{build:boolean;tests:boolean;perf:boolean;qa:boolean;signing:boolean}export const productionReady=(c:ReleaseChecks)=>Object.values(c).every(Boolean);
