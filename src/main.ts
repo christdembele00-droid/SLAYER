@@ -73,17 +73,8 @@ const ballMesh=new THREE.Mesh(
 );
 renderer.scene.add(ballMesh);
 
-const hud=document.createElement("div");
-hud.className="hud";
-hud.innerHTML='<div class="score">SLAYER <span class="home-score">0</span> — <span class="away-score">0</span></div><div class="status"></div><div class="commentary"></div>';
-app.appendChild(hud);
-const status=hud.querySelector(".status") as HTMLDivElement;
-const homeScore=hud.querySelector(".home-score") as HTMLSpanElement;
-const awayScore=hud.querySelector(".away-score") as HTMLSpanElement;
-const commentaryEl=hud.querySelector(".commentary") as HTMLDivElement;
-
 const controlledId="home-1";
-new SlayerUI(app,()=>{ match.start(); });
+const ui=new SlayerUI(app,()=>{ match.start(); });
 const config=(window as unknown as {__SLAYER_CONFIG__?:{wsUrl?:string}}).__SLAYER_CONFIG__??{};
 const online=config.wsUrl?new WebSocketClient():null;
 if(online) online.connect(config.wsUrl!);
