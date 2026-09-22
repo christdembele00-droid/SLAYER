@@ -163,7 +163,7 @@ function frame(now:number){
   }
 
   interactions.update(players,ball);
-  ballSystem.update(delta);
+  ballSystem.update(delta, players);
   const ballSpeed=Math.hypot(ball.state.velocity.x,ball.state.velocity.y,ball.state.velocity.z);
   const crossedGoalLine=(previousBallZ < -52.0 && ball.state.position.z >= -52.0) || (previousBallZ > 52.0 && ball.state.position.z <= 52.0);
   if(ballSpeed>10 && crossedGoalLine) nets[ball.state.position.z<0?0:1].impact(new THREE.Vector3(ball.state.position.x,ball.state.position.y,0),Math.min(2,ballSpeed/15));
