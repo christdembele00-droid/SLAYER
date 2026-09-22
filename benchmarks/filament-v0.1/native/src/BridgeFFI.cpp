@@ -20,6 +20,8 @@
 #include <atomic>
 
 #include <filament/Camera.h>
+#include <filament/ColorGrading.h>
+#include <filament/ToneMapper.h>
 #include <filament/Engine.h>
 #include <filament/IndexBuffer.h>
 #include <filament/Material.h>
@@ -48,6 +50,8 @@ struct NativeRenderer {
     View* view = nullptr;
     Scene* scene = nullptr;
     Camera* camera = nullptr;
+    ColorGrading* colorGrading = nullptr;
+    ACESToneMapper acesToneMapper{};
 
     Entity cameraEntity{};
     Entity meshEntity{};
@@ -107,6 +111,11 @@ struct NativeRenderer {
         view->setCamera(camera);
         view->setPostProcessingEnabled(true);
         view->setAntiAliasing(View::AntiAliasing::FXAA);
+        colorGrading = ColorGrading::Builder()
+            .toneMapper(&acesToneMapper)
+            .quality(ColorGrading::QualityLevel::MEDIUM)
+            .build(*engine);
+        if (colorGrading) view->setColorGrading(colorGrading);
         View::TemporalAntiAliasingOptions taa{};
         taa.enabled = true;
         taa.feedback = 0.12f;
@@ -473,7 +482,14 @@ struct NativeRenderer {
             engine->getEntityManager().destroy(cameraEntity);
         }
 
-        if (view) engine->destroy(view);
+        if (view) {
+            view->setColorGrading(nullptr);
+            engine->destroy(view);
+        }
+        if (colorGrading) {
+            engine->destroy(colorGrading);
+            colorGrading = nullptr;
+        }
         if (scene) engine->destroy(scene);
         if (renderer) engine->destroy(renderer);
         if (swapChain) engine->destroy(swapChain);
