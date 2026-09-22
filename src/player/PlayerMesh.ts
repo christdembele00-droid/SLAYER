@@ -3,59 +3,130 @@ import { Player } from "./Player";
 import { FootballIK } from "../animation/FootballIK";
 import { AnimationFrame } from "../animation/AnimationTypes";
 
-export class PlayerMesh {
+function numberTexture(number:string):THREE.CanvasTexture{
+  const canvas=document.createElement("canvas");
+  canvas.width=128; canvas.height=128;
+  const ctx=canvas.getContext("2d");
+  if(!ctx) throw new Error("Canvas 2D unavailable");
+  ctx.clearRect(0,0,128,128);
+  ctx.fillStyle="#ffffff";
+  ctx.font="900 82px Arial";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.fillText(number,64,66);
+  const texture=new THREE.CanvasTexture(canvas);
+  texture.colorSpace=THREE.SRGBColorSpace;
+  return texture;
+}
+
+export class PlayerMesh{
   readonly object=new THREE.Group();
   private readonly torso:THREE.Mesh;
   private readonly shorts:THREE.Mesh;
   private readonly head:THREE.Mesh;
+  private readonly neck:THREE.Mesh;
+  private readonly hair:THREE.Mesh;
   private readonly leftArm:THREE.Mesh;
   private readonly rightArm:THREE.Mesh;
   private readonly leftLeg:THREE.Mesh;
   private readonly rightLeg:THREE.Mesh;
+  private readonly leftSock:THREE.Mesh;
+  private readonly rightSock:THREE.Mesh;
   private readonly leftBoot:THREE.Mesh;
   private readonly rightBoot:THREE.Mesh;
+  private readonly shoulders:THREE.Mesh;
 
   constructor(player:Player){
     this.object.userData.playerId=player.data.playerId;
-    const primary=player.data.teamId==="home"?0x1d4ed8:0xdc2626;
-    const secondary=player.data.teamId==="home"?0xf4f7ff:0x15191d;
-    const kit=new THREE.MeshStandardMaterial({color:primary,roughness:.62,metalness:.02});
-    const shortsMat=new THREE.MeshStandardMaterial({color:secondary,roughness:.7});
-    const skin=new THREE.MeshStandardMaterial({color:0xa96f52,roughness:.78});
-    const boot=new THREE.MeshStandardMaterial({color:0x101316,roughness:.38,metalness:.15});
+    const home=player.data.teamId==="home";
+    const primary=home?0x1557d6:0xc91f35;
+    const secondary=home?0xf4f7ff:0x171a20;
+    const accent=home?0x66b7ff:0xffa0aa;
 
-    this.torso=new THREE.Mesh(new THREE.CapsuleGeometry(.235,.56,6,10),kit);
+    const kit=new THREE.MeshStandardMaterial({color:primary,roughness:.48,metalness:.02});
+    const accentMat=new THREE.MeshStandardMaterial({color:accent,roughness:.5});
+    const shortsMat=new THREE.MeshStandardMaterial({color:secondary,roughness:.62});
+    const skin=new THREE.MeshStandardMaterial({color:0xa96f52,roughness:.7});
+    const hairMat=new THREE.MeshStandardMaterial({color:0x17110e,roughness:.88});
+    const boot=new THREE.MeshStandardMaterial({color:0x080b0e,roughness:.25,metalness:.35});
+
+    this.torso=new THREE.Mesh(new THREE.CapsuleGeometry(.235,.56,8,14),kit);
     this.torso.position.y=.86;
+    this.torso.castShadow=true;
     this.object.add(this.torso);
 
-    this.shorts=new THREE.Mesh(new THREE.BoxGeometry(.38,.25,.25),shortsMat);
+    this.shoulders=new THREE.Mesh(new THREE.CapsuleGeometry(.31,.14,6,12),kit);
+    this.shoulders.rotation.z=Math.PI/2;
+    this.shoulders.position.y=1.08;
+    this.shoulders.castShadow=true;
+    this.object.add(this.shoulders);
+
+    this.shorts=new THREE.Mesh(new THREE.BoxGeometry(.39,.25,.28),shortsMat);
     this.shorts.position.y=.53;
+    this.shorts.castShadow=true;
     this.object.add(this.shorts);
 
-    this.head=new THREE.Mesh(new THREE.SphereGeometry(.155,14,10),skin);
-    this.head.position.y=1.38;
+    this.neck=new THREE.Mesh(new THREE.CylinderGeometry(.075,.085,.13,10),skin);
+    this.neck.position.y=1.25;
+    this.object.add(this.neck);
+
+    this.head=new THREE.Mesh(new THREE.SphereGeometry(.158,20,14),skin);
+    this.head.scale.set(1,.98,.96);
+    this.head.position.y=1.39;
+    this.head.castShadow=true;
     this.object.add(this.head);
 
-    const armGeo=new THREE.CapsuleGeometry(.055,.38,5,7);
+    this.hair=new THREE.Mesh(new THREE.SphereGeometry(.162,18,10,0,Math.PI*2,0,Math.PI*.48),hairMat);
+    this.hair.position.y=1.43;
+    this.hair.scale.set(1.02,.8,1.02);
+    this.object.add(this.hair);
+
+    const collar=new THREE.Mesh(new THREE.TorusGeometry(.09,.018,6,16),accentMat);
+    collar.rotation.x=Math.PI/2;
+    collar.position.y=1.16;
+    this.object.add(collar);
+
+    const armGeo=new THREE.CapsuleGeometry(.055,.38,7,9);
     this.leftArm=new THREE.Mesh(armGeo,kit);
-    this.rightArm=this.leftArm.clone();
-    this.leftArm.position.set(-.27,.88,0);
-    this.rightArm.position.set(.27,.88,0);
+    this.rightArm=new THREE.Mesh(armGeo,kit);
+    this.leftArm.position.set(-.275,.89,0);
+    this.rightArm.position.set(.275,.89,0);
+    this.leftArm.castShadow=this.rightArm.castShadow=true;
     this.object.add(this.leftArm,this.rightArm);
 
-    const legGeo=new THREE.CapsuleGeometry(.075,.42,5,7);
-    this.leftLeg=new THREE.Mesh(legGeo,shortsMat);
-    this.rightLeg=this.leftLeg.clone();
-    this.leftLeg.position.set(-.105,.31,0);
-    this.rightLeg.position.set(.105,.31,0);
+    const legGeo=new THREE.CapsuleGeometry(.075,.40,7,9);
+    this.leftLeg=new THREE.Mesh(legGeo,skin);
+    this.rightLeg=new THREE.Mesh(legGeo,skin);
+    this.leftLeg.position.set(-.105,.32,0);
+    this.rightLeg.position.set(.105,.32,0);
     this.object.add(this.leftLeg,this.rightLeg);
 
-    const bootGeo=new THREE.BoxGeometry(.13,.08,.27);
+    const sockGeo=new THREE.CylinderGeometry(.077,.072,.22,10);
+    this.leftSock=new THREE.Mesh(sockGeo,accentMat);
+    this.rightSock=new THREE.Mesh(sockGeo,accentMat);
+    this.leftSock.position.set(-.105,.19,0);
+    this.rightSock.position.set(.105,.19,0);
+    this.object.add(this.leftSock,this.rightSock);
+
+    const bootGeo=new THREE.BoxGeometry(.135,.085,.29);
     this.leftBoot=new THREE.Mesh(bootGeo,boot);
-    this.rightBoot=this.leftBoot.clone();
-    this.leftBoot.position.set(-.105,.075,.07);
-    this.rightBoot.position.set(.105,.075,.07);
+    this.rightBoot=new THREE.Mesh(bootGeo,boot);
+    this.leftBoot.position.set(-.105,.075,.075);
+    this.rightBoot.position.set(.105,.075,.075);
+    this.leftBoot.castShadow=this.rightBoot.castShadow=true;
     this.object.add(this.leftBoot,this.rightBoot);
+
+    const number=new THREE.Mesh(
+      new THREE.PlaneGeometry(.13,.13),
+      new THREE.MeshBasicMaterial({map:numberTexture(String(Number(player.data.playerId.replace(/\\D/g,""))%99||1)),transparent:true,side:THREE.DoubleSide})
+    );
+    number.position.set(0,.9,.242);
+    this.object.add(number);
+
+    this.object.traverse(o=>{
+      const m=o as THREE.Mesh;
+      if(m.isMesh){m.castShadow=true;m.receiveShadow=true;}
+    });
   }
 
   sync(player:Player){
@@ -86,6 +157,7 @@ export class PlayerMesh {
     }
     this.torso.rotation.z=THREE.MathUtils.lerp(this.torso.rotation.z,-frame.turnLean*.35,smoothing);
     this.head.rotation.y=THREE.MathUtils.lerp(this.head.rotation.y,THREE.MathUtils.clamp(frame.turnLean*1.5,-.45,.45),smoothing);
+    this.hair.rotation.y=this.head.rotation.y;
   }
 
   applyIK(ik:FootballIK,ballPosition:{x:number;y:number;z:number}){
