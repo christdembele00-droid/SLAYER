@@ -25,6 +25,11 @@ export class SlayerUI {
   private setPieceDrawing=false;
   private setPiecePath:{x:number;y:number}[]=[];
   private abandonConfirm=false;
+  private matchSettings={duration:10,extraTime:true,penalties:true,subs:5,form:"random",time:"day",weather:"clear",grass:"short-dry",stadium:"SLAYER Arena",ball:"SLAYER Pro",control:"virtual",passAssist:2,shotAssist:"manual",cursor:"semi",press:"individual",attack:"balanced",fps:60,quality:"high",dynamicResolution:true,camera:"broadcast",radar:true,commentary:"fr",music:55,commentaryVolume:85,crowd:80,effects:90};
+  private menuSection:"modes"|"match-settings"|"controls"|"display"|"audio"="modes";
+  private setOption<K extends keyof typeof this.matchSettings>(key:K,value:(typeof this.matchSettings)[K]):void{this.matchSettings[key]=value;this.render();}
+  private optionButtons(key:string,values:string[],current:string):string{return values.map(v=>`<button class="option-chip ${v===current?"active":""}" data-option-key="${key}" data-option-value="${v}">${v}</button>`).join("");}
+
   private team:TeamPlayer[]=[
     {id:"p1",name:"K. N'GUESSAN",pos:"GB",rating:84,form:92,starter:true},
     {id:"p2",name:"A. KOUASSI",pos:"DD",rating:85,form:88,starter:true},
@@ -77,8 +82,31 @@ export class SlayerUI {
   }
 
   private renderModes(){
-    return `<section class="six-screen modes-dashboard"><div class="screen-header"><button class="icon-button" data-screen="home">←</button><div><div class="eyebrow">SLAYER / 02</div><h2>MODES DE JEU</h2></div></div>
-    <div class="mode-grid"><button class="mode-card featured" data-start="1"><b>⚡ MATCH RAPIDE</b><span>11v11 · Coup d'envoi immédiat</span></button><button class="mode-card"><b>🏆 COUPE</b><span>Tableau à élimination</span></button><button class="mode-card"><b>📅 CHAMPIONNAT</b><span>Saison complète</span></button><button class="mode-card" data-screen="career"><b>👑 CARRIÈRE</b><span>Construis ton club</span></button><button class="mode-card"><b>🎯 ENTRAÎNEMENT</b><span>Maîtrise les contrôles</span></button><button class="mode-card"><b>🌐 EN LIGNE</b><span>Infrastructure prête pour le multijoueur</span></button></div></section>`;
+    const section=this.menuSection;
+    return `<section class="six-screen modes-dashboard">
+      <div class="screen-header"><button class="icon-button" data-screen="home">←</button><div><div class="eyebrow">SLAYER / GAME CENTER</div><h2>MODES DE JEU</h2></div></div>
+      <div class="mode-tabs">
+        <button class="${section==="modes"?"active":""}" data-menu-section="modes">MODES</button>
+        <button class="${section==="match-settings"?"active":""}" data-menu-section="match-settings">CONFIG MATCH</button>
+        <button class="${section==="controls"?"active":""}" data-menu-section="controls">COMMANDES</button>
+      </div>
+      ${section==="modes"?`<div class="mode-grid realistic-mode-grid">
+        <button class="mode-card featured mode-match" data-start="1"><small>OFFLINE / 11v11</small><b>MATCH RAPIDE</b><span>Coup d'envoi immédiat · ${this.matchSettings.duration} MIN</span></button>
+        <button class="mode-card mode-dream"><small>TEAM BUILDING</small><b>DREAM TEAM</b><span>Ligue, événements PvP/IA, co-op, salles privées</span></button>
+        <button class="mode-card mode-auth"><small>EXHIBITION</small><b>MATCH AUTHENTIQUE</b><span>Clubs, sélections, stades et paramètres réels</span></button>
+        <button class="mode-card"><small>COMPÉTITION</small><b>COUPE</b><span>Tableau à élimination directe</span></button>
+        <button class="mode-card"><small>SAISON</small><b>CHAMPIONNAT</b><span>Classement, journées, montée et descente</span></button>
+        <button class="mode-card" data-screen="career"><small>MANAGEMENT</small><b>CARRIÈRE</b><span>Effectif, progression, tactique et résultats</span></button>
+        <button class="mode-card"><small>SKILL LAB</small><b>ENTRAÎNEMENT</b><span>Libre · coups francs · corners · penalties · touches</span></button>
+        <button class="mode-card"><small>ONLINE</small><b>PvP / CO-OP</b><span>Matchmaking, amis, 2v2/3v3 et salles</span></button>
+      </div>`:section==="match-settings"?`<div class="settings-panel match-config">
+        <article><b>FORMAT DU MATCH</b><label>DURÉE</label><div class="option-row">${this.optionButtons("duration",["5","8","10","12"],String(this.matchSettings.duration))}</div><label>PROLONGATIONS</label><div class="option-row">${this.optionButtons("extraTime",["on","off"],this.matchSettings.extraTime?"on":"off")}</div><label>PENALTYS</label><div class="option-row">${this.optionButtons("penalties",["on","off"],this.matchSettings.penalties?"on":"off")}</div><label>REMPLACEMENTS</label><div class="option-row">${this.optionButtons("subs",["3","4","5"],String(this.matchSettings.subs))}</div><label>FORME</label><div class="option-row">${this.optionButtons("form",["random","excellent","normal"],this.matchSettings.form)}</div></article>
+        <article><b>ENVIRONNEMENT</b><label>MOMENT</label><div class="option-row">${this.optionButtons("time",["day","sunset","night"],this.matchSettings.time)}</div><label>MÉTÉO</label><div class="option-row">${this.optionButtons("weather",["clear","rain","snow"],this.matchSettings.weather)}</div><label>GAZON</label><div class="option-row">${this.optionButtons("grass",["short-dry","long-dry","short-wet"],this.matchSettings.grass)}</div><label>STADE</label><div class="option-row">${this.optionButtons("stadium",["SLAYER Arena","Abidjan Stadium","Metropolitan"],this.matchSettings.stadium)}</div><label>BALLON</label><div class="option-row">${this.optionButtons("ball",["SLAYER Pro","Classic","Match Ball"],this.matchSettings.ball)}</div></article>
+      </div>`: `<div class="settings-panel controls-config">
+        <article><b>COMMANDES</b><label>TYPE</label><div class="option-row">${this.optionButtons("control",["touch","virtual","gamepad"],this.matchSettings.control)}</div><label>ASSISTANCE PASSE</label><div class="option-row">${this.optionButtons("passAssist",["1","2","3","4"],String(this.matchSettings.passAssist))}</div><label>ASSISTANCE TIR</label><div class="option-row">${this.optionButtons("shotAssist",["assisted","manual"],this.matchSettings.shotAssist)}</div><label>CHANGEMENT JOUEUR</label><div class="option-row">${this.optionButtons("cursor",["auto","semi","manual"],this.matchSettings.cursor)}</div><label>PRESSING</label><div class="option-row">${this.optionButtons("press",["individual","double"],this.matchSettings.press)}</div></article>
+        <article><b>TACTIQUE EN MATCH</b><label>BLOC ATTAQUE / DÉFENSE</label><div class="option-row">${this.optionButtons("attack",["defensive","balanced","offensive"],this.matchSettings.attack)}</div><div class="tactic-meter"><i style="width:${this.matchSettings.attack==="defensive"?28:this.matchSettings.attack==="offensive"?82:50}%"></i></div><p>Le curseur dynamique sera accessible pendant le match.</p></article>
+      </div>`}
+    </section>`;
   }
 
   private renderCareer(){
@@ -88,8 +116,17 @@ export class SlayerUI {
   }
 
   private renderSettings(){
-    return `<section class="six-screen settings-dashboard"><div class="screen-header"><button class="icon-button" data-screen="home">←</button><div><div class="eyebrow">SLAYER / 06</div><h2>PARAMÈTRES</h2></div></div>
-    <div class="settings-grid"><article><b>GRAPHISMES</b><label>Qualité <strong>ÉLEVÉE</strong></label><label>Résolution dynamique <strong>ON</strong></label><label>Ombres <strong>ÉLEVÉES</strong></label><label>FPS <strong>60</strong></label></article><article><b>COMMANDES</b><label>Disposition <strong>CLASSIQUE</strong></label><label>Vibration <strong>ON</strong></label><label>Aide au tir <strong>OFF</strong></label></article><article><b>AUDIO</b><label>Stade <strong>80%</strong></label><label>Effets <strong>90%</strong></label><label>Musique <strong>55%</strong></label></article><article><b>DONNÉES</b><button>SAUVEGARDER</button><button>RESTAURER</button><button>RÉINITIALISER LES PARAMÈTRES</button></article></div></section>`;
+    const section=this.menuSection;
+    return `<section class="six-screen settings-dashboard"><div class="screen-header"><button class="icon-button" data-screen="home">←</button><div><div class="eyebrow">SLAYER / SYSTEM</div><h2>PARAMÈTRES</h2></div></div>
+      <div class="mode-tabs">
+        <button class="${section==="display"?"active":""}" data-menu-section="display">GRAPHISMES</button>
+        <button class="${section==="audio"?"active":""}" data-menu-section="audio">AUDIO</button>
+      </div>
+      ${section==="display"?`<div class="settings-panel">
+        <article><b>RENDU</b><label>FPS CIBLE</label><div class="option-row">${this.optionButtons("fps",["30","60","90","120"],String(this.matchSettings.fps))}</div><label>QUALITÉ</label><div class="option-row">${this.optionButtons("quality",["low","medium","high","ultra"],this.matchSettings.quality)}</div><label>RÉSOLUTION DYNAMIQUE</label><div class="option-row">${this.optionButtons("dynamicResolution",["on","off"],this.matchSettings.dynamicResolution?"on":"off")}</div><p class="tech-note">Le moteur natif Filament/Vulkan applique les options disponibles selon le GPU.</p></article>
+        <article><b>PRÉSENTATION</b><label>CAMÉRA</label><div class="option-row">${this.optionButtons("camera",["broadcast","dynamic","overview","pro"],this.matchSettings.camera)}</div><label>RADAR</label><div class="option-row">${this.optionButtons("radar",["on","off"],this.matchSettings.radar?"on":"off")}</div><div class="graphics-preview"><div class="preview-pitch"><i></i><b></b><em></em></div><span>APERÇU RENDU 3D</span></div></article>
+      </div>`: `<div class="settings-panel"><article><b>MIXEUR AUDIO</b><label>MUSIQUE <strong>${this.matchSettings.music}%</strong></label><input type="range" min="0" max="100" value="${this.matchSettings.music}" data-range="music"><label>COMMENTAIRES <strong>${this.matchSettings.commentaryVolume}%</strong></label><input type="range" min="0" max="100" value="${this.matchSettings.commentaryVolume}" data-range="commentaryVolume"><label>PUBLIC <strong>${this.matchSettings.crowd}%</strong></label><input type="range" min="0" max="100" value="${this.matchSettings.crowd}" data-range="crowd"><label>EFFETS / IMPACTS <strong>${this.matchSettings.effects}%</strong></label><input type="range" min="0" max="100" value="${this.matchSettings.effects}" data-range="effects"></article><article><b>COMMENTAIRES</b><label>PACK</label><div class="option-row">${this.optionButtons("commentary",["fr","en","es"],this.matchSettings.commentary)}</div><p>Les packs audio sont chargés localement lorsqu'ils sont disponibles.</p></article></div>`}
+    </section>`;
   }
 
   private renderTeam(){
@@ -151,6 +188,9 @@ export class SlayerUI {
   }
 
   private bind(){
+    this.root.querySelectorAll<HTMLElement>("[data-menu-section]").forEach(el=>el.addEventListener("click",()=>{this.menuSection=el.dataset.menuSection as typeof this.menuSection;this.render();}));
+    this.root.querySelectorAll<HTMLElement>("[data-option-key]").forEach(el=>el.addEventListener("click",()=>{const k=el.dataset.optionKey as keyof typeof this.matchSettings;const raw=el.dataset.optionValue??"";const current=this.matchSettings[k];let value:unknown=raw;if(typeof current==="number")value=Number(raw);else if(typeof current==="boolean")value=raw==="on";this.setOption(k,value as never);}));
+    this.root.querySelectorAll<HTMLInputElement>("[data-range]").forEach(el=>el.addEventListener("input",()=>{const k=el.dataset.range as keyof typeof this.matchSettings;this.setOption(k,Number(el.value) as never);}));
     this.root.querySelectorAll<HTMLElement>("[data-screen]").forEach(el=>el.addEventListener("click",()=>this.setScreen(el.dataset.screen as SlayerScreen)));
     this.root.querySelector("[data-pause]")?.addEventListener("click",()=>this.openPause());
     this.root.querySelector("[data-result]")?.addEventListener("click",()=>this.showResult());
