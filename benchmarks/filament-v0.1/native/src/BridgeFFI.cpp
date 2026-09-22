@@ -94,9 +94,15 @@ struct NativeRenderer {
     std::vector<float> history;
 
     static constexpr uint32_t MAX_PLAYERS = 64;
-    SlayerTransform playerSnapshot[MAX_PLAYERS]{};
-    uint32_t playerSnapshotCount = 0;
-    std::atomic<uint64_t> playerSnapshotSequence{0};
+    struct PlayerBuffer {
+        SlayerTransform transforms[MAX_PLAYERS]{};
+        uint32_t count = 0;
+    };
+    PlayerBuffer playerBuffers[3]{};
+    std::atomic<uint32_t> publishedPlayerBuffer{0};
+    std::atomic<uint32_t> renderReadingBuffer{0xffffffffu};
+    uint32_t writerBuffer = 1;
+    uint32_t playerBoneCount = 0;
 
     bool initialize(ANativeWindow* nativeWindow) {
         window = nativeWindow;
@@ -443,20 +449,17 @@ struct NativeRenderer {
 
         const float dt = measured > 0.0f ? measured : deltaSeconds;
 
-        // Consume the latest lock-free player snapshot. The render thread never
-        // waits for simulation/FFI writers.
+        // Triple-buffered immutable snapshot. The renderer copies only from
+        // the published buffer while the writer uses a different buffer.
         SlayerTransform playerLocal{};
         uint32_t playerCount = 0;
-        // Lock-free sequence snapshot: the render thread retries only if a
-        // writer modified the snapshot while it was being copied.
-        for (;;) {
-            const uint64_t before = playerSnapshotSequence.load(std::memory_order_acquire);
-            if (before & 1u) continue;
-            playerCount = playerSnapshotCount;
-            if (playerCount > 0) playerLocal = playerSnapshot[0];
-            const uint64_t after = playerSnapshotSequence.load(std::memory_order_acquire);
-            if (before == after) break;
-        }
+        const uint32_t readIndex =
+            publishedPlayerBuffer.load(std::memory_order_acquire);
+        renderReadingBuffer.store(readIndex, std::memory_order_release);
+        const PlayerBuffer& readBuffer = playerBuffers[readIndex];
+        playerCount = readBuffer.count;
+        if (playerCount > 0) playerLocal = readBuffer.transforms[0];
+        renderReadingBuffer.store(0xffffffffu, std::memory_order_release);
         if (playerAsset && playerCount > 0) {
             auto &tm = engine->getTransformManager();
             const Entity root = playerAsset->getEntities()[0];
@@ -633,12 +636,30 @@ extern "C" void slayer_renderer_resize(uint32_t width, uint32_t height) {
 extern "C" void slayer_renderer_set_players(
         const SlayerTransform* transforms, uint32_t count) {
     const uint32_t n = std::min(count, NativeRenderer::MAX_PLAYERS);
-    g_renderer.playerSnapshotSequence.fetch_add(1, std::memory_order_acq_rel);
-    if (transforms && n > 0) {
-        std::copy_n(transforms, n, g_renderer.playerSnapshot);
+    const uint32_t published =
+        g_renderer.publishedPlayerBuffer.load(std::memory_order_acquire);
+    const uint32_t reading =
+        g_renderer.renderReadingBuffer.load(std::memory_order_acquire);
+
+    uint32_t target = (g_renderer.writerBuffer + 1u) % 3u;
+    for (uint32_t i = 0; i < 3; ++i) {
+        const uint32_t candidate = (target + i) % 3u;
+        if (candidate != published && candidate != reading) {
+            target = candidate;
+            break;
+        }
     }
-    g_renderer.playerSnapshotCount = transforms ? n : 0;
-    g_renderer.playerSnapshotSequence.fetch_add(1, std::memory_order_release);
+
+    auto& buffer = g_renderer.playerBuffers[target];
+    buffer.count = 0;
+    if (transforms && n > 0) {
+        std::copy_n(transforms, n, buffer.transforms);
+        buffer.count = n;
+    }
+
+    std::atomic_thread_fence(std::memory_order_release);
+    g_renderer.publishedPlayerBuffer.store(target, std::memory_order_release);
+    g_renderer.writerBuffer = target;
     g_renderer.stats.player_count = transforms ? n : 0;
 }
 
