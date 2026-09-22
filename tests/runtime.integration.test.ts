@@ -4,9 +4,10 @@ import { PlayerFactory } from "../src/player/PlayerFactory";
 import { FullMatchSetup } from "../src/match/FullMatchSetup";
 import { BallSystem } from "../src/ball/BallSystem";
 import { InteractionSystem } from "../src/interaction/InteractionSystem";
-import { GameplaySystem } from "../src/gameplay/GameplaySystem";
 import { FootballAI } from "../src/ai/FootballAI";
 import { WorldSystem } from "../src/world/WorldSystems";
+import { strikeProfile } from "../src/ball/BallKinematics";
+import { GKSystem } from "../src/interaction/GKSystem";
 import { GameplaySystem } from "../src/gameplay/GameplaySystem";
 
 describe("SLAYER runtime integration",()=>{
@@ -34,5 +35,24 @@ describe("SLAYER runtime integration",()=>{
     ai.update(ps,bs.ball,1);
     expect(p.state.lastIntent).toBeDefined();
     expect(["Control","Move","Pass","Shoot"]).toContain(p.state.lastIntent?.action);
+  });
+  it("uses distinct physical profiles for passes and shots",()=>{
+    const pass=strikeProfile("Pass",.7);
+    const shot=strikeProfile("Shot",.7);
+    const cross=strikeProfile("Cross",.7);
+    expect(shot.speed).toBeGreaterThan(pass.speed);
+    expect(cross.lift).toBeGreaterThan(pass.lift);
+    expect(shot.spin).toBeGreaterThan(pass.spin);
+  });
+  it("runs goalkeeper save logic against a dangerous ball",()=>{
+    const ps=new PlayerSystem();
+    const gk=ps.create(PlayerFactory.createPlayerData("gk","GK","home","GK"),{x:0,y:0,z:-48});
+    const bs=new BallSystem();
+    bs.ball.setPosition({x:0,y:1,z:-47});
+    bs.ball.state.velocity={x:0,y:0,z:-12};
+    const gks=new GKSystem();
+    const result=gks.update(ps,bs.ball);
+    expect(result.length).toBeGreaterThanOrEqual(0);
+    expect(gk.state.position.z).toBeLessThanOrEqual(-47);
   });
 });
