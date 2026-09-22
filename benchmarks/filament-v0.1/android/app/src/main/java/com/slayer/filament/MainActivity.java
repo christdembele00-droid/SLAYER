@@ -45,6 +45,7 @@ public final class MainActivity extends Activity {
     private boolean nativeReady = false;
     private View menuBackground;
     private long menuOpenedAt = 0L;
+    private View activePage = null;
 
     private static native boolean nativeCreate(android.view.Surface surface);
     private static native boolean nativeLoadTerrainMaterial(byte[] data);
@@ -186,6 +187,8 @@ public final class MainActivity extends Activity {
     }
 
     private void showMainMenu() {
+        if (activePage != null && activePage.getParent() != null) root.removeView(activePage);
+        activePage = null;
         if (menuOverlay != null) root.removeView(menuOverlay);
 
         menuVisible = true;
@@ -299,6 +302,7 @@ public final class MainActivity extends Activity {
             showMainMenu();
         });
 
+        activePage = page;
         root.addView(page, new FrameLayout.LayoutParams(-1, -1));
     }
 
@@ -617,6 +621,33 @@ public final class MainActivity extends Activity {
             surface.postOnAnimation(this);
         }
     };
+
+    @Override
+    public void onBackPressed() {
+        if (activePage != null && activePage.getParent() != null) {
+            root.removeView(activePage);
+            activePage = null;
+            showMainMenu();
+            return;
+        }
+        if (menuVisible) {
+            super.onBackPressed();
+            return;
+        }
+        super.onBackPressed();
+    }
+
+    @Override
+    protected void onPause() {
+        if (surface != null) surface.removeCallbacks(frameRunnable);
+        super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (surface != null && nativeReady && matchStarted) surface.postOnAnimation(frameRunnable);
+    }
 
     @Override
     protected void onDestroy() {
