@@ -42,6 +42,10 @@ public final class MainActivity extends Activity {
     private static native void nativeDestroy();
     private static native void nativeSetInput(float moveX, float moveY, float pass, float shoot, float sprint, float tackle, int selected);
     private static native void nativeResetMatch();
+    private static native void nativeSetSettings(int duration, boolean extraTime, boolean penalties, int substitutions, int conditionRandom,
+            int timeMode, int weatherMode, int grassMode, int stadium, int ball, int control, int passAssist, int shotAssist,
+            int cursor, int pressing, int attack, int targetFps, int quality, boolean dynamicResolution, int cameraMode,
+            boolean radar, int commentary, float music, float commentaryVolume, float crowd, float effects);
 
     @Override
     protected void onCreate(Bundle state) {
@@ -68,6 +72,7 @@ public final class MainActivity extends Activity {
             @Override
             public void surfaceCreated(SurfaceHolder holder) {
                 nativeCreate(holder.getSurface());
+                nativeSetSettings(10, true, true, 5, 1, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 1, 60, 2, true, 0, true, 0, .55f, .85f, .80f, .90f);
                 loadBundledEnvironment();
                 loadBundledTerrainMaterial();
                 loadBundledStadium();
