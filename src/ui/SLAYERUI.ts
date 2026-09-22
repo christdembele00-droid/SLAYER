@@ -44,11 +44,11 @@ export class SlayerUI {
     {id:"p16",name:"M. KONAN",pos:"BU",rating:83,form:90,starter:false}
   ];
 
-  constructor(app:HTMLDivElement,private readonly onStartMatch:()=>void,private readonly onMatchAction?:(action:SlayerMatchAction)=>void,private readonly onSprint?:(pressed:boolean)=>void,private readonly onMove?:(move:SlayerMoveInput)=>void){
+  constructor(app:HTMLDivElement,private readonly onStartMatch:()=>void,private readonly onMatchAction?:(action:SlayerMatchAction)=>void,private readonly onSprint?:(pressed:boolean)=>void,private readonly onMove?:(move:SlayerMoveInput)=>void,private readonly onCameraMode?:(mode:"match"|"hero"|"setpiece")=>void){
     this.root=document.createElement("div"); this.root.className="slayer-ui"; app.appendChild(this.root); this.render();
   }
 
-  setScreen(screen:SlayerScreen){this.screen=screen;this.abandonConfirm=false;this.render();}
+  setScreen(screen:SlayerScreen){this.screen=screen;this.abandonConfirm=false;this.onCameraMode?.(screen==="home"?"hero":screen==="setpiece"?"setpiece":"match");this.render();}
   openPause(){this.modalFromMatch=true;this.screen="pause";this.render();}
   openSetPiece(){this.screen="setpiece";this.render();}
   showResult(){this.screen="result";this.render();}
@@ -140,7 +140,7 @@ export class SlayerUI {
     this.root.querySelector("[data-resume]")?.addEventListener("click",()=>this.setScreen("match"));
     this.root.querySelector("[data-start]")?.addEventListener("click",()=>{this.onStartMatch();this.setScreen("match");});
     this.root.querySelectorAll<HTMLButtonElement>("[data-action]").forEach(b=>b.addEventListener("pointerdown",e=>{e.preventDefault();const a=b.dataset.action as SlayerMatchAction;this.onMatchAction?.(a);if(a==="Dribble")this.onSprint?.(true);}));
-    this.root.querySelector("[data-camera]")?.addEventListener("click",()=>this.onMatchAction?.("Control"));
+    this.root.querySelector("[data-camera]")?.addEventListener("click",()=>this.onCameraMode?.("match"));
     const sprint=this.root.querySelector("[data-sprint]") as HTMLButtonElement|null;
     sprint?.addEventListener("pointerup",()=>this.onSprint?.(false));
     sprint?.addEventListener("pointercancel",()=>this.onSprint?.(false));
