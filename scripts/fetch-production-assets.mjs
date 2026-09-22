@@ -1,4 +1,9 @@
-if (process.env.SLAYER_FETCH_WEB_ASSETS !== "1") {\n  console.log("[SLAYER assets] Web asset download disabled; using bundled/fallback assets.");\n  process.exit(0);\n}\n\nimport { mkdir, writeFile, stat } from "node:fs/promises";
+if (process.env.SLAYER_FETCH_WEB_ASSETS !== "1") {
+  console.log("[SLAYER assets] Web asset download disabled; using bundled/fallback assets.");
+  process.exit(0);
+}
+
+import { mkdir, writeFile, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { createHash } from "node:crypto";
 
