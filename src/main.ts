@@ -45,7 +45,7 @@ renderer.scene.add(nets[0].mesh,nets[1].mesh);
 
 const world=new WorldSystem();
 const quality=new QualityManager();
-const performance=new PerformanceMonitor();
+const performanceMonitor=new PerformanceMonitor();
 const gpuProfiler=new GPUProfiler();
 const match=new MatchEngine({halfDurationSeconds:45*60,extraTimeEnabled:true,penaltiesEnabled:true});
 const players=new PlayerSystem();
@@ -81,7 +81,7 @@ const ballMesh=new THREE.Mesh(
 renderer.scene.add(ballMesh);
 
 const controlledId="home-1";
-const ui=new SlayerUI(app,()=>{ match.start(); });
+const ui=new SlayerUI(app,()=>{ match.start(); match.kickOff("home"); });
 const config=(window as unknown as {__SLAYER_CONFIG__?:{wsUrl?:string}}).__SLAYER_CONFIG__??{};
 const online=config.wsUrl?new WebSocketClient():null;
 if(online) online.connect(config.wsUrl!);
@@ -102,9 +102,7 @@ window.addEventListener("keyup",event=>{
   if("wasd".includes(event.key.toLowerCase())) input.setMovement(0,0);
 });
 
-match.start();
-match.kickOff("home");
-let last=performance.now();
+let last=window.performance.now();
 // Goal-net reaction: feed impacts from fast shots into the nearest net.
 let previousBallZ=ball.state.position.z;
 
@@ -142,7 +140,7 @@ function executeAction(playerId:string, action:PlayerAction, direction:{x:number
 function frame(now:number){
   const rawFrameMs=now-last;
   const delta=Math.min(rawFrameMs/1000,.05);
-  const perf=performance.sample(rawFrameMs,delta);
+  const perf=performanceMonitor.sample(rawFrameMs,delta);
   const gpu=gpuProfiler.sample(renderer.renderer,rawFrameMs,delta);
   last=now;
 
@@ -174,7 +172,7 @@ function frame(now:number){
   transitions.update(players,ball,delta);
   goalkeepers.update(players,ball);
   const ballSpeed=Math.hypot(ball.state.velocity.x,ball.state.velocity.y,ball.state.velocity.z);
-  const crossedGoalLine=(previousBallZ < -52.0 && ball.state.position.z >= -52.0) || (previousBallZ > 52.0 && ball.state.position.z <= 52.0);
+  const crossedGoalLine=(previousBallZ > -52.0 && ball.state.position.z <= -52.0) || (previousBallZ < 52.0 && ball.state.position.z >= 52.0);
   if(ballSpeed>10 && crossedGoalLine) nets[ball.state.position.z<0?0:1].impact(new THREE.Vector3(ball.state.position.x,ball.state.position.y,0),Math.min(2,ballSpeed/15));
   previousBallZ=ball.state.position.z;
   detectGoal();
@@ -182,7 +180,7 @@ function frame(now:number){
   world.update(delta);
   ball.setSurface(world.weather==="Rain" ? "GrassWet" : "GrassDry",world.wetness);
   pitch.setWetness(world.wetness);
-  if(quality.update(delta*1000,delta)) renderer.setQuality(quality.pixelRatio());
+  if(quality.update(rawFrameMs)) renderer.setQuality(quality.pixelRatio());
   crowd.update(delta,Math.min(1,ball.state.velocity.x**2+ball.state.velocity.z**2)/100);
   nets.forEach(n=>n.update(delta));
 
@@ -199,10 +197,7 @@ function frame(now:number){
   camera.update(renderer.camera,ball.state.position);
 
   const snapshot=match.snapshot();
-  homeScore.textContent=String(snapshot.score.homeGoals);
-  awayScore.textContent=String(snapshot.score.awayGoals);
-  status.textContent=`22 PLAYERS · AI ON · ${world.weather.toUpperCase()} · ${quality.tier} · ${perf.fps.toFixed(0)} FPS · ${perf.p95Ms.toFixed(1)}ms P95 · GPU ${gpu.drawCalls} DC · ${gpu.triangles} TRI · ${snapshot.phase.toUpperCase()} · ${match.clock.format()}`;
-  commentaryEl.textContent=commentary.recent.at(-1)??"";
+  ui.updateMatch(snapshot.score.homeGoals,snapshot.score.awayGoals,match.clock.format(),snapshot.phase.toUpperCase());
   if(online) online.send({type:"snapshot",ball:{...ball.state.position},time:snapshot.timeSeconds});
 
   renderer.render();
