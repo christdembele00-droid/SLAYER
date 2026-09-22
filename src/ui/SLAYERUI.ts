@@ -53,7 +53,7 @@ export class SlayerUI {
     this.root=document.createElement("div"); this.root.className="slayer-ui"; app.appendChild(this.root); this.render();
   }
 
-  setScreen(screen:SlayerScreen){this.screen=screen;this.abandonConfirm=false;this.onCameraMode?.(screen==="home"?"hero":screen==="setpiece"?"setpiece":"match");this.render();}
+  setScreen(screen:SlayerScreen){this.screen=screen;this.abandonConfirm=false;if(screen==="modes")this.menuSection="modes";if(screen==="settings")this.menuSection="display";this.onCameraMode?.(screen==="home"?"hero":screen==="setpiece"?"setpiece":"match");this.render();}
   openPause(){this.modalFromMatch=true;this.screen="pause";this.render();}
   openSetPiece(){this.screen="setpiece";this.render();}
   showResult(){this.screen="result";this.render();}
