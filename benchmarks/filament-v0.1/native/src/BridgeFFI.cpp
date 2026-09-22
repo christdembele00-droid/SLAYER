@@ -150,6 +150,31 @@ struct NativeRenderer {
         drs.sharpness = 0.7f;
         view->setDynamicResolutionOptions(drs);
         view->setDynamicLightingOptions(1.0f, 80.0f);
+        view->setShadowType(View::ShadowType::PCF);
+
+        // Mobile-quality post processing: GTAO adds contact depth, while a restrained
+        // bloom pass gives the floodlights and bright kit highlights a real HDR response.
+        View::AmbientOcclusionOptions ao{};
+        ao.aoType = View::AmbientOcclusionOptions::AmbientOcclusionType::GTAO;
+        ao.radius = 0.45f;
+        ao.power = 1.15f;
+        ao.resolution = 0.5f;
+        ao.intensity = 1.0f;
+        ao.quality = QualityLevel::LOW;
+        ao.lowPassFilter = QualityLevel::MEDIUM;
+        ao.upsampling = QualityLevel::LOW;
+        ao.enabled = true;
+        view->setAmbientOcclusionOptions(ao);
+
+        View::BloomOptions bloom{};
+        bloom.enabled = true;
+        bloom.strength = 0.08f;
+        bloom.resolution = 256;
+        bloom.levels = 5;
+        bloom.threshold = true;
+        bloom.quality = QualityLevel::LOW;
+        bloom.highlight = 800.0f;
+        view->setBloomOptions(bloom);
 
         // A minimal real 3D primitive proves that the native Filament pipeline
         // is rendering geometry rather than merely displaying an Android view.
