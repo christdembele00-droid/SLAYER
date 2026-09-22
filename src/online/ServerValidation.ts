@@ -1,0 +1,1 @@
+import {PlayerIntentPacket} from "./OnlineSystems";export class ServerValidation{validate(p:PlayerIntentPacket){return Number.isFinite(p.moveX)&&Number.isFinite(p.moveZ)&&Math.hypot(p.moveX,p.moveZ)<=1.001&&p.power>=0&&p.power<=1;}}
