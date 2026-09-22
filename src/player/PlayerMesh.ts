@@ -130,9 +130,12 @@ export class PlayerMesh{
       new THREE.MeshBasicMaterial({map:numberTexture(String(Number(player.data.playerId.replace(/\D/g,""))%99||1)),transparent:true,side:THREE.DoubleSide})
     );
     number.position.set(0,.9,.242);
+    this.numberMesh=number;
     this.object.add(number);
 
-    void this.loadProductionVisual(home ? 0x1557d6 : 0xc91f35);\n\n    this.object.traverse(o=>{
+    void this.loadProductionVisual();
+
+    this.object.traverse(o=>{
       const m=o as THREE.Mesh;
       if(m.isMesh){m.castShadow=true;m.receiveShadow=true;}
     });
@@ -145,14 +148,16 @@ export class PlayerMesh{
     }
     return this.heroPromise;
   }
-\n  private static loadAnimations():Promise<THREE.AnimationClip[]>{
+
+  private static loadAnimations():Promise<THREE.AnimationClip[]>{
     if(!this.animationPromise){
       const loader=new GLTFLoader();
       this.animationPromise=loader.loadAsync("/assets/3d/animations/universal-animation-library.glb").then(gltf=>gltf.animations);
     }
     return this.animationPromise;
   }
-\n  private async loadProductionVisual():Promise<void>{
+
+  private async loadProductionVisual():Promise<void>{
     try{
       const [source,clips]=await Promise.all([PlayerMesh.loadHero(),PlayerMesh.loadAnimations()]);
       const root=SkeletonUtils.clone(source) as THREE.Object3D;
@@ -176,7 +181,7 @@ export class PlayerMesh{
       this.torso.visible=false;this.shoulders.visible=false;this.shorts.visible=false;this.neck.visible=false;
       this.head.visible=false;this.hair.visible=false;this.leftArm.visible=false;this.rightArm.visible=false;
       this.leftLeg.visible=false;this.rightLeg.visible=false;this.leftSock.visible=false;this.rightSock.visible=false;
-      this.leftBoot.visible=false;this.rightBoot.visible=false;this.numberMesh.visible=false;
+      this.leftBoot.visible=false;this.rightBoot.visible=false;this.numberMesh.visible=false;this.numberMesh.visible=false;
       this.mixer=new THREE.AnimationMixer(root);
       for(const clip of clips){
         const normalized=clip.name.toLowerCase();
@@ -193,7 +198,8 @@ export class PlayerMesh{
       console.warn("[SLAYER] Production player GLB unavailable; procedural player retained.",error);
     }
   }
-\n  sync(player:Player){
+
+  sync(player:Player){
     const p=player.state.position;
     this.object.position.set(p.x,p.y,p.z);
     this.object.rotation.y=player.state.rotationY;
