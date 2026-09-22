@@ -9,6 +9,7 @@ import { WorldSystem } from "../src/world/WorldSystems";
 import { strikeProfile } from "../src/ball/BallKinematics";
 import { GKSystem } from "../src/interaction/GKSystem";
 import { DuelSystem } from "../src/interaction/DuelSystem";
+import { TransitionSystem } from "../src/gameplay/TransitionSystem";
 import { GameplaySystem } from "../src/gameplay/GameplaySystem";
 
 describe("SLAYER runtime integration",()=>{
@@ -79,4 +80,20 @@ describe("SLAYER runtime integration",()=>{
     expect(ai.choose(p,ai.world(ps,bs.ball,10))).toBe("Shoot");
   });
 
+  it("switches team phase when possession changes",()=>{
+    const ps=new PlayerSystem();
+    const home=ps.create(PlayerFactory.createPlayerData("h","H","home","ST"),{x:0,y:0,z:0});
+    const away=ps.create(PlayerFactory.createPlayerData("a","A","away","ST"),{x:1,y:0,z:0});
+    const bs=new BallSystem();
+    const transitions=new TransitionSystem();
+    bs.ball.state.controlledByPlayerId=home.data.playerId;
+    home.state.ballMode="Control";
+    transitions.update(ps,bs.ball,0.016);
+    bs.ball.state.controlledByPlayerId=away.data.playerId;
+    away.state.ballMode="Control";
+    home.state.ballMode="NoBall";
+    transitions.update(ps,bs.ball,0.016);
+    expect(transitions.getState("home").phase).toBe("TransitionToDefense");
+    expect(transitions.getState("away").phase).toBe("TransitionToAttack");
+  });
 });
