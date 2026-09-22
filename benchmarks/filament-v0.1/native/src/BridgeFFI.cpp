@@ -67,7 +67,7 @@ struct NativeRenderer {
     ColorGrading* colorGrading = nullptr;
     ACESToneMapper acesToneMapper{};
     std::unique_ptr<Slayer::Camera::BroadcastCamera> broadcastCamera;
-    std::unique_ptr<Slayer::Animation::AnimationController> animationController;
+    std::vector<std::unique_ptr<Slayer::Animation::AnimationController>> animationControllers;
 
     Entity cameraEntity{};
     Entity meshEntity{};
@@ -123,9 +123,9 @@ struct NativeRenderer {
     std::atomic<uint32_t> renderReadingBuffer{0xffffffffu};
     uint32_t writerBuffer = 1;
     uint32_t playerBoneCount = 0;
-    float previousLocalX = 0.0f;
-    float previousLocalZ = 0.0f;
-    bool havePreviousLocal = false;
+    float previousPlayerX[MAX_PLAYERS]{};
+    float previousPlayerZ[MAX_PLAYERS]{};
+    bool havePreviousPlayers = false;
 
     void applyWeatherVisuals() {
         if (!engine || !weatherEntity) return;
@@ -535,7 +535,7 @@ struct NativeRenderer {
             assetLoader->destroyAsset(playerAsset);
             playerAsset = nullptr;
             playerInstances.clear();
-            playerAnimator = nullptr;
+            animationControllers.clear();
         }
 
         playerInstances.assign(22, nullptr);
@@ -561,15 +561,20 @@ struct NativeRenderer {
         if (!resourceLoader->loadResources(playerAsset)) {
             assetLoader->destroyAsset(playerAsset);
             playerAsset = nullptr;
-            playerAnimator = nullptr;
+            animationControllers.clear();
             return false;
         }
 
         for (auto* instance : playerInstances) {
             if (instance) scene->addEntities(instance->getEntities(), instance->getEntityCount());
         }
-        playerAnimator = playerAsset->getInstance()->getAnimator();
-        animationController = std::make_unique<Slayer::Animation::AnimationController>(playerAnimator);
+        animationControllers.clear();
+        animationControllers.reserve(playerInstances.size());
+        for (auto* instance : playerInstances) {
+            auto* animator = instance ? instance->getAnimator() : nullptr;
+            animationControllers.emplace_back(std::make_unique<Slayer::Animation::AnimationController>(animator));
+        }
+        havePreviousPlayers = false;
         playerAnimationTime = 0.0f;
         playerAnimationIndex = 0;
         playerBoneCount = 0;
@@ -660,20 +665,24 @@ struct NativeRenderer {
             }
         }
 
-        if (playerAnimator && playerAnimator->getAnimationCount() > 0 && playerCount > 0) {
-            const auto& local = playerLocal;
-            float speed = 0.0f;
-            if (havePreviousLocal && dt > 0.0001f) {
-                const float dx = local.x - previousLocalX;
-                const float dz = local.z - previousLocalZ;
-                speed = std::sqrt(dx * dx + dz * dz) / dt;
+        const uint32_t animCount = std::min<uint32_t>(
+            playerCount, static_cast<uint32_t>(animationControllers.size()));
+        if (animCount > 0 && dt > 0.0001f) {
+            for (uint32_t i = 0; i < animCount && i < MAX_PLAYERS; ++i) {
+                const auto& current = readBuffer.transforms[i];
+                float speed = 0.0f;
+                if (havePreviousPlayers) {
+                    const float dx = current.x - previousPlayerX[i];
+                    const float dz = current.z - previousPlayerZ[i];
+                    speed = std::sqrt(dx * dx + dz * dz) / dt;
+                }
+                previousPlayerX[i] = current.x;
+                previousPlayerZ[i] = current.z;
+                if (animationControllers[i]) {
+                    animationControllers[i]->update(speed, false, false, dt);
+                }
             }
-            previousLocalX = local.x;
-            previousLocalZ = local.z;
-            havePreviousLocal = true;
-            if (animationController) {
-                animationController->update(speed, false, false, dt);
-            }
+            havePreviousPlayers = true;
         }
 
         stats.frame_ms = dt * 1000.0f;
@@ -728,7 +737,7 @@ struct NativeRenderer {
         if (!engine) return;
 
         broadcastCamera.reset();
-        animationController.reset();
+        animationControllers.clear();
 
         if (playerAsset && scene) {
             scene->removeEntities(playerAsset->getEntities(), playerAsset->getEntityCount());
@@ -739,7 +748,7 @@ struct NativeRenderer {
         if (playerAsset && assetLoader) {
             assetLoader->destroyAsset(playerAsset);
             playerAsset = nullptr;
-            playerAnimator = nullptr;
+
         }
         if (stadiumAsset && assetLoader) {
             assetLoader->destroyAsset(stadiumAsset);
