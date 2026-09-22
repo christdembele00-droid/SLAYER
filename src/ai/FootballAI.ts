@@ -22,7 +22,7 @@ export class FootballAI{
     return d<2?"Control":"Move";
   }
   update(ps:PlayerSystem,b:Ball,time:number){
-    const w=this.world(ps,b);
+    const w=this.world(ps,b,time);
     for(const p of ps.all()){
       const action=this.choose(p,w);
       const playerAction: PlayerIntent["action"] = action==="Shoot"?"Shoot":action==="Pass"?"Pass":action==="Control"?"Control":"None";
