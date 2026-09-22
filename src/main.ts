@@ -7,6 +7,8 @@ import { PlayerFactory } from "./player/PlayerFactory";
 import { PlayerSystem } from "./player/PlayerSystem";
 import { PlayerInput } from "./player/PlayerInput";
 import { PlayerMesh } from "./player/PlayerMesh";
+import { FullMatchSetup } from "./match/FullMatchSetup";
+import { MatchAI } from "./ai/MatchAI";
 import { BallSystem } from "./ball/BallSystem";
 import { InteractionSystem } from "./interaction/InteractionSystem";
 import { GameplaySystem } from "./gameplay/GameSystems";
@@ -27,6 +29,9 @@ match.start();
 match.kickOff("home");
 
 const players = new PlayerSystem();
+const fullMatch = new FullMatchSetup();
+fullMatch.populate(players);
+const matchAI = new MatchAI();
 const input = new PlayerInput();
 const meshes: PlayerMesh[] = [];
 
