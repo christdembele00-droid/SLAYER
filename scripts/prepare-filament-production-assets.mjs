@@ -56,13 +56,15 @@ const zipList = (await exec("unzip", ["-Z1", fieldZip])).stdout
   .split("\n").map(x => x.trim()).filter(Boolean);
 const glb = zipList.find(x => x.toLowerCase().endsWith(".glb"));
 if (!glb) throw new Error("No GLB found in soccer_field_cc0.zip");
-await exec("unzip", ["-p", fieldZip, glb]).then(async r => {
-  const data = Buffer.from(r.stdout, "binary");
+const extractedPitch = join(out, "models/pitch.glb");
+await exec("sh", ["-c", `unzip -p "$1" "$2" > "$3"`, "--", fieldZip, glb, extractedPitch]);
+{
+  const data = await readFile(extractedPitch);
   if (data.length < 128 || data.subarray(0,4).toString() !== "glTF") {
     throw new Error("Extracted pitch asset is not a valid GLB");
   }
-  await writeFile(join(out, "models/pitch.glb"), data);
-});
+  await writeFile(extractedPitch, data);
+}
 
 const cmgen = await findExecutable("cmgen");
 if (!cmgen) throw new Error("cmgen is required to generate the Android KTX IBL/Skybox");
