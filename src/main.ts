@@ -83,7 +83,7 @@ renderer.scene.add(ballMesh);
 const controlledId="home-1";
 const ui=new SlayerUI(
   app,
-  () => { match.start(); match.kickOff("home"); },
+  startMatch,
   action => input.setAction(action,.75),
   pressed => input.setSprint(pressed)
 );
@@ -92,6 +92,14 @@ const online=config.wsUrl?new WebSocketClient():null;
 if(online) online.connect(config.wsUrl!);
 
 window.addEventListener("pointerdown",()=>void audio.resume(),{once:true});
+
+let matchStarted = false;
+function startMatch(): void {
+  if (matchStarted) return;
+  matchStarted = true;
+  match.start();
+  match.kickOff("home");
+}
 window.addEventListener("keydown",event=>{
   if(event.key==="Shift") input.setSprint(true);
   const key=event.key.toLowerCase();
