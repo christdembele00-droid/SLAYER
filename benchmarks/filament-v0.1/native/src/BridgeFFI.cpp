@@ -120,9 +120,6 @@ struct NativeRenderer {
         drs.sharpness = settings.quality == slayer::QualityMode::Low ? 0.55f : 0.72f;
         drs.quality = settings.quality == slayer::QualityMode::Ultra ? QualityLevel::HIGH : settings.quality == slayer::QualityMode::High ? QualityLevel::MEDIUM : QualityLevel::LOW;
         view->setDynamicResolutionOptions(drs);
-        View::RenderQuality rq{};
-        rq.hdrColorBuffer = settings.quality == slayer::QualityMode::Low ? View::RenderQuality::HdrColorBuffer::R11F_G11F_B10F : View::RenderQuality::HdrColorBuffer::RGBA16F;
-        view->setRenderQuality(rq);
         Renderer::FrameRateOptions fps{};
         fps.interval = settings.targetFps <= 30 ? 2 : 1;
         fps.headRoomRatio = settings.quality == slayer::QualityMode::Low ? 0.10f : 0.05f;
