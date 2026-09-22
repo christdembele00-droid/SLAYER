@@ -34,7 +34,7 @@ target_include_directories(slayer_filament_benchmark PRIVATE
 # libfilament.a intentionally does not contain every backend / utility implementation,
 # so linking only libfilament.a + libutils.a leaves many symbols unresolved.
 # The official Filament Android build links these components together.
-set(FILAMENT_LIB_DIR "${FILAMENT_DIST_DIR}/lib/${ANDROID_ABI}")
+set(FILAMENT_LIB_DIR "${FILAMENT_DIST_DIR}/filament/lib/${ANDROID_ABI}")
 
 function(import_filament_static NAME)
     set(LIB_PATH "${FILAMENT_LIB_DIR}/lib${NAME}.a")
