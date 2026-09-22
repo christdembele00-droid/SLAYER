@@ -1,1 +1,30 @@
-import { PlayerIntentPacket,Snapshot } from "./NetworkTypes"; export class AuthoritativeSession{private sequence=0;private intents=new Map<string,PlayerIntentPacket>();receiveIntent(p:PlayerIntentPacket){this.intents.set(p.playerId,p);}validateIntent(p:PlayerIntentPacket){return Math.abs(p.moveX)<=1&&Math.abs(p.moveZ)<=1&&p.power>=0&&p.power<=1;}nextSnapshot(s:Snapshot):Snapshot{return{...s,sequence:++this.sequence,serverTime:Date.now()};}}
+import type { PlayerIntentPacket, Snapshot } from "./NetworkTypes";
+
+export class AuthoritativeSession {
+  private sequence = 0;
+  private readonly intents = new Map<string, PlayerIntentPacket>();
+
+  receiveIntent(packet: PlayerIntentPacket): void {
+    if (this.validateIntent(packet)) {
+      this.intents.set(packet.playerId, packet);
+    }
+  }
+
+  validateIntent(packet: PlayerIntentPacket): boolean {
+    return Number.isFinite(packet.moveX)
+      && Number.isFinite(packet.moveZ)
+      && Math.abs(packet.moveX) <= 1
+      && Math.abs(packet.moveZ) <= 1
+      && Number.isFinite(packet.power)
+      && packet.power >= 0
+      && packet.power <= 1;
+  }
+
+  nextSnapshot(snapshot: Snapshot): Snapshot {
+    return {
+      ...snapshot,
+      sequence: ++this.sequence,
+      serverTime: Date.now(),
+    };
+  }
+}
