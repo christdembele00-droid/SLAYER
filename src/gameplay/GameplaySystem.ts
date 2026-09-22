@@ -33,7 +33,7 @@ export class GameplaySystem {
       return {success:true,action,quality:Math.max(.3,1-fatigue),reason:"shielding"};
     }
 
-    if(action==="StandingTackle"||action==="SlideTackle"||action==="Intercept"){
+    if(action==="Tackle"||action==="StandingTackle"||action==="SlideTackle"||action==="Intercept"){
       const ownerId=ball.state.controlledByPlayerId;
       if(!ownerId||ownerId===playerId)return {success:false,action,quality:0,reason:"no_opponent_possession"};
       const owner=players.get(ownerId);
@@ -51,7 +51,7 @@ export class GameplaySystem {
       ball.state.controlledByPlayerId=undefined;
       ball.state.state="Free";
       ball.state.velocity={x:normalized.x*(action==="SlideTackle"?7:4),y:action==="SlideTackle"?.45:.18,z:normalized.z*(action==="SlideTackle"?7:4)};
-      p.state.action=action;
+      p.state.action=action==="Tackle"?"StandingTackle":action;
       return {success:true,action,quality:chance,reason:"ball_won"};
     }
 
