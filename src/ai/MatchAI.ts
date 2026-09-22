@@ -1,0 +1,1 @@
+import {PlayerSystem} from "../player/PlayerSystem";import {Ball} from "../ball/Ball";import {PlayerAI} from "./PlayerAI";export class MatchAI{private readonly ai=new PlayerAI();update(ps:PlayerSystem,b:Ball,dt:number){void dt;this.ai.update(ps,b,Date.now()/1000);}}
