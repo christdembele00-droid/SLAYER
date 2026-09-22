@@ -66,7 +66,7 @@ export class SlayerUI {
           '<div class="match-controls">' +
             '<div class="radar"><i></i><b></b></div>' +
             '<div class="touch-actions">' +
-              '<button type="button" data-action="Pass">PASS</button>' +
+              '<button type="button" data-action="Control">CONTROL</button><button type="button" data-action="Pass">PASS</button>' +
               '<button type="button" class="accent" data-action="Shoot">SHOOT</button>' +
               '<button type="button" data-sprint="1">SPRINT</button>' +
             "</div>" +
