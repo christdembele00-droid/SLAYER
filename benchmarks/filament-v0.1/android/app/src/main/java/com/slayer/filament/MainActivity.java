@@ -46,6 +46,7 @@ public final class MainActivity extends Activity {
     private View menuBackground;
     private long menuOpenedAt = 0L;
     private View activePage = null;
+    private FrameLayout gameControls = null;
 
     private static native boolean nativeCreate(android.view.Surface surface);
     private static native boolean nativeLoadTerrainMaterial(byte[] data);
@@ -208,19 +209,19 @@ public final class MainActivity extends Activity {
         menuOverlay.addView(shade, new FrameLayout.LayoutParams(-1, -1));
 
         TextView brand = menuLabel("SLAYER", 30f, true);
-        FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(300, 64, Gravity.TOP | Gravity.LEFT);
-        bp.leftMargin = 28; bp.topMargin = 18;
+        FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(uiPx(300), uiPx(64), Gravity.TOP | Gravity.LEFT);
+        bp.leftMargin = uiPx(28); bp.topMargin = uiPx(18);
         menuOverlay.addView(brand, bp);
 
         TextView season = menuLabel("FOOTBALL 2026", 12f, false);
         season.setTextColor(0xFFFFFF66);
-        FrameLayout.LayoutParams sep = new FrameLayout.LayoutParams(220, 40, Gravity.TOP | Gravity.LEFT);
-        sep.leftMargin = 32; sep.topMargin = 70;
+        FrameLayout.LayoutParams sep = new FrameLayout.LayoutParams(uiPx(220), uiPx(40), Gravity.TOP | Gravity.LEFT);
+        sep.leftMargin = uiPx(32); sep.topMargin = uiPx(70);
         menuOverlay.addView(season, sep);
 
         Button settings = menuButton("⚙", 22f);
-        FrameLayout.LayoutParams setp = new FrameLayout.LayoutParams(70, 60, Gravity.TOP | Gravity.RIGHT);
-        setp.rightMargin = 22; setp.topMargin = 18;
+        FrameLayout.LayoutParams setp = new FrameLayout.LayoutParams(uiPx(70), uiPx(60), Gravity.TOP | Gravity.RIGHT);
+        setp.rightMargin = uiPx(22); setp.topMargin = uiPx(18);
         menuOverlay.addView(settings, setp);
         settings.setOnClickListener(v -> showSettingsCard());
 
@@ -240,8 +241,8 @@ public final class MainActivity extends Activity {
         Button quick = menuButton("▶  MATCH RAPIDE", 18f);
         quick.setTextColor(Color.BLACK);
         quick.setBackgroundColor(0xFFFFD400);
-        FrameLayout.LayoutParams qp = new FrameLayout.LayoutParams(390, 70, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        qp.topMargin = 225;
+        FrameLayout.LayoutParams qp = new FrameLayout.LayoutParams(uiPx(390), uiPx(70), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        qp.topMargin = uiPx(225);
         menuOverlay.addView(quick, qp);
         quick.setOnClickListener(v -> startMatch());
 
@@ -256,14 +257,14 @@ public final class MainActivity extends Activity {
                 "EFFECTIF  •  TACTIQUES  •  KITS  •  PROGRESSION"));
 
         Button profile = menuButton("PROFIL", 13f);
-        FrameLayout.LayoutParams pp = new FrameLayout.LayoutParams(150, 48, Gravity.BOTTOM | Gravity.LEFT);
-        pp.leftMargin = 22; pp.bottomMargin = 20;
+        FrameLayout.LayoutParams pp = new FrameLayout.LayoutParams(uiPx(150), uiPx(48), Gravity.BOTTOM | Gravity.LEFT);
+        pp.leftMargin = uiPx(22); pp.bottomMargin = uiPx(20);
         menuOverlay.addView(profile, pp);
         profile.setOnClickListener(v -> showModeScreen("PROFIL", "JOUEUR  •  PROGRESSION  •  STATISTIQUES"));
 
         Button other = menuButton("AUTRES", 13f);
-        FrameLayout.LayoutParams op = new FrameLayout.LayoutParams(150, 48, Gravity.BOTTOM | Gravity.RIGHT);
-        op.rightMargin = 22; op.bottomMargin = 20;
+        FrameLayout.LayoutParams op = new FrameLayout.LayoutParams(uiPx(150), uiPx(48), Gravity.BOTTOM | Gravity.RIGHT);
+        op.rightMargin = uiPx(22); op.bottomMargin = uiPx(20);
         menuOverlay.addView(other, op);
         other.setOnClickListener(v -> showModeScreen("AUTRES", "AIDE  •  INFORMATIONS  •  OPTIONS"));
 
@@ -272,9 +273,9 @@ public final class MainActivity extends Activity {
 
     private void addModeCard(String text, int left, int top, int width, int height, Runnable action) {
         Button b = menuButton(text, 14f);
-        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(width, height, Gravity.TOP | Gravity.LEFT);
-        p.leftMargin = left;
-        p.topMargin = top;
+        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(uiPx(width), uiPx(height), Gravity.TOP | Gravity.LEFT);
+        p.leftMargin = uiPx(left);
+        p.topMargin = uiPx(top);
         menuOverlay.addView(b, p);
         b.setOnClickListener(v -> action.run());
     }
@@ -284,18 +285,18 @@ public final class MainActivity extends Activity {
         page.setBackgroundColor(0xFF07111E);
 
         TextView t = menuLabel(title, 30f, true);
-        FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-1, 70, Gravity.TOP);
-        tp.topMargin = 42; tp.leftMargin = 30;
+        FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-1, uiPx(70), Gravity.TOP);
+        tp.topMargin = uiPx(42); tp.leftMargin = uiPx(30);
         page.addView(t, tp);
 
         TextView d = menuLabel(details, 15f, false);
         d.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams dp = new FrameLayout.LayoutParams(-1, 160, Gravity.CENTER);
+        FrameLayout.LayoutParams dp = new FrameLayout.LayoutParams(-1, uiPx(160), Gravity.CENTER);
         page.addView(d, dp);
 
         Button back = menuButton("‹  RETOUR", 14f);
-        FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(170, 56, Gravity.BOTTOM | Gravity.LEFT);
-        bp.leftMargin = 24; bp.bottomMargin = 24;
+        FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(uiPx(170), uiPx(56), Gravity.BOTTOM | Gravity.LEFT);
+        bp.leftMargin = uiPx(24); bp.bottomMargin = uiPx(24);
         page.addView(back, bp);
         back.setOnClickListener(v -> {
             root.removeView(page);
@@ -350,8 +351,11 @@ public final class MainActivity extends Activity {
             loadBundledStadium();
             loadBundledPlayer();
             android.util.Log.i("SLAYER", "Native match renderer initialized");
+        } else {
+            nativeResetMatch();
         }
 
+        removeGameControls();
         addGameControls(root);
         lastFrameNanos = System.nanoTime();
         testStartNanos = lastFrameNanos;
@@ -438,57 +442,80 @@ public final class MainActivity extends Activity {
         stick.setTextColor(Color.WHITE);
         stick.setGravity(Gravity.CENTER);
         stick.setBackgroundColor(0x55333333);
+        if (gameControls != null) root.removeView(gameControls);
+        gameControls = new FrameLayout(this);
+        root.addView(gameControls, new FrameLayout.LayoutParams(-1, -1));
+        FrameLayout controlRoot = gameControls;
         FrameLayout.LayoutParams sp =
-                new FrameLayout.LayoutParams(180, 180, Gravity.BOTTOM | Gravity.LEFT);
-        sp.leftMargin = 28;
-        sp.bottomMargin = 36;
-        root.addView(stick, sp);
+                new FrameLayout.LayoutParams(uiPx(180), uiPx(180), Gravity.BOTTOM | Gravity.LEFT);
+        sp.leftMargin = uiPx(28);
+        sp.bottomMargin = uiPx(36);
+        controlRoot.addView(stick, sp);
 
         stick.setOnTouchListener((v, e) -> {
-            if (e.getAction() == MotionEvent.ACTION_UP) {
+            if (e.getAction() == MotionEvent.ACTION_UP || e.getAction() == MotionEvent.ACTION_CANCEL || e.getAction() == MotionEvent.ACTION_POINTER_UP) {
                 moveX = moveY = 0;
             } else {
-                float cx = 90, cy = 90;
-                moveX = Math.max(-1, Math.min(1, (e.getX() - cx) / 70));
-                moveY = Math.max(-1, Math.min(1, (e.getY() - cy) / 70));
+                float cx = v.getWidth() * 0.5f, cy = v.getHeight() * 0.5f;
+                float radius = Math.max(1.0f, Math.min(v.getWidth(), v.getHeight()) * 0.39f);
+                moveX = Math.max(-1, Math.min(1, (e.getX() - cx) / radius));
+                moveY = Math.max(-1, Math.min(1, (e.getY() - cy) / radius));
             }
             nativeSetInput(moveX, moveY, pass, shoot, sprint, tackle, selectedPlayer);
             return true;
         });
 
-        Button passButton = button(root, "PASS", Gravity.BOTTOM | Gravity.RIGHT, 250, 36);
-        Button shootButton = button(root, "TIR", Gravity.BOTTOM | Gravity.RIGHT, 125, 130);
-        Button sprintButton = button(root, "SPRINT", Gravity.BOTTOM | Gravity.RIGHT, 260, 150);
-        Button tackleButton = button(root, "TACLE", Gravity.BOTTOM | Gravity.RIGHT, 390, 36);
+        Button passButton = button(controlRoot, "PASS", Gravity.BOTTOM | Gravity.RIGHT, 250, 36);
+        Button shootButton = button(controlRoot, "TIR", Gravity.BOTTOM | Gravity.RIGHT, 125, 130);
+        Button sprintButton = button(controlRoot, "SPRINT", Gravity.BOTTOM | Gravity.RIGHT, 260, 150);
+        Button tackleButton = button(controlRoot, "TACKLE", Gravity.BOTTOM | Gravity.RIGHT, 390, 36);
 
         passButton.setOnTouchListener((v, e) -> {
-            pass = e.getAction() == MotionEvent.ACTION_UP ? 0 : 1;
+            pass = (e.getAction() == MotionEvent.ACTION_UP || e.getAction() == MotionEvent.ACTION_CANCEL || e.getAction() == MotionEvent.ACTION_POINTER_UP) ? 0 : 1;
             nativeSetInput(moveX, moveY, pass, shoot, sprint, tackle, selectedPlayer);
             return true;
         });
         shootButton.setOnTouchListener((v, e) -> {
-            shoot = e.getAction() == MotionEvent.ACTION_UP ? 0 : 1;
+            shoot = (e.getAction() == MotionEvent.ACTION_UP || e.getAction() == MotionEvent.ACTION_CANCEL || e.getAction() == MotionEvent.ACTION_POINTER_UP) ? 0 : 1;
             nativeSetInput(moveX, moveY, pass, shoot, sprint, tackle, selectedPlayer);
             return true;
         });
         sprintButton.setOnTouchListener((v, e) -> {
-            sprint = e.getAction() == MotionEvent.ACTION_UP ? 0 : 1;
+            sprint = (e.getAction() == MotionEvent.ACTION_UP || e.getAction() == MotionEvent.ACTION_CANCEL || e.getAction() == MotionEvent.ACTION_POINTER_UP) ? 0 : 1;
             nativeSetInput(moveX, moveY, pass, shoot, sprint, tackle, selectedPlayer);
             return true;
         });
         tackleButton.setOnTouchListener((v, e) -> {
-            tackle = e.getAction() == MotionEvent.ACTION_UP ? 0 : 1;
+            tackle = (e.getAction() == MotionEvent.ACTION_UP || e.getAction() == MotionEvent.ACTION_CANCEL || e.getAction() == MotionEvent.ACTION_POINTER_UP) ? 0 : 1;
             nativeSetInput(moveX, moveY, pass, shoot, sprint, tackle, selectedPlayer);
             return true;
         });
 
-        Button reset = button(root, "RESTART", Gravity.TOP | Gravity.LEFT, 24, 130);
+        Button reset = button(controlRoot, "RESTART", Gravity.TOP | Gravity.LEFT, 24, 130);
         reset.setOnClickListener(v -> nativeResetMatch());
     }
 
     private Button button(FrameLayout root,String label,int gravity,int right,int bottom){
-        Button b=new Button(this); b.setText(label); b.setTextSize(12); b.setTextColor(Color.WHITE); b.setBackgroundColor(0x88444444);
-        FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(112,72,gravity); lp.rightMargin=right; lp.bottomMargin=bottom; root.addView(b,lp); return b;
+        Button b=new Button(this);
+        b.setText(label); b.setTextSize(12); b.setTextColor(Color.WHITE); b.setBackgroundColor(0x88444444);
+        FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(uiPx(112),uiPx(72),gravity);
+        lp.rightMargin=uiPx(right); lp.bottomMargin=uiPx(bottom);
+        root.addView(b,lp); return b;
+    }
+
+    private int uiPx(float value) {
+        android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+        float widthScale = dm.widthPixels / 600.0f;
+        float heightScale = dm.heightPixels / 400.0f;
+        float scale = Math.max(0.75f, Math.min(1.35f, Math.min(widthScale, heightScale)));
+        return Math.max(1, Math.round(value * scale));
+    }
+
+    private void removeGameControls() {
+        if (gameControls != null) {
+            root.removeView(gameControls);
+            gameControls = null;
+        }
     }
 
     private void applyGameLoopScenario(long elapsedMs) {
@@ -624,6 +651,15 @@ public final class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        if (matchStarted && !menuVisible) {
+            surface.removeCallbacks(frameRunnable);
+            removeGameControls();
+            matchStarted = false;
+            menuVisible = true;
+            statsView.setVisibility(View.GONE);
+            showMainMenu();
+            return;
+        }
         if (activePage != null && activePage.getParent() != null) {
             root.removeView(activePage);
             activePage = null;
