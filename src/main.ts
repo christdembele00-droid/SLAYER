@@ -131,7 +131,6 @@ renderer.scene.add(ballMesh);
 
 const controlledId="home-11";
 const nextAIActionAt=new Map<string,number>();
-let lastOnlineSnapshotAt=0;
 function ensureControlledPlayerPossession(): void {
   const p=players.get(controlledId);
   if(!p || !["FirstHalf","SecondHalf","ExtraTimeFirstHalf","ExtraTimeSecondHalf"].includes(match.snapshot().phase) || ball.state.controlledByPlayerId) return;
@@ -145,7 +144,7 @@ function ensureControlledPlayerPossession(): void {
 const qualityTierMap={low:"Low",medium:"Medium",high:"High",ultra:"Ultra"} as const;
 function applySlayerSettings(s:SlayerSettings):void{
   const duration=Number(s.duration)||10;
-  match.rules.config.halfDurationSeconds=duration*30;
+  match.rules.config.halfDurationSeconds=duration*60;
   match.rules.config.extraTimeEnabled=Boolean(s.extraTime);
   match.rules.config.penaltiesEnabled=Boolean(s.penalties);
   if(typeof s.quality==="string" && s.quality in qualityTierMap) quality.setTier(qualityTierMap[s.quality as keyof typeof qualityTierMap]);
@@ -177,7 +176,7 @@ const ui=new SlayerUI(
   mode => camera.setMode(mode),
   applySlayerSettings
 );
-const config=(window as unknown as {__SLAYER_CONFIG__?:{wsUrl?:string}}).__SLAYER_CONFIG__??{};
+const config=(window as unknown as {__SLAYER_CONFIG__?:{wsUrl?:string;wsToken?:string}}).__SLAYER_CONFIG__??{};
 const online=config.wsUrl?new WebSocketClient():null;
 if(online) online.connect(config.wsUrl!);
 
@@ -335,7 +334,7 @@ function frame(now:number){
   const snapshot=match.snapshot();
   ui.updateMatch(snapshot.score.homeGoals,snapshot.score.awayGoals,match.clock.format(),snapshot.phase.toUpperCase());
   ui.updatePerformance(perf.fps || gpu.fps,perf.frameMs || gpu.frameMs,perf.p95Ms || gpu.p95Ms,gpu.drawCalls,gpu.triangles,quality.tier);
-  if(online && now-lastOnlineSnapshotAt>=100){ online.send({type:"snapshot",ball:{...ball.state.position},time:snapshot.timeSeconds}); lastOnlineSnapshotAt=now; }
+  if(online && human.action!=="None"){ online.send({type:"intent",data:{playerId:controlledId,moveX:human.moveDirection.x,moveZ:human.moveDirection.z,action:human.action,power:human.power}}); }
 
   renderer.render();
   requestAnimationFrame(frame);
