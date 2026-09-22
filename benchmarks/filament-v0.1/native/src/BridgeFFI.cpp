@@ -1,6 +1,7 @@
 #include "slayer_renderer.h"
 #include "slayer_input.h"
 #include "slayer_settings.h"
+#include "slayer_render_quality.h"
 
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
@@ -112,20 +113,7 @@ struct NativeRenderer {
 
     void applySettings() {
         if (!engine || !view || !camera || !renderer) return;
-        View::DynamicResolutionOptions drs{};
-        drs.enabled = settings.dynamicResolution;
-        drs.homogeneousScaling = true;
-        drs.minScale = settings.quality == slayer::QualityMode::Low ? 0.60f : settings.quality == slayer::QualityMode::Medium ? 0.72f : 0.82f;
-        drs.maxScale = settings.quality == slayer::QualityMode::Ultra ? 1.0f : 0.95f;
-        drs.sharpness = settings.quality == slayer::QualityMode::Low ? 0.55f : 0.72f;
-        drs.quality = settings.quality == slayer::QualityMode::Ultra ? QualityLevel::HIGH : settings.quality == slayer::QualityMode::High ? QualityLevel::MEDIUM : QualityLevel::LOW;
-        view->setDynamicResolutionOptions(drs);
-        Renderer::FrameRateOptions fps{};
-        fps.interval = settings.targetFps <= 30 ? 2 : 1;
-        fps.headRoomRatio = settings.quality == slayer::QualityMode::Low ? 0.10f : 0.05f;
-        fps.scaleRate = 1.0f / 8.0f;
-        fps.history = 15;
-        renderer->setFrameRateOptions(fps);
+        slayer::applyMobileQuality(engine, view, renderer, settings);
         const bool night = settings.time == slayer::TimeMode::Night;
         const bool twilight = settings.time == slayer::TimeMode::Twilight;
         auto& lm = engine->getLightManager();
@@ -218,58 +206,6 @@ struct NativeRenderer {
         bloom.quality = QualityLevel::LOW;
         bloom.highlight = 800.0f;
         view->setBloomOptions(bloom);
-
-        // A minimal real 3D primitive proves that the native Filament pipeline
-        // is rendering geometry rather than merely displaying an Android view.
-        static constexpr float vertices[] = {
-            -1.0f, -1.0f,  0.0f,
-             1.0f, -1.0f,  0.0f,
-             1.0f,  1.0f,  0.0f,
-            -1.0f,  1.0f,  0.0f,
-             0.0f,  0.0f,  1.4f
-        };
-        static constexpr uint16_t indices[] = {
-            0, 1, 4, 1, 2, 4, 2, 3, 4, 3, 0, 4,
-            3, 2, 1, 1, 0, 3
-        };
-
-        vertexBuffer = VertexBuffer::Builder()
-            .vertexCount(5)
-            .bufferCount(1)
-            .attribute(VertexAttribute::POSITION, 0,
-                       VertexBuffer::AttributeType::FLOAT3)
-            .build(*engine);
-
-        indexBuffer = IndexBuffer::Builder()
-            .indexCount(sizeof(indices) / sizeof(indices[0]))
-            .bufferType(IndexBuffer::IndexType::USHORT)
-            .build(*engine);
-
-        if (!vertexBuffer || !indexBuffer) return false;
-
-        vertexBuffer->setBufferAt(
-            *engine, 0,
-            VertexBuffer::BufferDescriptor(vertices, sizeof(vertices), nullptr));
-        indexBuffer->setBuffer(
-            *engine,
-            IndexBuffer::BufferDescriptor(indices, sizeof(indices), nullptr));
-
-        material = const_cast<Material*>(engine->getDefaultMaterial());
-        materialInstance = material ? material->createInstance() : nullptr;
-        if (!materialInstance) return false;
-
-        meshEntity = engine->getEntityManager().create();
-
-        RenderableManager::Builder(1)
-            .boundingBox({{-1.0f, -1.0f, -1.5f}, {1.0f, 1.0f, 1.5f}})
-            .material(0, materialInstance)
-            .geometry(0, RenderableManager::PrimitiveType::TRIANGLES,
-                      vertexBuffer, indexBuffer, 0,
-                      sizeof(indices) / sizeof(indices[0]))
-            .culling(false)
-            .build(*engine, meshEntity);
-
-        scene->addEntity(meshEntity);
 
         // Stadium-style ground plane for the first PBR lighting milestone.
         static constexpr float terrainVertices[] = {
