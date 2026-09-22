@@ -28,6 +28,7 @@ add_library(slayer_filament_benchmark SHARED
     src/SLAYERGameSystems.cpp
     src/SLAYERFeatureRuntime.cpp
     src/SLAYERAnimationSystem.cpp
+    src/SLAYERAssetLoader.cpp
     src/net/NetcodeClient.cpp
 )
 
