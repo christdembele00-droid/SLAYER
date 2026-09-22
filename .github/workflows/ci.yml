@@ -84,6 +84,12 @@ jobs:
           tar -xzf /tmp/filament-native.tgz -C /tmp/filament-native
           echo "FILAMENT_DIST_DIR=/tmp/filament-native" >> "$GITHUB_ENV"
 
+      - name: Install Blender for FBX production asset conversion
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y blender
+          blender --version
+
       - name: Download Filament host tools for production assets
         run: |
           curl -L --fail --retry 3 -o /tmp/filament-linux.tgz https://github.com/google/filament/releases/download/v1.77.0/filament-v1.77.0-linux.tgz
