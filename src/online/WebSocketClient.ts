@@ -1,0 +1,1 @@
+export class WebSocketClient{socket:WebSocket|null=null;connect(url:string){this.socket=new WebSocket(url);return this.socket}send(data:unknown){if(this.socket?.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify(data))}close(){this.socket?.close()}}
