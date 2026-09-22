@@ -46,7 +46,7 @@ public final class MainActivity extends Activity {
     private View menuBackground;
     private long menuOpenedAt = 0L;
 
-    private static native void nativeCreate(android.view.Surface surface);
+    private static native boolean nativeCreate(android.view.Surface surface);
     private static native boolean nativeLoadTerrainMaterial(byte[] data);
     private static native boolean nativeLoadEnvironment(byte[] data);
     private static native boolean nativeLoadSkybox(byte[] data);
@@ -302,6 +302,125 @@ public final class MainActivity extends Activity {
         root.addView(page, new FrameLayout.LayoutParams(-1, -1));
     }
 
+    private void showSettingsCard() {
+        showModeScreen("PARAMÈTRES", "GRAPHISMES  •  VULKAN  •  COMMANDES  •  AUDIO");
+    }
+
+    private void startMatch() {
+        if (matchStarted) return;
+        matchStarted = true;
+        menuVisible = false;
+
+        if (menuOverlay != null) {
+            root.removeView(menuOverlay);
+            menuOverlay = null;
+        }
+
+        statsView.setVisibility(View.VISIBLE);
+
+        // Initialize the native renderer only now. This isolates the menu from
+        // missing/invalid production assets and prevents the app from closing
+        // while the player is still on the home screen.
+        if (!nativeReady) {
+            android.view.Surface nativeSurface = surface.getHolder().getSurface();
+            if (nativeSurface == null || !nativeSurface.isValid()) {
+                matchStarted = false;
+                menuVisible = true;
+                showMainMenu();
+                android.widget.Toast.makeText(this, "Surface graphique indisponible. Réessayez.", android.widget.Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!nativeCreate(nativeSurface)) {
+                matchStarted = false;
+                menuVisible = true;
+                statsView.setVisibility(View.GONE);
+                showMainMenu();
+                android.widget.Toast.makeText(this, "Vulkan indisponible sur cet appareil.", android.widget.Toast.LENGTH_LONG).show();
+                return;
+            }
+            nativeReady = true;
+            nativeSetSettings(10, true, true, 5, 1, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 1,
+                    60, 2, true, 0, true, 0, .55f, .85f, .80f, .90f);
+            loadBundledEnvironment();
+            loadBundledTerrainMaterial();
+            loadBundledStadium();
+            loadBundledPlayer();
+            android.util.Log.i("SLAYER", "Native match renderer initialized");
+        }
+
+        addGameControls(root);
+        lastFrameNanos = System.nanoTime();
+        testStartNanos = lastFrameNanos;
+        surface.postOnAnimation(frameRunnable);
+    }
+
+    private static final class MenuBackgroundView extends View {
+        private final android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.LinearGradient gradient;
+
+        MenuBackgroundView(android.content.Context context) {
+            super(context);
+            gradient = new android.graphics.LinearGradient(
+                    0, 0, 0, 900,
+                    new int[]{0xFF04101C, 0xFF0A3151, 0xFF02070D},
+                    null, android.graphics.Shader.TileMode.CLAMP);
+        }
+
+        @Override
+        protected void onDraw(android.graphics.Canvas canvas) {
+            super.onDraw(canvas);
+            paint.setShader(gradient);
+            canvas.drawRect(0, 0, getWidth(), getHeight(), paint);
+            paint.setShader(null);
+
+            // Abstract stadium lights / pitch perspective, so the menu is never
+            // an empty black screen while real 3D menu art is being integrated.
+            paint.setColor(0x332FA8FF);
+            canvas.drawOval(-180, getHeight() - 260, getWidth() + 180, getHeight() + 220, paint);
+            paint.setColor(0x55FFFFFF);
+            for (int i = 0; i < 8; i++) {
+                float x = 30 + i * (getWidth() - 60) / 7f;
+                canvas.drawCircle(x, 120 + (i % 2) * 18, 3.5f, paint);
+            }
+            paint.setStyle(android.graphics.Paint.Style.STROKE);
+            paint.setStrokeWidth(2);
+            paint.setColor(0x3388CCFF);
+            canvas.drawArc(-getWidth(), getHeight() - 300, getWidth() * 2, getHeight() + 300, 190, 160, false, paint);
+            paint.setStyle(android.graphics.Paint.Style.FILL);
+        }
+    }
+
+    private TextView menuLabel(String text, float size, boolean bold) {
+        TextView v = new TextView(this);
+        v.setText(text);
+        v.setTextColor(Color.WHITE);
+        v.setTextSize(size);
+        v.setGravity(Gravity.CENTER_VERTICAL);
+        if (bold) v.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        return v;
+    }
+
+    private Button menuButton(String text, float size) {
+        Button b = new Button(this);
+        b.setText(text);
+        b.setTextColor(Color.WHITE);
+        b.setTextSize(size);
+        b.setAllCaps(false);
+        b.setGravity(Gravity.CENTER);
+        b.setBackgroundColor(0xB31B1D22);
+        return b;
+    }
+
+    private void addMenuButton(Button b, int gravity, int left, int top, int width, int height) {
+        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(width, height, gravity);
+        p.leftMargin = left;
+        p.topMargin = top;
+        menuOverlay.addView(b, p);
+    }
+
+    private void showModeMessage(String title, String details) {
+        android.widget.Toast.makeText(this, title + " — " + details, android.widget.Toast.LENGTH_SHORT).show();
+    }
 
     private int readTestScenario(Intent intent) {
         if (!"com.google.intent.action.TEST_LOOP".equals(intent.getAction())) return 0;
