@@ -6,6 +6,7 @@ import { PlayerSystem } from "./player/PlayerSystem";
 import { PlayerInput } from "./player/PlayerInput";
 import { PlayerMesh } from "./player/PlayerMesh";
 import { FullMatchSetup } from "./match/FullMatchSetup";
+import { FootballAI } from "./ai/FootballAI";
 import { TacticalBrain } from "./ai/TacticalBrain";
 import { BallSystem } from "./ball/BallSystem";
 import { InteractionSystem } from "./interaction/InteractionSystem";
@@ -51,6 +52,7 @@ const ball=ballSystem.ball;
 ball.setPosition({x:0,y:.11,z:0});
 const interactions=new InteractionSystem();
 const gameplay=new GameplaySystem(interactions);
+const ai=new FootballAI();
 const tactical=new TacticalBrain();
 const animation=new AnimationSystem();
 const camera=new CameraDirector();
@@ -122,6 +124,7 @@ function frame(now:number){
   last=now;
 
   const human=input.snapshot();
+  ai.update(players,ball,match.clock.seconds);
   tactical.update(players,ball);
 
   const intents=new Map<string, import("./player/PlayerTypes").PlayerIntent>();
@@ -152,6 +155,7 @@ function frame(now:number){
   detectGoal();
   match.update(delta);
   world.update(delta);
+  ball.setSurface(world.weather==="Rain" ? "GrassWet" : "GrassDry",world.wetness);
   quality.update(delta*1000);
   crowd.update(delta,Math.min(1,ball.state.velocity.x**2+ball.state.velocity.z**2)/100);
   nets.forEach(n=>n.update(delta));
