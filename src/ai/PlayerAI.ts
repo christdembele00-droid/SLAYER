@@ -1,0 +1,2 @@
+import { PlayerSystem } from "../player/PlayerSystem"; import { Ball } from "../ball/Ball"; import { WorldModel } from "./WorldModel"; import { UtilityAI } from "./UtilityAI";
+export class PlayerAI{readonly world=new WorldModel();readonly utility=new UtilityAI();update(players:PlayerSystem,ball:Ball,time:number){const w=this.world.snapshot(players,ball,time);for(const p of players.all()){if(p.state.ballMode==="Control")this.utility.choose(p,w);}}}
