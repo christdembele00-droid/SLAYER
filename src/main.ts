@@ -27,7 +27,7 @@ import { AudioEngine } from "./audio/AudioEngine";
 import { CommentarySystem } from "./audio/CommentarySystem";
 import { WebSocketClient } from "./online/WebSocketClient";
 import type { PlayerAction, PlayerIntent } from "./player/PlayerTypes";
-import { SlayerUI } from "./ui/SLAYERUI";
+import { SlayerUI, type SlayerSettings } from "./ui/SLAYERUI";
 import { PerformanceMonitor } from "./performance/PerformanceMonitor";
 import { GPUProfiler } from "./performance/GPUProfiler";
 import { AdvancedBallControl } from "./gameplay/AdvancedBallControl";
@@ -142,13 +142,38 @@ function ensureControlledPlayerPossession(): void {
     ball.state.controlledByPlayerId=controlledId;
   }
 }
+const qualityTierMap={low:"Low",medium:"Medium",high:"High",ultra:"Ultra"} as const;
+function applySlayerSettings(s:SlayerSettings):void{
+  const duration=Number(s.duration)||10;
+  match.rules.config.halfDurationSeconds=duration*30;
+  match.rules.config.extraTimeEnabled=Boolean(s.extraTime);
+  match.rules.config.penaltiesEnabled=Boolean(s.penalties);
+  if(typeof s.quality==="string" && s.quality in qualityTierMap) quality.setTier(qualityTierMap[s.quality as keyof typeof qualityTierMap]);
+  const ratio=typeof s.dynamicResolution==="boolean" && s.dynamicResolution ? quality.pixelRatio() : ({low:.68,medium:.82,high:1,ultra:Math.min(window.devicePixelRatio||1,1.35)} as Record<string,number>)[String(s.quality)]??1;
+  renderer.setQuality(ratio);
+  if(s.camera==="broadcast"||s.camera==="dynamic"||s.camera==="overview"||s.camera==="pro") camera.setMode("match");
+  if(s.camera==="overview") camera.setMode("match");
+  document.documentElement.dataset.slayerWeather=String(s.weather??"clear");
+  document.documentElement.dataset.slayerGrass=String(s.grass??"short-dry");
+  document.documentElement.dataset.slayerTime=String(s.time??"day");
+  document.documentElement.dataset.slayerRadar=String(s.radar??true);
+  document.documentElement.dataset.slayerControl=String(s.control??"virtual");
+  document.documentElement.dataset.slayerPassAssist=String(s.passAssist??2);
+  document.documentElement.dataset.slayerShotAssist=String(s.shotAssist??"manual");
+  document.documentElement.dataset.slayerCursor=String(s.cursor??"semi");
+  document.documentElement.dataset.slayerPress=String(s.press??"individual");
+  document.documentElement.dataset.slayerAttack=String(s.attack??"balanced");
+  audio.enabled=(Number(s.effects??90)+Number(s.crowd??80)+Number(s.commentaryVolume??85))>0;
+}
+
 const ui=new SlayerUI(
   app,
   startMatch,
   action => input.setAction(action,.75),
   pressed => input.setSprint(pressed),
   move => input.setMovement(move.x, move.z),
-  mode => camera.setMode(mode)
+  mode => camera.setMode(mode),
+  applySlayerSettings
 );
 const config=(window as unknown as {__SLAYER_CONFIG__?:{wsUrl?:string}}).__SLAYER_CONFIG__??{};
 const online=config.wsUrl?new WebSocketClient():null;
