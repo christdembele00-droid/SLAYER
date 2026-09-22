@@ -37,7 +37,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
@@ -82,8 +82,28 @@ jobs:
           tar -xzf /tmp/filament-host.tgz -C /tmp/filament-host
           MATC="$(find /tmp/filament-host -type f -name matc -perm -111 | head -n 1)"
           test -n "$MATC"
+          CMGEN="$(find /tmp/filament-host -type f -name cmgen -perm -111 | head -n 1)"
+          test -n "$CMGEN"
           echo "MATC=$MATC" >> "$GITHUB_ENV"
+          echo "CMGEN=$CMGEN" >> "$GITHUB_ENV"
           "$MATC" --version
+          "$CMGEN" --help >/dev/null
+      - name: Fetch real GLB assets for native Filament
+        run: |
+          node scripts/fetch-production-assets.mjs
+          mkdir -p benchmarks/filament-v0.1/android/app/src/main/assets/models
+          cp public/assets/3d/players/player-hero.glb benchmarks/filament-v0.1/android/app/src/main/assets/models/player.glb
+          cp public/assets/3d/stadium/stadium.glb benchmarks/filament-v0.1/android/app/src/main/assets/models/stadium.glb
+
+      - name: Generate HDR IBL with cmgen
+        run: |
+          mkdir -p /tmp/ibl benchmarks/filament-v0.1/android/app/src/main/assets/ibl
+          curl -L --fail --retry 3 -o /tmp/stadium.hdr https://raw.githubusercontent.com/google/filament/v1.77.0/third_party/environments/venetian_crossroads_2k.hdr
+          "$CMGEN" --quiet --format=ktx --size=256 --extract-blur=0.1 --deploy=/tmp/ibl /tmp/stadium.hdr
+          IBL="$(find /tmp/ibl -type f -name '*_ibl.ktx' | head -n 1)"
+          test -n "$IBL"
+          cp "$IBL" benchmarks/filament-v0.1/android/app/src/main/assets/ibl/stadium_ibl.ktx
+
       - name: Compile SLAYER terrain material
         run: |
           mkdir -p benchmarks/filament-v0.1/android/app/src/main/assets/materials
