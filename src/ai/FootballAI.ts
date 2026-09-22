@@ -18,22 +18,33 @@ export class FootballAI{
   }
   choose(p:Player,w:WorldModel):AIDecision{
     const d=Math.hypot(w.ball.x-p.state.position.x,w.ball.z-p.state.position.z);
-    if(p.state.ballMode==="Control")return p.data.mental.composure>70?"Shoot":"Pass";
-    return d<2?"Control":"Move";
+    if(p.state.ballMode==="Control"){
+      const goalZ=p.data.teamId==="home"?52.5:-52.5;
+      const goalDistance=Math.hypot(w.ball.x,goalZ-w.ball.z);
+      const forward=p.data.teamId==="home"?w.ball.z>0:w.ball.z<0;
+      if(goalDistance<24 && p.data.mental.composure+p.data.technical.shooting>145) return "Shoot";
+      if(d<1.4 && forward && p.data.technical.dribbling>70) return "Move";
+      return "Pass";
+    }
+    const danger=p.data.teamId==="home"?w.ball.z<-30:w.ball.z>30;
+    if(d<1.6) return "Control";
+    if(danger && p.data.technical.tackling>65) return "Move";
+    return "Move";
   }
   update(ps:PlayerSystem,b:Ball,time:number){
     const w=this.world(ps,b,time);
     for(const p of ps.all()){
       const action=this.choose(p,w);
-      const playerAction: PlayerIntent["action"] = action==="Shoot"?"Shoot":action==="Pass"?"Pass":action==="Control"?"Control":"None";
       const dx=w.ball.x-p.state.position.x,dz=w.ball.z-p.state.position.z;
+      const distance=Math.hypot(dx,dz)||1;
+      const playerAction: PlayerIntent["action"] = action==="Shoot"?"Shoot":action==="Pass"?"Pass":action==="Control"?"Control":"None";
       p.state.lastIntent={
         moveDirection:{x:dx,y:0,z:dz},
-        moveMagnitude:Math.min(1,Math.hypot(dx,dz)/10),
-        sprintPressed:action==="Move" && Math.hypot(dx,dz)>8,
+        moveMagnitude:Math.min(1,distance/10),
+        sprintPressed:action==="Move" && distance>8,
         action:playerAction,
-        targetDirection:{x:dx,y:action==="Shoot"?.15:0,z:dz},
-        power:action==="Shoot"?.85:.55,
+        targetDirection:{x:dx/distance,y:action==="Shoot"?.12:0,z:dz/distance},
+        power:action==="Shoot"?.9:.55,
         timestamp:time
       };
     }
