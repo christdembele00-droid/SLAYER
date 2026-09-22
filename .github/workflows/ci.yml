@@ -75,6 +75,19 @@ jobs:
           mkdir -p /tmp/filament-native
           tar -xzf /tmp/filament-native.tgz -C /tmp/filament-native
           echo "FILAMENT_DIST_DIR=/tmp/filament-native" >> "$GITHUB_ENV"
+      - name: Download Filament 1.77 host tools
+        run: |
+          curl -L --fail --retry 3 -o /tmp/filament-host.tgz https://github.com/google/filament/releases/download/v1.77.0/filament-v1.77.0-linux.tgz
+          mkdir -p /tmp/filament-host
+          tar -xzf /tmp/filament-host.tgz -C /tmp/filament-host
+          MATC="$(find /tmp/filament-host -type f -name matc -perm -111 | head -n 1)"
+          test -n "$MATC"
+          echo "MATC=$MATC" >> "$GITHUB_ENV"
+          "$MATC" --version
+      - name: Compile SLAYER terrain material
+        run: |
+          mkdir -p benchmarks/filament-v0.1/android/app/src/main/assets/materials
+          "$MATC" -p mobile -a opengl -a vulkan -S             -o benchmarks/filament-v0.1/android/app/src/main/assets/materials/grass.filamat             benchmarks/filament-v0.1/materials/grass.mat
       - name: Build native Filament benchmark APK
         run: gradle -p benchmarks/filament-v0.1/android assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
