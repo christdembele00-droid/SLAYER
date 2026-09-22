@@ -1,0 +1,1 @@
+import {describe,it,expect} from "vitest";import {SaveSystem} from "../src/save/SaveSystem";describe("save",()=>it("round trips",()=>{const s=new SaveSystem(),raw=s.serialize({score:2});expect(s.parse(raw).score).toBe(2);}));
