@@ -22,11 +22,13 @@ export class SceneRenderer {
     });
     this.renderer.outputColorSpace=THREE.SRGBColorSpace;
     this.renderer.toneMapping=THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure=1.08;
+    this.renderer.toneMappingExposure=1.1;
+    this.renderer.shadowMap.autoUpdate=true;
     this.renderer.shadowMap.enabled=true;
     this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
     this.renderer.localClippingEnabled=false;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.35));
+    this.renderer.outputColorSpace=THREE.SRGBColorSpace;
     this.renderer.setSize(container.clientWidth,container.clientHeight,false);
 
     this.scene.background=new THREE.Color(0x06100d);
@@ -40,14 +42,16 @@ export class SceneRenderer {
 
     this.sun=new THREE.DirectionalLight(0xfff1d6,3.6);
     this.sun.position.set(-35,55,25);
-    configureShadow(this.sun,1536);
+    configureShadow(this.sun,2048);
+    this.sun.shadow.bias=-0.00018;
+    this.sun.shadow.normalBias=0.018;
     this.scene.add(this.sun);
 
-    const fill=new THREE.DirectionalLight(0x8fcfff,.95);
+    const fill=new THREE.DirectionalLight(0x9fd7ff,1.15);
     fill.position.set(35,24,-35);
     this.scene.add(fill);
 
-    const rim=new THREE.DirectionalLight(0x8affd0,.55);
+    const rim=new THREE.DirectionalLight(0x8affd0,.7);
     rim.position.set(-10,18,-55);
     this.scene.add(rim);
 
@@ -80,7 +84,7 @@ export class SceneRenderer {
     this.renderer.shadowMap.enabled=enableShadows;
     this.sun.castShadow=enableShadows;
     if(enableShadows){
-      const size=this.qualityRatio>=1.15?2048:this.qualityRatio>=.9?1536:1024;
+      const size=this.qualityRatio>=1.15?4096:this.qualityRatio>=.9?2048:1024;
       this.sun.shadow.mapSize.set(size,size);
     }
     this.scene.fog=new THREE.Fog(0x06100d,75,this.qualityRatio<.75?150:this.qualityRatio<.9?190:240);
