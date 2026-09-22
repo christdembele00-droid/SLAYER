@@ -457,9 +457,20 @@ struct NativeRenderer {
                 stats.fps = stats.frame_ms > 0.0f ? 1000.0f / stats.frame_ms : 0.0f;
             }
         }
-        stats.player_count = playerAsset ? 1u : 0u;
-        stats.draw_calls = playerAsset ? 3u : 2u;
-        stats.triangles = playerAsset ? 8u : 8u;
+        stats.player_count = playerCount;
+        stats.draw_calls = 0;
+        if (scene) {
+            const auto& rm = engine->getRenderableManager();
+            scene->forEach([&](Entity entity) {
+                if (rm.hasComponent(entity)) {
+                    stats.draw_calls += static_cast<uint32_t>(rm.getPrimitiveCount(rm.getInstance(entity)));
+                }
+            });
+        }
+        // Triangle count is intentionally left unreported until the asset
+        // pipeline exposes primitive index counts without guessing. Never
+        // publish a fabricated GPU metric.
+        stats.triangles = 0;
 
         history.push_back(stats.frame_ms);
         if (history.size() > 120) history.erase(history.begin());
