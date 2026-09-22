@@ -163,12 +163,14 @@ struct NativeRenderer {
         window = nativeWindow;
         if (!window) return false;
 
-        // Try Vulkan first, then GLES as the explicit fallback.
+        // SLAYER is Vulkan-only. Filament owns the graphics backend;
+        // OpenGL ES is deliberately not a production fallback.
         engine = Engine::create(Engine::Backend::VULKAN);
         if (!engine) {
-            engine = Engine::create(Engine::Backend::OPENGL);
+            __android_log_print(ANDROID_LOG_ERROR, "SLAYER",
+                "Filament Vulkan backend could not be created");
+            return false;
         }
-        if (!engine) return false;
 
         swapChain = engine->createSwapChain(window);
         renderer = engine->createRenderer();
