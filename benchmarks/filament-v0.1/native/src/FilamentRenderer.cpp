@@ -1,2 +1,4 @@
 #include "slayer_renderer.h"
-// Native renderer implementation lives in BridgeFFI.cpp for V0.1.
+
+// Vulkan + Filament is the canonical SLAYER renderer.
+// JNI/native integration remains centralized in BridgeFFI.cpp.
