@@ -17,11 +17,6 @@ export class StadiumEnvironment {
     scene.environmentIntensity = 0.75;
   }
 
-  setIntensity(value: number): void {
-    // Three.js exposes environment intensity on the scene in recent releases.
-    this.pmrem.renderer.toneMappingExposure = this.pmrem.renderer.toneMappingExposure;
-  }
-
   dispose(): void {
     this.environment.dispose();
     this.pmrem.dispose();
