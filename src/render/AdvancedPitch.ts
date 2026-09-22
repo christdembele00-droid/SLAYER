@@ -19,7 +19,7 @@ function grassTexture(size=512):THREE.CanvasTexture{
   texture.colorSpace=THREE.SRGBColorSpace;
   texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
   texture.repeat.set(7,11);
-  texture.anisotropy=4;
+  texture.anisotropy=8;
   return texture;
 }
 
@@ -31,7 +31,7 @@ export class AdvancedPitch{
   constructor(){
     const map=grassTexture();
     const grassMat=new THREE.MeshStandardMaterial({
-      map,roughness:.72,metalness:0
+      map,roughness:.62,metalness:0
     });
     this.grass=new THREE.Mesh(new THREE.PlaneGeometry(68,105,1,1),grassMat);
     this.grass.rotation.x=-Math.PI/2;
@@ -50,6 +50,8 @@ export class AdvancedPitch{
     }
     this.stripe=this.group.children[this.group.children.length-1] as THREE.Mesh;
     this.addMarkings();
+    this.addPenaltySpots();
+    this.addCornerArcs();
   }
 
   private addMarkings(){
@@ -89,6 +91,21 @@ export class AdvancedPitch{
         new THREE.Vector3(9.16,.018,z),new THREE.Vector3(-9.16,.018,z),
         new THREE.Vector3(-9.16,.018,smallZ)
       ]);
+    }
+  }
+
+  private addPenaltySpots(){
+    const mat=new THREE.MeshBasicMaterial({color:0xffffff});
+    for(const z of [-39.1,39.1]){
+      const spot=new THREE.Mesh(new THREE.CircleGeometry(.11,20),mat);
+      spot.rotation.x=-Math.PI/2;spot.position.set(0,.022,z);this.group.add(spot);
+    }
+  }
+  private addCornerArcs(){
+    const mat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.96});
+    for(const sx of [-1,1])for(const sz of [-1,1]){
+      const pts=[];for(let i=0;i<=16;i++){const a=i/16*Math.PI/2;pts.push(new THREE.Vector3(sx*(34-Math.cos(a)*1),.02,sz*(52.5-Math.sin(a)*1)));}
+      this.group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),mat));
     }
   }
 
