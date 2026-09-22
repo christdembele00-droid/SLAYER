@@ -1,4 +1,4 @@
-plugins { id "com.android.application"; id "org.jetbrains.kotlin.android" }
+plugins { id "com.android.application" }
 
 android {
     namespace "com.slayer.filament"
@@ -25,7 +25,6 @@ android {
         sourceCompatibility JavaVersion.VERSION_21
         targetCompatibility JavaVersion.VERSION_21
     }
-    kotlinOptions { jvmTarget = "21" }
 
     externalNativeBuild {
         cmake {
