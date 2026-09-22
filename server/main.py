@@ -6,6 +6,7 @@ from uuid import uuid4
 from fastapi import Depends, FastAPI, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from typing import Literal
 
 from .auth import require_bearer
 from .db import init_schema
@@ -49,16 +50,16 @@ class Intent(BaseModel):
     playerId: str
     moveX: float = Field(ge=-1, le=1)
     moveZ: float = Field(ge=-1, le=1)
-    action: str = "None"
+    action: Literal["None", "Pass", "Shoot", "Control", "Dribble", "Tackle", "StandingTackle", "SlideTackle", "ThroughBall", "Cross", "Clearance", "Press", "Contain", "Intercept"] = "None"
     power: float = Field(ge=0, le=1)
 
 
 class QueueRequest(BaseModel):
     playerId: str
-    region: str = "auto"
-    mode: str = "Friendly"
-    version: str = "0.1.0"
-    skill: float = 1000
+    region: str = Field(default="auto", min_length=2, max_length=16)
+    mode: str = Field(default="Friendly", min_length=2, max_length=24)
+    version: str = Field(default="0.1.0", min_length=1, max_length=32)
+    skill: float = Field(default=1000, ge=0, le=3000)
 
 
 @app.get("/health")
