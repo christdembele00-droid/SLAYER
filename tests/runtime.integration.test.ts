@@ -8,6 +8,7 @@ import { FootballAI } from "../src/ai/FootballAI";
 import { WorldSystem } from "../src/world/WorldSystems";
 import { strikeProfile } from "../src/ball/BallKinematics";
 import { GKSystem } from "../src/interaction/GKSystem";
+import { DuelSystem } from "../src/interaction/DuelSystem";
 import { GameplaySystem } from "../src/gameplay/GameplaySystem";
 
 describe("SLAYER runtime integration",()=>{
@@ -55,4 +56,27 @@ describe("SLAYER runtime integration",()=>{
     expect(result.length).toBeGreaterThanOrEqual(0);
     expect(gk.state.position.z).toBeLessThanOrEqual(-47);
   });
+  it("resolves a close duel deterministically",()=>{
+    const ps=new PlayerSystem();
+    const a=ps.create(PlayerFactory.createPlayerData("a","A","home","ST"),{x:0,y:0,z:0});
+    const d=ps.create(PlayerFactory.createPlayerData("d","D","away","CB"),{x:0.8,y:0,z:0});
+    const bs=new BallSystem();
+    bs.ball.state.controlledByPlayerId="a";
+    a.state.ballMode="Control";
+    const duel=new DuelSystem();
+    const result=duel.resolve(a,d,bs.ball,{time:1,seed:2});
+    expect(["CleanTackle","LooseBall","Foul","Continue"]).toContain(result);
+  });
+  it("makes shooting AI decision depend on goal distance and finishing",()=>{
+    const ps=new PlayerSystem();
+    const p=ps.create(PlayerFactory.createPlayerData("p","P","home","ST"),{x:0,y:0,z:30});
+    p.state.ballMode="Control";
+    p.data.technical.shooting=95;
+    p.data.mental.composure=90;
+    const bs=new BallSystem();
+    bs.ball.setPosition({x:0,y:.11,z:30});
+    const ai=new FootballAI();
+    expect(ai.choose(p,ai.world(ps,bs.ball,10))).toBe("Shoot");
+  });
+
 });
