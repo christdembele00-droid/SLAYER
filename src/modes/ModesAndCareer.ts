@@ -1,0 +1,5 @@
+export type GameMode="Friendly"|"Training"|"League"|"Cup"|"Tournament"|"Career"|"Online";export interface Competition{id:string;name:string;teams:string[];format:"league"|"cup"|"groups_knockout";seasonId:string}
+export interface CareerPlayerState{playerId:string;age:number;rating:number;potential:number;form:number;fitness:number;marketValue:number;contractEnd:string}
+export interface CareerState{version:number;careerId:string;type:"Manager"|"Player";currentDate:string;season:string;controlledEntity:string;players:CareerPlayerState[];transferBudget:number;wageBudget:number;history:string[]}
+export class ModeSystem{mode:GameMode="Friendly";setMode(m:GameMode){this.mode=m;}}
+export class CareerSystem{state:CareerState={version:1,careerId:"career-1",type:"Manager",currentDate:"2026-08-01",season:"2026-27",controlledEntity:"home",players:[],transferBudget:5000000,wageBudget:100000,history:[]};postMatch(home:number,away:number){this.state.history.push("MATCH:"+home+"-"+away);this.state.currentDate=new Date(Date.parse(this.state.currentDate)+86400000).toISOString().slice(0,10);}serialize(){return JSON.stringify(this.state);}}
