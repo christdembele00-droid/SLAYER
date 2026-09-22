@@ -138,3 +138,5 @@ The repository currently contains a playable match foundation and the first serv
 GitHub Actions validates web, server, Android and native Filament builds. The server test job covers matchmaking plus career, training and competition domain tests. The Filament job builds the native Vulkan APK and prepares the production asset pipeline.
 
 Three.js/WebGL is not the canonical renderer. The native Filament/Vulkan path is the target renderer.
+
+CI validation trigger: 2026-09-22T21:50:01.238Z
