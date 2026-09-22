@@ -17,6 +17,7 @@ import { AnimationSystem, CameraDirector } from "./animation/PresentationSystems
 import { FootballIK } from "./animation/FootballIK";
 import { WorldSystem, QualityManager } from "./world/WorldSystems";
 import { AAAStadium } from "./render/AAAStadium";
+import { AdvancedPitch } from "./render/AdvancedPitch";
 import { CrowdSystem } from "./render/CrowdSystem";
 import { GoalNetCloth } from "./world/GoalNetCloth";
 import { AudioEngine } from "./audio/AudioEngine";
@@ -31,6 +32,8 @@ if(!app) throw new Error("SLAYER root element not found");
 const renderer=new SceneRenderer(app);
 const stadium=new AAAStadium();
 renderer.scene.add(stadium.group);
+const pitch=new AdvancedPitch();
+renderer.scene.add(pitch.group);
 const crowd=new CrowdSystem();
 renderer.scene.add(crowd.group);
 const nets=[new GoalNetCloth(),new GoalNetCloth()];
@@ -171,6 +174,7 @@ function frame(now:number){
   match.update(delta);
   world.update(delta);
   ball.setSurface(world.weather==="Rain" ? "GrassWet" : "GrassDry",world.wetness);
+  pitch.setWetness(world.wetness);
   if(quality.update(delta*1000,delta)) renderer.setQuality(quality.pixelRatio());
   crowd.update(delta,Math.min(1,ball.state.velocity.x**2+ball.state.velocity.z**2)/100);
   nets.forEach(n=>n.update(delta));
