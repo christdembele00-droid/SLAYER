@@ -9,6 +9,7 @@ extern "C" void slayer_game_set_input(float x,float y,float pass,float shoot,flo
     if(selected>=0&&selected<22)g_input.selectedPlayer=selected;
 }
 extern "C" void slayer_game_get_transforms(SlayerTransform* out,uint32_t capacity){g_game.snapshot(out,capacity);}
+extern "C" void slayer_game_set_settings(const slayer::SlayerSettings& settings){g_game.setSettings(settings);}
 extern "C" void slayer_game_get_score(uint32_t* home,uint32_t* away,uint32_t* seconds){
     const auto&s=g_game.state();if(home)*home=s.homeScore;if(away)*away=s.awayScore;if(seconds)*seconds=s.matchSeconds;
 }
