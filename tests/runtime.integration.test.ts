@@ -37,7 +37,8 @@ describe("SLAYER runtime integration",()=>{
     const bs=new BallSystem(); const ai=new FootballAI();
     ai.update(ps,bs.ball,1);
     expect(p.state.lastIntent).toBeDefined();
-    expect(["Control","Move","Pass","Shoot"]).toContain(p.state.lastIntent?.action);
+    expect(["None","Control","Pass","Shoot"]).toContain(p.state.lastIntent?.action);
+    expect(typeof p.state.lastIntent?.sprintPressed).toBe("boolean");
   });
   it("uses distinct physical profiles for passes and shots",()=>{
     const pass=strikeProfile("Pass",.7);
