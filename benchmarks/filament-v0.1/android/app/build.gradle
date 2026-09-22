@@ -1,10 +1,11 @@
-def slayerVersionCode = (System.getenv("VERSION_CODE") ?: "1").toInteger()
-def slayerVersionName = System.getenv("VERSION_NAME") ?: "0.1.0"
-
 plugins {
     id "com.android.application"
     id "com.google.gms.google-services"
 }
+
+def slayerVersionCode = (System.getenv("VERSION_CODE") ?: "1").toInteger()
+def slayerVersionName = System.getenv("VERSION_NAME") ?: "0.1.0"
+
 
 android {
     namespace "com.slayer.filament"
