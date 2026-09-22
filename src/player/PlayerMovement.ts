@@ -28,7 +28,7 @@ export class PlayerMovement {
     const targetVZ = dz * target;
     const rate = target > Math.hypot(state.velocity.x, state.velocity.z) ? data.physical.acceleration : DECELERATION;
 
-    const blend = Math.min(1, rate * safeDelta / Math.max(target > 0 ? 1 : 0.001, target));
+    const blend = target > 0 ? 1 - Math.exp(-rate * safeDelta) : 1 - Math.exp(-DECELERATION * safeDelta);
     state.velocity.x += (targetVX - state.velocity.x) * blend;
     state.velocity.z += (targetVZ - state.velocity.z) * blend;
     state.position.x += state.velocity.x * safeDelta;
