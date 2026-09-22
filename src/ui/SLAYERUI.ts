@@ -14,6 +14,7 @@ export class SlayerUI {
   private joystickEl: HTMLElement | null = null;
   private joystickKnobEl: HTMLElement | null = null;
   private joystickPointerId: number | null = null;
+  private perfEl: HTMLElement | null = null;
 
   constructor(
     app: HTMLDivElement,
@@ -32,6 +33,11 @@ export class SlayerUI {
     if (this.screen === screen) return;
     this.screen = screen;
     this.render();
+  }
+
+  updatePerformance(fps:number, frameMs:number, p95Ms:number, drawCalls:number, triangles:number, tier:string) {
+    if (!this.perfEl) return;
+    this.perfEl.textContent = `FPS ${fps.toFixed(0)}  |  ${frameMs.toFixed(1)}ms  |  P95 ${p95Ms.toFixed(1)}ms  |  DC ${drawCalls}  |  TRI ${(triangles/1000).toFixed(0)}k  |  ${tier}`;
   }
 
   updateMatch(home: number, away: number, clock: string, phase: string) {
@@ -63,6 +69,7 @@ export class SlayerUI {
             '<div class="match-phase" data-match-phase>' + this.score.phase + "</div>" +
             '<div class="match-clock" data-match-clock>' + this.score.clock + "</div>" +
           "</div>" +
+          '<div class="perf-overlay" data-performance>PERF MONITOR</div>' +
           '<div class="match-controls">' +
             '<div class="virtual-joystick" data-joystick aria-label="Movement joystick"><div class="joystick-knob" data-joystick-knob></div></div>' +
             '<div class="radar"><i></i><b></b></div>' +
@@ -73,6 +80,7 @@ export class SlayerUI {
             "</div>" +
           "</div>" +
         "</div>";
+      this.perfEl = this.root.querySelector("[data-performance]");
       this.matchScoreEl = this.root.querySelector("[data-match-score]");
       this.matchPhaseEl = this.root.querySelector("[data-match-phase]");
       this.matchClockEl = this.root.querySelector("[data-match-clock]");
