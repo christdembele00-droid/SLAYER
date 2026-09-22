@@ -30,3 +30,7 @@
 .result-tabs button.active{border-color:#00F0FF;color:#00F0FF}.rating-row{display:grid;grid-template-columns:35px 1fr 40px;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}.rating-row strong{color:#FFD700}
 .swipe-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:2;touch-action:none}.setpiece-screen .swipe-zone{z-index:1;pointer-events:none}.setpiece-actions{z-index:4}.setpiece-tool{z-index:4}.setpiece-head{z-index:4}.setpiece-actions button.active{border-color:#FFD700;color:#FFD700}
 @media(max-width:800px){.hub-hero{inset:70px 18px 85px;gap:0}.hero-copy{width:50%;z-index:3}.hero-copy h1{font-size:clamp(56px,16vw,100px)}.hero-visual{width:60%;height:75%;margin-left:-8%}.hero-player{transform:scale(.72) perspective(900px) rotateY(-12deg)}.team-help{bottom:90px}.team-pitch{top:12%;bottom:20%}.screen-header{padding:0 16px}}
+
+.home-screen .ui-backdrop{background:linear-gradient(180deg,rgba(2,7,9,.38),rgba(2,7,9,.16) 55%,rgba(2,7,9,.52));}
+.home-screen .hero-visual{background:radial-gradient(circle at 50% 50%,rgba(40,255,170,.08),transparent 55%);}
+.match-screen{pointer-events:auto;}
