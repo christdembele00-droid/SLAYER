@@ -1,0 +1,2 @@
+import { PitchState,Weather,StadiumData } from "./WorldTypes";
+export class WorldSystem{readonly stadium:StadiumData={id:"stadium-default",name:"SLAYER Arena",capacity:50000,environment:"Outdoor",lighting:"Day"};readonly pitch:PitchState={wetness:0,surface:"GrassDry",wear:0};weather:Weather="Clear";update(delta:number){this.pitch.wetness=Math.max(0,Math.min(1,this.pitch.wetness+(this.weather==="Rain"?0.01:-0.003)*delta));this.pitch.surface=this.pitch.wetness>.55?"GrassWet":"GrassDry";}}
