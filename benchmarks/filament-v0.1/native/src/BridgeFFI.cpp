@@ -228,18 +228,26 @@ struct NativeRenderer {
         return true;
     }
 
-    bool loadPlayerGlb(const uint8_t* bytes, size_t size) {
+    bool loadUbershaderArchive(const uint8_t* bytes, size_t size) {
         if (!engine || !bytes || size == 0) return false;
 
-        // The Android native distribution ships gltfio_core, but its JIT material
-        // factory is intentionally not part of that core library. Use the
-        // precompiled ubershader provider instead so the native benchmark does not
-        // depend on a separate filamat runtime archive.
-        //
-        // The first B2 validation therefore focuses on GLB parsing, GPU buffers,
-        // textures and skinning. A dedicated uberz asset can be wired in later
-        // when we start tuning the material variants.
-        return false;
+        if (gltfMaterials) {
+            gltfMaterials->destroyMaterials();
+            delete gltfMaterials;
+            gltfMaterials = nullptr;
+        }
+
+        gltfMaterials = gltfio::createUbershaderProvider(engine, bytes, size);
+        return gltfMaterials != nullptr;
+    }
+
+    bool loadPlayerGlb(const uint8_t* bytes, size_t size) {
+        if (!engine || !bytes || size == 0 || !gltfMaterials) return false;
+
+        if (!assetLoader) {
+            assetLoader = gltfio::AssetLoader::create({engine, gltfMaterials});
+        }
+        if (!assetLoader) return false;
 
         if (!assetLoader) {
             assetLoader = gltfio::AssetLoader::create({engine, gltfMaterials});
@@ -262,7 +270,6 @@ struct NativeRenderer {
         if (!resourceLoader) {
             gltfio::ResourceConfiguration config{};
             config.engine = engine;
-            config.gltfPath = nullptr;
             config.normalizeSkinningWeights = true;
             resourceLoader = new gltfio::ResourceLoader(config);
 
@@ -482,6 +489,24 @@ Java_com_slayer_filament_MainActivity_nativeLoadPlayer(
     if (!raw) return JNI_FALSE;
 
     const bool ok = g_renderer.loadPlayerGlb(
+        reinterpret_cast<const uint8_t*>(raw),
+        static_cast<size_t>(size));
+
+    env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_slayer_filament_MainActivity_nativeLoadUberArchive(
+        JNIEnv* env, jobject, jbyteArray data) {
+    if (!env || !data) return JNI_FALSE;
+    const jsize size = env->GetArrayLength(data);
+    if (size <= 0) return JNI_FALSE;
+
+    jbyte* raw = env->GetByteArrayElements(data, nullptr);
+    if (!raw) return JNI_FALSE;
+
+    const bool ok = g_renderer.loadUbershaderArchive(
         reinterpret_cast<const uint8_t*>(raw),
         static_cast<size_t>(size));
 
