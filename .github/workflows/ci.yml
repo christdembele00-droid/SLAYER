@@ -40,7 +40,7 @@ jobs:
       ./gradlew assembleDebug bundleRelease
    - uses: actions/upload-artifact@v4
      with:
-      name: SLAYER-Android-\${{ github.sha }}
+      name: SLAYER-Android-${{ github.sha }}
       path: |
        android/app/build/outputs/apk/debug/*.apk
        android/app/build/outputs/bundle/release/*.aab
