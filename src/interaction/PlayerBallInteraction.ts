@@ -79,7 +79,6 @@ export class PlayerBallInteraction {
       y:side*profile.spin,
       z:0
     }, { playerId: player.data.playerId, teamId: player.data.teamId, type, time: performance.now()/1000 });
-    ball.physics.data.drag = 0.018 * profile.dragMultiplier;
     ball.state.controlledByPlayerId = undefined;
     player.state.ballMode = "NoBall";
     player.state.action = type === "Shot" ? "Shoot" : type === "Pass" ? "Pass" : type === "ThroughBall" ? "ThroughBall" : type === "Cross" ? "Cross" : type === "Clearance" ? "Clearance" : "None";
