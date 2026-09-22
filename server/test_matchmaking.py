@@ -28,11 +28,12 @@ class MatchmakingSmokeTest(unittest.TestCase):
     def test_same_owner_replaces_previous_ticket(self):
         mm = Matchmaking()
         mm.enqueue(Ticket("p1", "auto", "Friendly", "0.1.0", 1000, 1.0, "uid-1"))
-        mm.enqueue(Ticket("p2", "auto", "Friendly", "0.1.0", 1000, 2.0, "uid-2"))
-        pair = mm.enqueue(Ticket("p3", "auto", "Friendly", "0.1.0", 1000, 3.0, "uid-1"))
+        mm.enqueue(Ticket("p3", "auto", "Friendly", "0.1.0", 1000, 1.5, "uid-1"))
+        self.assertEqual([t.player_id for t in mm.queue], ["p3"])
+        pair = mm.enqueue(Ticket("p2", "auto", "Friendly", "0.1.0", 1000, 2.0, "uid-2"))
         self.assertIsNotNone(pair)
         self.assertEqual({pair[0].owner_id, pair[1].owner_id}, {"uid-1", "uid-2"})
-        self.assertNotIn("p1", [t.player_id for t in mm.queue])
+        self.assertEqual(mm.queue, [])
 
 
 if __name__ == "__main__":
