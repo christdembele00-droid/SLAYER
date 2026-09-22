@@ -13,3 +13,7 @@ extern "C" void slayer_game_set_settings(const slayer::SlayerSettings& settings)
 extern "C" void slayer_game_get_score(uint32_t* home,uint32_t* away,uint32_t* seconds){
     const auto&s=g_game.state();if(home)*home=s.homeScore;if(away)*away=s.awayScore;if(seconds)*seconds=s.matchSeconds;
 }
+extern "C" void slayer_game_get_ball(float* x,float* y,float* z){
+    const auto& b=g_game.state().ball;
+    if(x)*x=b.x; if(y)*y=b.y; if(z)*z=b.z;
+}
