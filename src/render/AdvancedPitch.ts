@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-function grassTexture(size=1024):THREE.CanvasTexture{
+function grassTexture(size=2048):THREE.CanvasTexture{
   const canvas=document.createElement("canvas");
   canvas.width=canvas.height=size;
   const ctx=canvas.getContext("2d");
