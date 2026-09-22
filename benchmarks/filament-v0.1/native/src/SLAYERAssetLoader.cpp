@@ -5,20 +5,23 @@
 #include <image/Ktx1Bundle.h>
 #include <ktxreader/Ktx1Reader.h>
 #include <gltfio/materials/uberarchive.h>
+
 namespace Slayer::Render {
+using namespace filament::gltfio;
 static constexpr const char* TAG="SLAYER_ASSET";
+
 SLAYERAssetLoader::SLAYERAssetLoader(filament::Engine* e,AAssetManager* a):m_engine(e),m_assetManager(a){
  if(!m_engine||!m_assetManager)return;
- m_materialProvider=gltfio::createUbershaderProvider(m_engine,UBERARCHIVE_DEFAULT_DATA,UBERARCHIVE_DEFAULT_SIZE);
+ m_materialProvider=createUbershaderProvider(m_engine,UBERARCHIVE_DEFAULT_DATA,UBERARCHIVE_DEFAULT_SIZE);
  if(!m_materialProvider)return;
- m_gltfLoader=gltfio::AssetLoader::create({m_engine,m_materialProvider});
- gltfio::ResourceConfiguration cfg{};cfg.engine=m_engine;cfg.normalizeSkinningWeights=true;
- m_resourceLoader=new gltfio::ResourceLoader(cfg);m_stbDecoder=gltfio::createStbProvider(m_engine);
+ m_gltfLoader=AssetLoader::create({m_engine,m_materialProvider});
+ ResourceConfiguration cfg{};cfg.engine=m_engine;cfg.normalizeSkinningWeights=true;
+ m_resourceLoader=new ResourceLoader(cfg);m_stbDecoder=createStbProvider(m_engine);
  if(m_stbDecoder){m_resourceLoader->addTextureProvider("image/png",m_stbDecoder);m_resourceLoader->addTextureProvider("image/jpeg",m_stbDecoder);m_resourceLoader->addTextureProvider("image/webp",m_stbDecoder);}
 }
 SLAYERAssetLoader::~SLAYERAssetLoader(){
  if(m_engine){if(m_skybox)m_engine->destroy(m_skybox);if(m_indirectLight)m_engine->destroy(m_indirectLight);if(m_skyboxTexture)m_engine->destroy(m_skyboxTexture);if(m_iblTexture)m_engine->destroy(m_iblTexture);}
- delete m_resourceLoader;delete m_stbDecoder;if(m_gltfLoader)gltfio::AssetLoader::destroy(&m_gltfLoader);
+ delete m_resourceLoader;delete m_stbDecoder;if(m_gltfLoader)AssetLoader::destroy(&m_gltfLoader);
  if(m_materialProvider){m_materialProvider->destroyMaterials();delete m_materialProvider;}
 }
 bool SLAYERAssetLoader::readAsset(const std::string& p,std::vector<uint8_t>&o)const{
@@ -39,9 +42,9 @@ bool SLAYERAssetLoader::loadSkybox(const std::string&p,filament::Scene*s){
  m_skybox=filament::Skybox::Builder().environment(m_skyboxTexture).showSun(true).intensity(30000.0f).build(*m_engine);if(!m_skybox){m_engine->destroy(m_skyboxTexture);m_skyboxTexture=nullptr;return false;}s->setSkybox(m_skybox);return true;
 }
 filament::Material* SLAYERAssetLoader::loadMaterial(const std::string&p){std::vector<uint8_t>d;if(!readAsset(p,d))return nullptr;return filament::Material::Builder().package(d.data(),d.size()).build(*m_engine);}
-gltfio::FilamentAsset* SLAYERAssetLoader::loadGLB(const std::string&p){
+FilamentAsset* SLAYERAssetLoader::loadGLB(const std::string&p){
  if(!m_gltfLoader||!m_resourceLoader)return nullptr;std::vector<uint8_t>d;if(!readAsset(p,d))return nullptr;
  auto*a=m_gltfLoader->createAsset(d.data(),static_cast<uint32_t>(d.size()));if(!a)return nullptr;if(!m_resourceLoader->loadResources(a)){m_gltfLoader->destroyAsset(a);return nullptr;}return a;
 }
-void SLAYERAssetLoader::destroyAsset(gltfio::FilamentAsset*&a){if(a&&m_gltfLoader)m_gltfLoader->destroyAsset(a);a=nullptr;}
+void SLAYERAssetLoader::destroyAsset(FilamentAsset*&a){if(a&&m_gltfLoader)m_gltfLoader->destroyAsset(a);a=nullptr;}
 }
