@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "license": "Original fictional data created for SLAYER",
+  "teams": [
+    {
+      "id": "atlas_fc",
+      "name": "Atlas FC",
+      "crest": "slayer/emblems/atlas_fc",
+      "players": [
+        "Koffi N'Guessan",
+        "Yann Kone",
+        "Moussa Diarra",
+        "Eliam Traore",
+        "Noah Bamba",
+        "Ismael Coulibaly",
+        "Sory Toure",
+        "Jean-Marc Kouassi",
+        "Adama Yao",
+        "Kevin N'Dri",
+        "Malick Fofana"
+      ]
+    },
+    {
+      "id": "lagoon_united",
+      "name": "Lagoon United",
+      "crest": "slayer/emblems/lagoon_united",
+      "players": [
+        "Amadou Kone",
+        "Ibrahim Soro",
+        "Mathis Kouadio",
+        "Serge Yapi",
+        "Oumar Doumbia",
+        "Dylan Aka",
+        "Junior N'Zue",
+        "Fadel Kacou",
+        "Arsene Bedia",
+        "Mamadou Camara",
+        "Evan Koffi"
+      ]
+    }
+  ]
+}
