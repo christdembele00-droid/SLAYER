@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from .auth import require_bearer
 from .matchmaking import Matchmaking, Ticket
 from .routes import router
+from .db import init_schema
 
 
 def _allowed_origins() -> list[str]:
@@ -29,6 +30,10 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
+@app.on_event("startup")
+def startup():
+    init_schema()
+
 app.include_router(router)
 
 mm = Matchmaking()
