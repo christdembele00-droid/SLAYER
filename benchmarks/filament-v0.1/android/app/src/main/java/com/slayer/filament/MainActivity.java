@@ -6,6 +6,10 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.Window;
 import android.view.WindowManager;
+import android.graphics.Color;
+import android.view.Gravity;
+import android.widget.FrameLayout;
+import android.widget.TextView;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,6 +20,7 @@ public final class MainActivity extends Activity {
     }
 
     private SurfaceView surface;
+    private TextView statsView;
     private long lastFrameNanos;
 
     private static native void nativeCreate(android.view.Surface surface);
@@ -40,7 +45,17 @@ public final class MainActivity extends Activity {
                 WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
+        FrameLayout root = new FrameLayout(this);
         surface = new SurfaceView(this);
+        root.addView(surface, new FrameLayout.LayoutParams(-1, -1));
+        statsView = new TextView(this);
+        statsView.setTextColor(Color.WHITE);
+        statsView.setTextSize(13f);
+        statsView.setPadding(16, 10, 16, 10);
+        statsView.setBackgroundColor(0x66000000);
+        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.RIGHT);
+        p.topMargin = 18; p.rightMargin = 18;
+        root.addView(statsView, p);
         surface.getHolder().addCallback(new SurfaceHolder.Callback() {
             @Override
             public void surfaceCreated(SurfaceHolder holder) {
@@ -65,7 +80,7 @@ public final class MainActivity extends Activity {
             }
         });
 
-        setContentView(surface);
+        setContentView(root);
     }
 
 
