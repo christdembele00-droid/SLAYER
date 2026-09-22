@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { configureShadow } from "./GraphicsQuality";
 import { StadiumEnvironment } from "./StadiumEnvironment";
+import { Sky } from "three/addons/objects/Sky.js";
 
 export class SceneRenderer {
   readonly scene=new THREE.Scene();
@@ -9,6 +10,7 @@ export class SceneRenderer {
   private readonly container:HTMLElement;
   private readonly sun:THREE.DirectionalLight;
   private readonly stadiumEnvironment:StadiumEnvironment;
+  private readonly sky:Sky;
   private qualityRatio=1;
 
 
@@ -36,6 +38,16 @@ export class SceneRenderer {
     this.renderer.setSize(container.clientWidth,container.clientHeight,false);
 
     this.stadiumEnvironment=new StadiumEnvironment(this.renderer,this.scene);
+    this.sky=new Sky();
+    this.sky.scale.setScalar(450);
+    const skyMaterial=this.sky.material as THREE.ShaderMaterial;
+    skyMaterial.uniforms["turbidity"].value=7;
+    skyMaterial.uniforms["rayleigh"].value=1.6;
+    skyMaterial.uniforms["mieCoefficient"].value=.004;
+    skyMaterial.uniforms["mieDirectionalG"].value=.82;
+    const sunDirection=new THREE.Vector3(-.35,.82,.28).normalize();
+    skyMaterial.uniforms["sunPosition"].value.copy(sunDirection);
+    this.scene.add(this.sky);
     this.scene.background=new THREE.Color(0x06100d);
     this.scene.fog=new THREE.Fog(0x06100d,75,240);
 
@@ -51,6 +63,7 @@ export class SceneRenderer {
     this.sun.shadow.bias=-0.00018;
     this.sun.shadow.normalBias=0.018;
     this.scene.add(this.sun);
+    this.sun.position.copy(new THREE.Vector3(-45,70,35));
 
     const fill=new THREE.DirectionalLight(0x9fd7ff,1.15);
     fill.position.set(35,24,-35);
