@@ -83,6 +83,7 @@ struct NativeRenderer {
     gltfio::TextureProvider* stbDecoder = nullptr;
     gltfio::FilamentAsset* playerAsset = nullptr;
     gltfio::FilamentAsset* stadiumAsset = nullptr;
+    std::vector<gltfio::FilamentInstance*> playerInstances;
     gltfio::Animator* playerAnimator = nullptr;
     float playerAnimationTime = 0.0f;
     uint32_t playerAnimationIndex = 0;
@@ -418,15 +419,19 @@ struct NativeRenderer {
         // Replace an already loaded player cleanly.
         if (playerAsset) {
             if (scene) {
-                scene->removeEntities(playerAsset->getEntities(), playerAsset->getEntityCount());
+                for (auto* instance : playerInstances) {
+                if (instance) scene->removeEntities(instance->getEntities(), instance->getEntityCount());
+            }
             }
             assetLoader->destroyAsset(playerAsset);
             playerAsset = nullptr;
+            playerInstances.clear();
             playerAnimator = nullptr;
         }
 
-        playerAsset = assetLoader->createAsset(bytes, static_cast<uint32_t>(size));
-        if (!playerAsset) return false;
+        playerInstances.assign(22, nullptr);
+        playerAsset = assetLoader->createInstancedAsset(bytes, static_cast<uint32_t>(size), playerInstances.data(), playerInstances.size());
+        if (!playerAsset) { playerInstances.clear(); return false; }
 
         if (!resourceLoader) {
             gltfio::ResourceConfiguration config{};
@@ -451,7 +456,9 @@ struct NativeRenderer {
             return false;
         }
 
-        scene->addEntities(playerAsset->getEntities(), playerAsset->getEntityCount());
+        for (auto* instance : playerInstances) {
+            if (instance) scene->addEntities(instance->getEntities(), instance->getEntityCount());
+        }
         playerAnimator = playerAsset->getInstance()->getAnimator();
         playerAnimationTime = 0.0f;
         playerAnimationIndex = 0;
@@ -461,7 +468,7 @@ struct NativeRenderer {
                 playerAsset->getInstance()->getJointCountAt(0));
         }
 
-        stats.player_count = 1;
+        stats.player_count = static_cast<uint32_t>(playerInstances.size());
         return true;
     }
 
@@ -520,12 +527,16 @@ struct NativeRenderer {
             (void)lod; // Mesh switching activates when player_lod1/lod2 assets are supplied.
 
             auto& tm = engine->getTransformManager();
-            const Entity root = playerAsset->getInstance()->getRoot();
-            if (tm.hasComponent(root)) {
+            const uint32_t count = std::min<uint32_t>(playerCount, static_cast<uint32_t>(playerInstances.size()));
+            for (uint32_t i = 0; i < count; ++i) {
+                auto* instance = playerInstances[i];
+                if (!instance) continue;
+                const Entity root = instance->getRoot();
+                if (!tm.hasComponent(root)) continue;
+                const auto& t = readBuffer.transforms[i];
                 tm.setTransform(tm.getInstance(root),
                     filament::math::mat4f::translation(
-                        filament::math::float3{
-                            playerLocal.x, playerLocal.y, playerLocal.z}));
+                        filament::math::float3{t.x, t.y, t.z}));
             }
         }
 
