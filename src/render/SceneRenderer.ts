@@ -8,6 +8,7 @@ export class SceneRenderer {
   private readonly container:HTMLElement;
   private readonly sun:THREE.DirectionalLight;
   private qualityRatio=1;
+  private readonly exposureByTier={low:1.02,medium:1.06,high:1.08,ultra:1.1};
 
   constructor(container:HTMLElement){
     this.container=container;
@@ -24,6 +25,7 @@ export class SceneRenderer {
     this.renderer.toneMappingExposure=1.08;
     this.renderer.shadowMap.enabled=true;
     this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    this.renderer.localClippingEnabled=false;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.35));
     this.renderer.setSize(container.clientWidth,container.clientHeight,false);
 
