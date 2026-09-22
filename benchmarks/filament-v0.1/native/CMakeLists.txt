@@ -23,6 +23,8 @@ get_filename_component(FILAMENT_INCLUDE_DIR "${FILAMENT_INCLUDE_DIR}" DIRECTORY)
 
 add_library(slayer_filament_benchmark SHARED
     src/BridgeFFI.cpp
+    src/MatchEngine.cpp
+    src/GameFFI.cpp
 )
 
 target_include_directories(slayer_filament_benchmark PRIVATE
