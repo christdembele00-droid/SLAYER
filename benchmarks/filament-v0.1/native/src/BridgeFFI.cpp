@@ -27,7 +27,6 @@
 #include <memory>
 #include <vector>
 #include <atomic>
-#include <thread>
 
 #include <filament/Camera.h>
 #include <filament/IndirectLight.h>
@@ -839,15 +838,7 @@ struct NativeRenderer {
         materialInstance = nullptr;
     }
 };
-
-class RuntimeThreads {
-    std::atomic<bool> running{false}; std::thread physics; std::thread gameplay;
-public:
-    void start(){ if(running.exchange(true)) return; physics=std::thread([this]{using namespace std::chrono_literals; while(running){std::this_thread::sleep_for(8ms);}}); gameplay=std::thread([this]{using namespace std::chrono_literals; while(running){std::this_thread::sleep_for(16ms);}}); }
-    void stop(){running=false; if(physics.joinable())physics.join(); if(gameplay.joinable())gameplay.join();}
-};
 NativeRenderer g_renderer;
-RuntimeThreads g_runtime;
 
 } // namespace
 
@@ -919,7 +910,6 @@ Java_com_slayer_filament_MainActivity_nativeCreate(
         g_renderer.shutdown();
         return JNI_FALSE;
     }
-    g_runtime.start();
     return JNI_TRUE;
 }
 
@@ -1027,7 +1017,6 @@ Java_com_slayer_filament_MainActivity_nativeRender(
 extern "C" JNIEXPORT void JNICALL
 Java_com_slayer_filament_MainActivity_nativeDestroy(
         JNIEnv*, jobject) {
-    g_runtime.stop();
     slayer_renderer_destroy();
 }
 
