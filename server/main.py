@@ -50,7 +50,7 @@ class Intent(BaseModel):
     playerId: str
     moveX: float = Field(ge=-1, le=1)
     moveZ: float = Field(ge=-1, le=1)
-    action: Literal["None", "Pass", "Shoot", "Control", "Dribble", "Tackle", "StandingTackle", "SlideTackle", "ThroughBall", "Cross", "Clearance", "Press", "Contain", "Intercept"] = "None"
+    action: Literal["None", "Pass", "Shoot", "ThroughBall", "Cross", "Clearance", "Tackle", "Header", "Control", "Dribble", "SkillMove", "ProtectBall", "Press", "Contain", "Intercept", "StandingTackle", "SlideTackle", "GoalkeeperAction"] = "None"
     power: float = Field(ge=0, le=1)
 
 
