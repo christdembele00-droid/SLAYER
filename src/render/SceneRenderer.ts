@@ -2,39 +2,74 @@ import * as THREE from "three";
 
 export class SceneRenderer {
   readonly scene = new THREE.Scene();
-  readonly camera = new THREE.PerspectiveCamera(55, 1, 0.1, 500);
-  readonly renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+  readonly camera = new THREE.PerspectiveCamera(58, 1, 0.1, 420);
+  readonly renderer: THREE.WebGLRenderer;
+  private readonly container: HTMLElement;
 
   constructor(container: HTMLElement) {
-    this.scene.background = new THREE.Color(0x071018);
+    this.container = container;
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      powerPreference: "high-performance",
+      alpha: false,
+      stencil: false,
+      depth: true
+    });
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.08;
+    this.renderer.shadowMap.enabled = false;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    this.renderer.setSize(container.clientWidth, container.clientHeight, false);
+
+    this.scene.background = new THREE.Color(0x06100d);
+    this.scene.fog = new THREE.Fog(0x06100d, 75, 260);
     this.camera.position.set(0, 18, 28);
     this.camera.lookAt(0, 0, 0);
 
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setSize(container.clientWidth, container.clientHeight);
-    container.appendChild(this.renderer.domElement);
-
-    const ambient = new THREE.HemisphereLight(0xffffff, 0x223344, 2);
-    this.scene.add(ambient);
-
-    const sun = new THREE.DirectionalLight(0xffffff, 3);
-    sun.position.set(20, 35, 10);
+    const hemi = new THREE.HemisphereLight(0xeaf7ff, 0x10251b, 2.15);
+    this.scene.add(hemi);
+    const sun = new THREE.DirectionalLight(0xfff4df, 3.2);
+    sun.position.set(-35, 55, 25);
     this.scene.add(sun);
+    const fill = new THREE.DirectionalLight(0x9fd8ff, 0.8);
+    fill.position.set(35, 24, -35);
+    this.scene.add(fill);
 
-    const pitch = new THREE.Mesh(
-      new THREE.PlaneGeometry(68, 105),
-      new THREE.MeshStandardMaterial({ color: 0x1d6b3a, roughness: 0.95 })
-    );
-    pitch.rotation.x = -Math.PI / 2;
-    this.scene.add(pitch);
-
-    window.addEventListener("resize", () => this.resize(container));
+    this.addPitchBase();
+    this.addAtmosphere();
+    container.appendChild(this.renderer.domElement);
+    window.addEventListener("resize", () => this.resize());
   }
 
-  resize(container: HTMLElement): void {
-    this.camera.aspect = container.clientWidth / Math.max(container.clientHeight, 1);
+  private addPitchBase(): void {
+    const grass = new THREE.Mesh(
+      new THREE.PlaneGeometry(68, 105, 1, 1),
+      new THREE.MeshStandardMaterial({ color: 0x176b38, roughness: 0.88, metalness: 0 })
+    );
+    grass.rotation.x = -Math.PI / 2;
+    grass.position.y = -0.02;
+    this.scene.add(grass);
+  }
+
+  private addAtmosphere(): void {
+    const haze = new THREE.Mesh(
+      new THREE.RingGeometry(72, 145, 96),
+      new THREE.MeshBasicMaterial({ color: 0x183a2d, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false })
+    );
+    haze.rotation.x = -Math.PI / 2;
+    haze.position.y = -0.05;
+    this.scene.add(haze);
+  }
+
+  resize(): void {
+    this.camera.aspect = this.container.clientWidth / Math.max(this.container.clientHeight, 1);
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(container.clientWidth, container.clientHeight);
+    this.renderer.setSize(this.container.clientWidth, this.container.clientHeight, false);
+  }
+
+  setQuality(pixelRatio: number): void {
+    this.renderer.setPixelRatio(Math.min(Math.max(pixelRatio, 0.65), 1.5));
   }
 
   render(): void {
