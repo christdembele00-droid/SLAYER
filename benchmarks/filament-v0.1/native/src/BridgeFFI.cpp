@@ -628,11 +628,11 @@ struct NativeRenderer {
         renderReadingBuffer.store(0xffffffffu, std::memory_order_release);
         if (playerAsset && playerCount > 0) {
             if (settings.camera == slayer::CameraMode::Broadcast && broadcastCamera) {
-                // Until the gameplay ABI exposes an authoritative ball transform,
-                // use the match focus origin as a deterministic fallback.
+                float ballX = 0.0f, ballY = 0.22f, ballZ = 0.0f;
+                slayer_game_get_ball(&ballX, &ballY, &ballZ);
                 broadcastCamera->update(
                     playerLocal.x, playerLocal.y, playerLocal.z,
-                    0.0f, 0.0f, 0.0f, dt);
+                    ballX, ballY, ballZ, dt);
             } else if(settings.camera==slayer::CameraMode::Dynamic || settings.camera==slayer::CameraMode::Pro || settings.camera==slayer::CameraMode::Custom) {
                 const double distance=settings.camera==slayer::CameraMode::Pro?8.5:(settings.camera==slayer::CameraMode::Custom?12.0:15.5);
                 const double height=settings.camera==slayer::CameraMode::Pro?2.8:(settings.camera==slayer::CameraMode::Custom?5.5:7.0);
