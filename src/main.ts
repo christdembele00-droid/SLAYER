@@ -14,7 +14,8 @@ import { InteractionSystem } from "./interaction/InteractionSystem";
 import { GKSystem } from "./interaction/GKSystem";
 import { GameplaySystem } from "./gameplay/GameplaySystem";
 import { TransitionSystem } from "./gameplay/TransitionSystem";
-import { AnimationSystem, CameraDirector } from "./animation/PresentationSystems";
+import { AnimationSystem } from "./animation/PresentationSystems";
+import { CameraDirector } from "./camera/CameraDirector";
 import { FootballIK } from "./animation/FootballIK";
 import { WorldSystem } from "./world/WorldSystem";
 import { QualityManager } from "./performance/QualityManager";
@@ -36,6 +37,7 @@ const app=document.querySelector<HTMLDivElement>("#app");
 if(!app) throw new Error("SLAYER root element not found");
 
 const renderer=new SceneRenderer(app);
+const camera=new CameraDirector();
 const stadium=new AAAStadium();
 const presentation=new MatchPresentation();
 renderer.scene.add(presentation.group);
@@ -128,7 +130,6 @@ ballMesh.receiveShadow=true;
 renderer.scene.add(ballMesh);
 
 const controlledId="home-11";
-const camera=new CameraDirector();
 const nextAIActionAt=new Map<string,number>();
 let lastOnlineSnapshotAt=0;
 function ensureControlledPlayerPossession(): void {
