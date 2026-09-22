@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { Player } from "./Player";
 import { FootballIK } from "../animation/FootballIK";
 import { AnimationFrame } from "../animation/AnimationTypes";
@@ -35,6 +37,12 @@ export class PlayerMesh{
   private readonly leftBoot:THREE.Mesh;
   private readonly rightBoot:THREE.Mesh;
   private readonly shoulders:THREE.Mesh;
+  private productionRoot:THREE.Object3D|null=null;
+  private mixer:THREE.AnimationMixer|null=null;
+  private clips=new Map<string,THREE.AnimationAction>();
+  private activeClip="";
+  private static heroPromise:Promise<THREE.Group>|null=null;
+  private static animationPromise:Promise<THREE.AnimationClip[]>|null=null;
 
   constructor(player:Player){
     this.object.userData.playerId=player.data.playerId;
@@ -123,19 +131,86 @@ export class PlayerMesh{
     number.position.set(0,.9,.242);
     this.object.add(number);
 
-    this.object.traverse(o=>{
+    void this.loadProductionVisual(home ? 0x1557d6 : 0xc91f35);\n\n    this.object.traverse(o=>{
       const m=o as THREE.Mesh;
       if(m.isMesh){m.castShadow=true;m.receiveShadow=true;}
     });
   }
 
-  sync(player:Player){
+  private static loadHero():Promise<THREE.Group>{
+    if(!this.heroPromise){
+      const loader=new GLTFLoader();
+      this.heroPromise=loader.loadAsync("/assets/3d/players/player-hero.glb").then(gltf=>gltf.scene);
+    }
+    return this.heroPromise;
+  }
+\n  private static loadAnimations():Promise<THREE.AnimationClip[]>{
+    if(!this.animationPromise){
+      const loader=new GLTFLoader();
+      this.animationPromise=loader.loadAsync("/assets/3d/animations/universal-animation-library.glb").then(gltf=>gltf.animations);
+    }
+    return this.animationPromise;
+  }
+\n  private async loadProductionVisual(teamColor:number):Promise<void>{
+    try{
+      const [source,clips]=await Promise.all([PlayerMesh.loadHero(),PlayerMesh.loadAnimations()]);
+      const root=SkeletonUtils.clone(source) as THREE.Object3D;
+      root.scale.setScalar(.95);
+      root.traverse(o=>{
+        const mesh=o as THREE.Mesh;
+        if(!mesh.isMesh) return;
+        mesh.castShadow=true;mesh.receiveShadow=true;mesh.frustumCulled=true;
+        const materials=Array.isArray(mesh.material)?mesh.material:[mesh.material];
+        for(const raw of materials){
+          const m=raw as THREE.MeshStandardMaterial;
+          if(!m.isMeshStandardMaterial) continue;
+          m.envMapIntensity=1;
+          m.roughness=THREE.MathUtils.clamp(m.roughness,.28,.92);
+          m.metalness=THREE.MathUtils.clamp(m.metalness,0,1);
+          if(m.map) m.map.colorSpace=THREE.SRGBColorSpace;
+        }
+      });
+      this.productionRoot=root;
+      this.object.add(root);
+      this.torso.visible=false;this.shoulders.visible=false;this.shorts.visible=false;this.neck.visible=false;
+      this.head.visible=false;this.hair.visible=false;this.leftArm.visible=false;this.rightArm.visible=false;
+      this.leftLeg.visible=false;this.rightLeg.visible=false;this.leftSock.visible=false;this.rightSock.visible=false;
+      this.leftBoot.visible=false;this.rightBoot.visible=false;
+      this.mixer=new THREE.AnimationMixer(root);
+      for(const clip of clips){
+        const normalized=clip.name.toLowerCase();
+        let semantic:string|undefined;
+        if(normalized.includes("idle")) semantic="Idle";
+        else if(normalized.includes("sprint")) semantic="Sprint";
+        else if(normalized.includes("jog")) semantic="Run";
+        else if(normalized.includes("walk")) semantic="Walk";
+        if(semantic && !this.clips.has(semantic)) this.clips.set(semantic,this.mixer.clipAction(clip));
+      }
+      const idle=this.clips.get("Idle");
+      if(idle){idle.play();this.activeClip="Idle";}
+    }catch(error){
+      console.warn("[SLAYER] Production player GLB unavailable; procedural player retained.",error);
+    }
+  }
+\n  sync(player:Player){
     const p=player.state.position;
     this.object.position.set(p.x,p.y,p.z);
     this.object.rotation.y=player.state.rotationY;
   }
 
   applyAnimation(frame:AnimationFrame,delta:number){
+    if(this.mixer){
+      const desired=frame.state==="Sprint"?"Sprint":frame.state==="Run"?"Run":frame.state==="Walk"?"Walk":"Idle";
+      const next=this.clips.get(desired)??this.clips.get("Idle");
+      if(next && this.activeClip!==desired){
+        this.clips.get(this.activeClip)?.fadeOut(.12);
+        next.reset().fadeIn(.12).play();
+        this.activeClip=desired;
+      }
+      next?.setEffectiveTimeScale(Math.max(.7,Math.min(1.8,frame.speed/3.2||1)));
+      this.mixer.update(delta);
+      return;
+    }
     const smoothing=Math.min(1,delta*14);
     const swing=frame.legSwing;
     const moving=frame.speed>.15;
