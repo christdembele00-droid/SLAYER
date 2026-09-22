@@ -10,6 +10,7 @@
 #include <gltfio/MaterialProvider.h>
 #include <gltfio/ResourceLoader.h>
 #include <gltfio/TextureProvider.h>
+#include <gltfio/materials/uberarchive.h>
 
 #include <algorithm>
 #include <chrono>
@@ -227,8 +228,8 @@ struct NativeRenderer {
         return true;
     }
 
-    bool loadUbershaderArchive(const uint8_t* bytes, size_t size) {
-        if (!engine || !bytes || size == 0) return false;
+    bool loadUbershaderArchive() {
+        if (!engine) return false;
 
         if (gltfMaterials) {
             gltfMaterials->destroyMaterials();
@@ -236,7 +237,10 @@ struct NativeRenderer {
             gltfMaterials = nullptr;
         }
 
-        gltfMaterials = gltfio::createUbershaderProvider(engine, bytes, size);
+        gltfMaterials = gltfio::createUbershaderProvider(
+            engine,
+            UBERARCHIVE_DEFAULT_DATA,
+            UBERARCHIVE_DEFAULT_SIZE);
         return gltfMaterials != nullptr;
     }
 
@@ -490,23 +494,6 @@ Java_com_slayer_filament_MainActivity_nativeLoadPlayer(
     return ok ? JNI_TRUE : JNI_FALSE;
 }
 
-extern "C" JNIEXPORT jboolean JNICALL
-Java_com_slayer_filament_MainActivity_nativeLoadUberArchive(
-        JNIEnv* env, jobject, jbyteArray data) {
-    if (!env || !data) return JNI_FALSE;
-    const jsize size = env->GetArrayLength(data);
-    if (size <= 0) return JNI_FALSE;
-
-    jbyte* raw = env->GetByteArrayElements(data, nullptr);
-    if (!raw) return JNI_FALSE;
-
-    const bool ok = g_renderer.loadUbershaderArchive(
-        reinterpret_cast<const uint8_t*>(raw),
-        static_cast<size_t>(size));
-
-    env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
-    return ok ? JNI_TRUE : JNI_FALSE;
-}
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_slayer_filament_MainActivity_nativeResize(
