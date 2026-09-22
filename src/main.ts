@@ -81,7 +81,12 @@ const ballMesh=new THREE.Mesh(
 renderer.scene.add(ballMesh);
 
 const controlledId="home-1";
-const ui=new SlayerUI(app,()=>{ match.start(); match.kickOff("home"); });
+const ui=new SlayerUI(
+  app,
+  () => { match.start(); match.kickOff("home"); },
+  action => input.setAction(action,.75),
+  pressed => input.setSprint(pressed)
+);
 const config=(window as unknown as {__SLAYER_CONFIG__?:{wsUrl?:string}}).__SLAYER_CONFIG__??{};
 const online=config.wsUrl?new WebSocketClient():null;
 if(online) online.connect(config.wsUrl!);
