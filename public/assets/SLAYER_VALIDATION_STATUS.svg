@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+<title id="title">SLAYER — Validation Status</title>
+<desc id="desc">Current truth status of the visual, GPU and Android validation chain.</desc>
+<rect width="1200" height="760" fill="#07110e"/>
+<rect x="40" y="35" width="1120" height="690" rx="28" fill="#0d1b17" stroke="#23463a"/>
+<text x="80" y="95" fill="#f4fff9" font-family="Arial,sans-serif" font-size="36" font-weight="700">SLAYER</text>
+<text x="80" y="130" fill="#8eb8a7" font-family="Arial,sans-serif" font-size="18">VALIDATION — ÉTAT RÉEL</text>
+<line x1="80" y1="155" x2="1120" y2="155" stroke="#23463a"/>
+<g font-family="Arial,sans-serif" font-size="21">
+<text x="80" y="205" fill="#dff8ea">Pipeline GLB</text><text x="1080" y="205" text-anchor="end" fill="#54e38a">🟢 IMPLÉMENTÉ</text>
+<text x="80" y="250" fill="#dff8ea">Cache assets</text><text x="1080" y="250" text-anchor="end" fill="#54e38a">🟢 IMPLÉMENTÉ</text>
+<text x="80" y="295" fill="#dff8ea">GPU profiler</text><text x="1080" y="295" text-anchor="end" fill="#54e38a">🟢 INTÉGRÉ</text>
+<text x="80" y="340" fill="#dff8ea">Mesure FPS</text><text x="1080" y="340" text-anchor="end" fill="#54e38a">🟢 IMPLÉMENTÉE</text>
+<text x="80" y="385" fill="#dff8ea">Joueurs réalistes</text><text x="1080" y="385" text-anchor="end" fill="#ff6675">🔴 ABSENTS</text>
+<text x="80" y="430" fill="#dff8ea">Stade 3D réaliste</text><text x="1080" y="430" text-anchor="end" fill="#ff6675">🔴 NON INTÉGRÉ</text>
+<text x="80" y="475" fill="#dff8ea">Pelouse PBR</text><text x="1080" y="475" text-anchor="end" fill="#ff6675">🔴 NON INTÉGRÉE</text>
+<text x="80" y="520" fill="#dff8ea">GPU profiling Android</text><text x="1080" y="520" text-anchor="end" fill="#ffc857">⚪ À MESURER</text>
+<text x="80" y="565" fill="#dff8ea">60 FPS Android</text><text x="1080" y="565" text-anchor="end" fill="#ffc857">⚪ NON VALIDÉS</text>
+<text x="80" y="610" fill="#dff8ea">APK / test téléphone</text><text x="1080" y="610" text-anchor="end" fill="#ffc857">⚪ À FAIRE</text>
+</g>
+<rect x="80" y="650" width="1040" height="42" rx="12" fill="#10251e"/>
+<text x="600" y="678" text-anchor="middle" fill="#b9d9ca" font-family="Arial,sans-serif" font-size="16">RÈGLE : aucun élément n'est déclaré validé sans preuve du niveau précédent.</text>
+</svg>
