@@ -1,5 +1,6 @@
 import os
 from contextlib import asynccontextmanager
+import asyncio
 from time import time
 from uuid import uuid4
 
@@ -44,18 +45,20 @@ app.include_router(router)
 mm = Matchmaking()
 match_players: dict[str, dict[str, str]] = {}
 clients: dict[str, dict[str, WebSocket]] = {}
+last_intent_time: dict[tuple[str, str], int] = {}
 
 
 class Intent(BaseModel):
-    playerId: str
+    playerId: str = Field(min_length=1, max_length=64)
     moveX: float = Field(ge=-1, le=1)
     moveZ: float = Field(ge=-1, le=1)
     action: Literal["None", "Pass", "Shoot", "ThroughBall", "Cross", "Clearance", "Tackle", "Header", "Control", "Dribble", "SkillMove", "ProtectBall", "Press", "Contain", "Intercept", "StandingTackle", "SlideTackle", "GoalkeeperAction"] = "None"
     power: float = Field(ge=0, le=1)
+    clientTime: int = Field(default=0, ge=0)
 
 
 class QueueRequest(BaseModel):
-    playerId: str
+    playerId: str = Field(min_length=1, max_length=64)
     region: str = Field(default="auto", min_length=2, max_length=16)
     mode: str = Field(default="Friendly", min_length=2, max_length=24)
     version: str = Field(default="0.1.0", min_length=1, max_length=32)
@@ -105,7 +108,7 @@ async def _authenticate_websocket(ws: WebSocket) -> str | None:
     await ws.accept()
 
     try:
-        first = await ws.receive_json()
+        first = await asyncio.wait_for(ws.receive_json(), timeout=5.0)
     except Exception:
         await ws.close(code=4401, reason="auth_required")
         return None
@@ -158,6 +161,12 @@ async def ws(
                 await websocket.close(code=4403, reason="player_id_mismatch")
                 return
 
+            intent_key = (match_id, player_id)
+            previous_client_time = last_intent_time.get(intent_key, -1)
+            if intent.clientTime < previous_client_time:
+                continue
+            last_intent_time[intent_key] = intent.clientTime
+
             envelope = {"type": "intent", "data": intent.model_dump()}
             stale: list[str] = []
             for other_id, client in list(room.items()):
@@ -171,5 +180,7 @@ async def ws(
 
     except WebSocketDisconnect:
         room.pop(player_id, None)
+        last_intent_time.pop((match_id, player_id), None)
         if not room:
             clients.pop(match_id, None)
+            match_players.pop(match_id, None)
