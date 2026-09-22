@@ -1,6 +1,6 @@
 import "./ui.css";
 
-export type SlayerScreen = "home"|"match"|"team"|"career"|"competitions"|"online"|"settings";
+export type SlayerScreen = "home"|"match"|"team"|"modes"|"shop"|"missions"|"career"|"competitions"|"online"|"settings"|"pause"|"result"|"setpiece";
 export type SlayerMatchAction = "Pass"|"Shoot"|"Control"|"Dribble"|"StandingTackle";
 export interface SlayerMoveInput { x:number; z:number; }
 
@@ -14,6 +14,8 @@ export class SlayerUI {
   private joystickEl: HTMLElement | null = null;
   private joystickKnobEl: HTMLElement | null = null;
   private joystickPointerId: number | null = null;
+  private perfEl: HTMLElement | null = null;
+  private modalFromMatch = false;
   private perfEl: HTMLElement | null = null;
 
   constructor(
@@ -35,6 +37,10 @@ export class SlayerUI {
     this.render();
   }
 
+  openPause() { this.modalFromMatch = true; this.screen = "pause"; this.render(); }
+  openSetPiece() { this.screen = "setpiece"; this.render(); }
+  showResult() { this.screen = "result"; this.render(); }
+
   updatePerformance(fps:number, frameMs:number, p95Ms:number, drawCalls:number, triangles:number, tier:string) {
     if (!this.perfEl) return;
     this.perfEl.textContent = `FPS ${fps.toFixed(0)}  |  ${frameMs.toFixed(1)}ms  |  P95 ${p95Ms.toFixed(1)}ms  |  DC ${drawCalls}  |  TRI ${(triangles/1000).toFixed(0)}k  |  ${tier}`;
@@ -55,67 +61,42 @@ export class SlayerUI {
   }
 
   private render() {
-    this.matchScoreEl = null;
-    this.matchPhaseEl = null;
-    this.matchClockEl = null;
-
+    this.matchScoreEl = null; this.matchPhaseEl = null; this.matchClockEl = null; this.perfEl = null;
     if (this.screen === "match") {
       this.root.innerHTML =
         '<div class="match-overlay">' +
-          '<div class="match-topbar">' +
-            '<button class="icon-button" data-screen="home" aria-label="Back">←</button>' +
-            '<div class="match-badge">SLAYER / LIVE</div>' +
-            '<div class="match-score"><span>HOME</span><strong data-match-score>' + this.score.home + " — " + this.score.away + '</strong><span>AWAY</span></div>' +
-            '<div class="match-phase" data-match-phase>' + this.score.phase + "</div>" +
-            '<div class="match-clock" data-match-clock>' + this.score.clock + "</div>" +
-          "</div>" +
+          '<div class="match-topbar"><button class="icon-button" data-screen="home">←</button><div class="match-badge">SLAYER / LIVE</div>' +
+          '<div class="match-score"><span>HOME</span><strong data-match-score>' + this.score.home + " — " + this.score.away + '</strong><span>AWAY</span></div>' +
+          '<div class="match-clock" data-match-clock>' + this.score.clock + '</div><button class="match-top-action" data-pause>Ⅱ</button><button class="match-top-action" data-camera>CAM</button></div>' +
           '<div class="perf-overlay" data-performance>PERF MONITOR</div>' +
-          '<div class="match-controls">' +
-            '<div class="virtual-joystick" data-joystick aria-label="Movement joystick"><div class="joystick-knob" data-joystick-knob></div></div>' +
-            '<div class="radar"><i></i><b></b></div>' +
-            '<div class="touch-actions">' +
-              '<button type="button" data-action="Control">CONTROL</button><button type="button" data-action="Pass">PASS</button>' +
-              '<button type="button" class="accent" data-action="Shoot">SHOOT</button>' +
-              '<button type="button" data-sprint="1">SPRINT</button>' +
-            "</div>" +
-          "</div>" +
-        "</div>";
-      this.perfEl = this.root.querySelector("[data-performance]");
-      this.matchScoreEl = this.root.querySelector("[data-match-score]");
-      this.matchPhaseEl = this.root.querySelector("[data-match-phase]");
-      this.matchClockEl = this.root.querySelector("[data-match-clock]");
-      this.joystickEl = this.root.querySelector("[data-joystick]");
-      this.joystickKnobEl = this.root.querySelector("[data-joystick-knob]");
-      this.bind();
-      return;
+          '<div class="match-controls"><div class="virtual-joystick" data-joystick><div class="joystick-knob" data-joystick-knob></div></div>' +
+          '<div class="radar"><i></i><b></b></div><div class="touch-diamond">' +
+          '<button class="act up" data-action="ThroughBall">↟<small>THROUGH</small></button><button class="act left" data-action="Pass">PASS</button>' +
+          '<button class="act down" data-action="Dribble">DRIBBLE</button><button class="act right accent" data-action="Shoot">SHOOT</button></div></div>' +
+          '<div class="player-indicator"><span>PLAYER 01</span><i></i></div></div>';
+      this.perfEl=this.root.querySelector("[data-performance]"); this.matchScoreEl=this.root.querySelector("[data-match-score]");
+      this.matchClockEl=this.root.querySelector("[data-match-clock]"); this.joystickEl=this.root.querySelector("[data-joystick]");
+      this.joystickKnobEl=this.root.querySelector("[data-joystick-knob]"); this.bind(); return;
     }
-
-    const home = this.screen === "home";
-    const content = home
-      ? '<section class="hero"><div class="hero-copy"><div class="eyebrow">NEXT GENERATION FOOTBALL SIMULATION</div><h1>SLAYER</h1><p>THE GAME. THE PITCH. YOUR DECISION.</p><button class="primary-cta" data-start="1"><span>PLAY MATCH</span><b>→</b></button><div class="quick-meta"><span>OFFLINE READY</span><span>•</span><span>22 PLAYERS</span><span>•</span><span>60 FPS TARGET</span></div></div><div class="hero-visual"><div class="stadium-glow"></div><div class="pitch-card"><div class="pitch-lines"></div><div class="pitch-box left"></div><div class="pitch-box right"></div><div class="pitch-player p1"></div><div class="pitch-player p2"></div><div class="pitch-player p3"></div><div class="pitch-ball"></div></div><div class="visual-label">LIVE MATCH ENGINE <b>●</b></div></div></section>'
-      : '<section class="subscreen"><div class="eyebrow">SLAYER / ' + this.screen.toUpperCase() + '</div><h2>' + this.title() + '</h2><p>' + this.description() + '</p><div class="feature-grid">' + this.cards() + "</div></section>";
-
-    this.root.innerHTML =
-      '<div class="ui-backdrop"><div class="ui-grid"></div><div class="ui-noise"></div></div>' +
-      '<header class="topbar"><div class="brand"><span class="brand-mark">S</span><span>SLAYER</span><small>0.1</small></div><div class="profile"><span class="profile-dot"></span><span>PLAYER 01</span></div></header>' +
-      content +
-      '<nav class="main-nav">' +
-        this.nav("Home","home") + this.nav("Team","team") + this.nav("Career","career") +
-        this.nav("Competitions","competitions") + this.nav("Online","online") + this.nav("Settings","settings") +
-      "</nav>";
+    if (this.screen === "pause") {
+      this.root.innerHTML='<div class="modal-screen"><div class="pause-card"><div class="eyebrow">SLAYER / PAUSE</div><h2>PAUSE</h2><button class="modal-primary" data-resume>REPRENDRE LE MATCH</button><button data-screen="team">GESTION D’ÉQUIPE</button><button data-screen="settings">PARAMÈTRES</button><button class="danger" data-result>ABANDONNER / QUITTER</button><div class="live-stats"><b>STATISTIQUES EN DIRECT</b><span>Possession&nbsp;&nbsp; 52% — 48%</span><span>Tirs&nbsp;&nbsp; 6 — 4</span><span>Fautes&nbsp;&nbsp; 2 — 3</span><span>Corners&nbsp;&nbsp; 3 — 2</span></div></div></div>'; this.bind(); return;
+    }
+    if (this.screen === "result") {
+      this.root.innerHTML='<div class="result-screen"><div class="result-card"><div class="eyebrow">SLAYER / FINAL</div><h2>RÉSULTAT FINAL</h2><div class="final-score">HOME <strong>'+this.score.home+' — '+this.score.away+'</strong> AWAY</div><div class="result-tabs"><button>STATISTIQUES DU MATCH</button><button>NOTES DES JOUEURS</button></div><div class="result-body"><div><span>Possession</span><b>52% — 48%</b><span>Tirs cadrés</span><b>5 — 3</b><span>Passes réussies</span><b>87% — 82%</b><span>Arrêts</span><b>3 — 4</b></div><aside><b>RÉCOMPENSES</b><strong>+ 1 250 XP</strong><span>+ 320 pièces</span><span>Pass de Saison +12</span></aside></div><button class="modal-primary" data-screen="home">CONTINUER  »</button></div></div>'; this.bind(); return;
+    }
+    if (this.screen === "setpiece") {
+      this.root.innerHTML='<div class="setpiece-screen"><button class="icon-button" data-screen="match">←</button><div class="setpiece-head"><span>COUP DE PIED ARRÊTÉ</span><b>JOUEUR 10 · 84 FK</b></div><button class="setpiece-tool left-tool">⟲</button><button class="setpiece-tool right-tool">⟳</button><div class="swipe-zone">TRACE LA TRAJECTOIRE</div><div class="setpiece-actions"><button>CHANGER DE TIREUR</button><button>COMBINAISON</button></div></div>'; this.bind(); return;
+    }
+    if (this.screen === "team") {
+      const spots=["GB","DD","DC","DC","DG","MC","MC","MOC","AD","BU","AG"];
+      this.root.innerHTML='<div class="team-screen"><header class="screen-header"><button class="icon-button" data-screen="home">←</button><div class="ovr">OVR <strong>85</strong></div><button class="save-team" data-screen="home">✓ SAUVEGARDER</button></header><div class="formation-switch"><button>‹</button><b>4-3-3</b><button>›</button></div><div class="team-pitch"><div class="pitch-mid"></div>'+spots.map((p,i)=>'<button class="player-dot dot-'+i+'"><strong>'+p+'</strong><span>'+(82+i%7)+'</span><i></i></button>').join('')+'</div><div class="bench"><b>BANC</b><button>GB 78</button><button>DC 80</button><button>MC 81</button><button>AD 79</button><button>BU 83</button><button>FILTRES</button></div></div>'; this.bind(); return;
+    }
+    const home=this.screen==="home";
+    const content=home
+      ? '<section class="hub-hero"><div class="hero-copy"><div class="eyebrow">SLAYER / FOOTBALL HUB</div><h1>SLAYER</h1><p>THE GAME. THE PITCH. YOUR DECISION.</p><button class="primary-cta" data-start="1"><span>JOUER</span><b>→</b></button><div class="quick-meta"><span>OFFLINE READY</span><span>•</span><span>22 PLAYERS</span><span>•</span><span>60 FPS TARGET</span></div></div><div class="hero-visual"><div class="stadium-glow"></div><div class="pitch-card"></div><div class="visual-label">LIVE 3D MATCH ENGINE <b>●</b></div></div></section>'
+      : '<section class="subscreen"><div class="eyebrow">SLAYER / '+this.screen.toUpperCase()+'</div><h2>'+this.title()+'</h2><p>'+this.description()+'</p><div class="feature-grid">'+this.cards()+'</div></section>';
+    this.root.innerHTML='<div class="ui-backdrop"><div class="ui-grid"></div><div class="ui-noise"></div></div><header class="topbar"><div class="profile-card"><span class="profile-avatar">P1</span><div><b>PLAYER 01</b><small>LV 12 · 4 820 XP</small></div></div><div class="global-energy">ENDURANCE <span></span></div><div class="economy"><b>◈ 12 450</b><strong>✦ 860</strong><button data-screen="settings">⚙</button></div></header>'+content+'<nav class="main-nav">'+this.nav("Accueil","home")+this.nav("Mon Équipe","team")+this.nav("Modes","modes")+this.nav("Boutique","shop")+this.nav("Missions","missions")+'</nav><div class="news-tile">NEWS / BOUTIQUE <b>Nouveaux maillots · Événement du week-end</b></div>';
     this.bind();
-  }
-
-  private title() {
-    return ({team:"YOUR TEAM",career:"CAREER MODE",competitions:"COMPETITIONS",online:"ONLINE HUB",settings:"SETTINGS"} as Record<string,string>)[this.screen] ?? "SLAYER";
-  }
-
-  private description() {
-    return ({team:"Squad, formation, roles and tactical identity.",career:"Build a club and progress through seasons.",competitions:"Leagues, cups and tournaments.",online:"Matchmaking, friends and connected football.",settings:"Graphics, audio, controls and gameplay."} as Record<string,string>)[this.screen] ?? "";
-  }
-
-  private cards() {
-    return ({"team":["SQUAD","FORMATION","TACTICS"],"career":["SEASON","TRAINING","TRANSFERS"],"competitions":["QUICK CUP","LEAGUE","TOURNAMENT"],"online":["MATCHMAKING","FRIENDS","SYNC"],"settings":["GRAPHICS","AUDIO","CONTROLS"]} as Record<string,string[]>)[this.screen]?.map((x,i)=>'<button class="feature-card"><span>0' + (i+1) + "</span><strong>" + x + "</strong><b>↗</b></button>").join("") ?? "";
   }
 
   private bind() {
@@ -123,6 +104,9 @@ export class SlayerUI {
       el.addEventListener("click", () => this.setScreen(el.dataset.screen as SlayerScreen))
     );
 
+    this.root.querySelector<HTMLElement>("[data-pause]")?.addEventListener("click", () => this.openPause());
+    this.root.querySelector<HTMLElement>("[data-result]")?.addEventListener("click", () => this.showResult());
+    this.root.querySelector<HTMLElement>("[data-resume]")?.addEventListener("click", () => this.setScreen("match"));
     this.root.querySelector<HTMLElement>("[data-start]")?.addEventListener("click", () => {
       this.onStartMatch();
       this.setScreen("match");
