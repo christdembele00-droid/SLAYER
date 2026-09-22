@@ -19,6 +19,7 @@
 #include <filament/SwapChain.h>
 #include <filament/VertexBuffer.h>
 #include <filament/View.h>
+#include <backend/DriverEnums.h>
 #include <utils/EntityManager.h>
 
 namespace {
@@ -187,7 +188,7 @@ struct NativeRenderer {
     void shutdown() {
         if (!engine) return;
 
-        if (scene && meshEntity) scene->removeEntity(meshEntity);
+        if (scene && meshEntity) scene->remove(meshEntity);
 
         if (materialInstance) engine->destroy(materialInstance);
         if (vertexBuffer) engine->destroy(vertexBuffer);
