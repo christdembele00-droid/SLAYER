@@ -1,0 +1,27 @@
+material {
+    name : "SLAYER_PlayerSkin",
+    shadingModel : subsurface,
+    parameters : [
+        { type : sampler2d, name : baseColorMap },
+        { type : sampler2d, name : normalMap },
+        { type : sampler2d, name : aoMap },
+        { type : sampler2d, name : thicknessMap },
+        { type : float, name : roughness },
+        { type : float, name : subsurfacePower }
+    ],
+    requires : [ uv0, tangents ]
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        vec2 uv = getUV0();
+        material.baseColor = texture(materialParams_baseColorMap, uv);
+        material.normal = texture(materialParams_normalMap, uv).xyz * 2.0 - 1.0;
+        material.ambientOcclusion = texture(materialParams_aoMap, uv).r;
+        material.thickness = texture(materialParams_thicknessMap, uv).r;
+        material.subsurfacePower = materialParams_subsurfacePower;
+        material.subsurfaceColor = vec3(0.95, 0.48, 0.36);
+        material.roughness = clamp(materialParams_roughness, 0.35, 0.85);
+    }
+}
