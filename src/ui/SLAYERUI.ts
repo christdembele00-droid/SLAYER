@@ -3,6 +3,7 @@ import "./ui.css";
 export type SlayerScreen = "home"|"match"|"team"|"modes"|"shop"|"missions"|"career"|"competitions"|"online"|"settings"|"pause"|"result"|"setpiece";
 export type SlayerMatchAction = "Pass"|"Shoot"|"Control"|"Dribble"|"StandingTackle"|"ThroughBall"|"SlideTackle"|"Press";
 export interface SlayerMoveInput { x:number; z:number; }
+export type SlayerSettings=Readonly<Record<string,string|number|boolean>>;
 
 type TeamPlayer={id:string;name:string;pos:string;rating:number;form:number;starter:boolean};
 type ControlLayout={x:number;y:number;scale:number};
@@ -31,8 +32,9 @@ export class SlayerUI {
   private layoutEditMode=false;
   private controlLayout:Record<string,ControlLayout>={joystick:{x:9,y:76,scale:1},radar:{x:50,y:78,scale:1},ThroughBall:{x:84,y:67,scale:1},Pass:{x:77,y:75,scale:1},Dribble:{x:84,y:83,scale:1},Shoot:{x:91,y:75,scale:1}};
   private layoutDefaults:Record<string,ControlLayout>=JSON.parse(JSON.stringify(this.controlLayout));
-  private setOption<K extends keyof typeof this.matchSettings>(key:K,value:(typeof this.matchSettings)[K]):void{this.matchSettings[key]=value;this.render();}
+  private setOption<K extends keyof typeof this.matchSettings>(key:K,value:(typeof this.matchSettings)[K]):void{this.matchSettings[key]=value;try{localStorage.setItem("slayer.settings",JSON.stringify(this.matchSettings));}catch{}this.onSettingsChange?.(this.matchSettings as SlayerSettings);this.render();}
   private optionButtons(key:string,values:string[],current:string):string{return values.map(v=>`<button class="option-chip ${v===current?"active":""}" data-option-key="${key}" data-option-value="${v}">${v}</button>`).join("");}
+  private loadSettings():void{try{const raw=localStorage.getItem("slayer.settings");if(!raw)return;const parsed=JSON.parse(raw) as Partial<typeof this.matchSettings>;Object.assign(this.matchSettings,parsed);this.onSettingsChange?.(this.matchSettings as SlayerSettings);}catch{}}
   private loadControlLayout():void{try{const raw=localStorage.getItem("slayer.controlLayout");if(!raw)return;const parsed=JSON.parse(raw) as Record<string,ControlLayout>;for(const [id,v] of Object.entries(parsed))if(Number.isFinite(v.x)&&Number.isFinite(v.y)&&Number.isFinite(v.scale))this.controlLayout[id]={x:Math.max(2,Math.min(98,v.x)),y:Math.max(5,Math.min(95,v.y)),scale:Math.max(.55,Math.min(1.7,v.scale))};}catch{}}
   private saveControlLayout():void{try{localStorage.setItem("slayer.controlLayout",JSON.stringify(this.controlLayout));}catch{}}
   private controlStyle(id:string):string{const p=this.controlLayout[id]??{x:50,y:50,scale:1};return `left:${p.x}%;top:${p.y}%;--control-scale:${p.scale};`;}
@@ -59,8 +61,8 @@ export class SlayerUI {
     {id:"p16",name:"M. KONAN",pos:"BU",rating:83,form:90,starter:false}
   ];
 
-  constructor(app:HTMLDivElement,private readonly onStartMatch:()=>void,private readonly onMatchAction?:(action:SlayerMatchAction)=>void,private readonly onSprint?:(pressed:boolean)=>void,private readonly onMove?:(move:SlayerMoveInput)=>void,private readonly onCameraMode?:(mode:"match"|"hero"|"setpiece")=>void){
-    this.root=document.createElement("div"); this.root.className="slayer-ui"; app.appendChild(this.root); this.loadControlLayout(); this.render();
+  constructor(app:HTMLDivElement,private readonly onStartMatch:()=>void,private readonly onMatchAction?:(action:SlayerMatchAction)=>void,private readonly onSprint?:(pressed:boolean)=>void,private readonly onMove?:(move:SlayerMoveInput)=>void,private readonly onCameraMode?:(mode:"match"|"hero"|"setpiece")=>void,private readonly onSettingsChange?:(settings:SlayerSettings)=>void){
+    this.root=document.createElement("div"); this.root.className="slayer-ui"; app.appendChild(this.root); this.loadControlLayout(); this.loadSettings(); this.render();
   }
 
   setScreen(screen:SlayerScreen){this.screen=screen;this.abandonConfirm=false;if(screen==="modes")this.menuSection="modes";if(screen==="settings")this.menuSection="display";this.onCameraMode?.(screen==="home"?"hero":screen==="setpiece"?"setpiece":"match");this.render();}
