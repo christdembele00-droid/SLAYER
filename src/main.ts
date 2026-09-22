@@ -108,7 +108,8 @@ ballMesh.receiveShadow=true;
 renderer.scene.add(ballMesh);
 
 const controlledId="home-11";
-const nextAIActionAt=new Map<string,number>();\nlet lastOnlineSnapshotAt=0;
+const nextAIActionAt=new Map<string,number>();
+let lastOnlineSnapshotAt=0;
 function ensureControlledPlayerPossession(): void {
   const p=players.get(controlledId);
   if(!p || match.snapshot().phase!=="FirstHalf" || ball.state.controlledByPlayerId) return;
