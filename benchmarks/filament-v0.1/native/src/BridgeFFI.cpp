@@ -698,3 +698,263 @@ struct NativeRenderer {
         if (scene && terrainEntity) scene->remove(terrainEntity);
         if (scene && weatherEntity) scene->remove(weatherEntity);
         if (scene && meshEntity) scene->remove(meshEntity);
+
+        if (sunEntity) engine->getLightManager().destroy(sunEntity);
+        if (terrainMaterialInstance) engine->destroy(terrainMaterialInstance);
+        if (terrainMaterial) engine->destroy(terrainMaterial);
+        terrainMaterialInstance = nullptr;
+        terrainMaterial = nullptr;
+        if (materialInstance) engine->destroy(materialInstance);
+        if (vertexBuffer) engine->destroy(vertexBuffer);
+        if (indexBuffer) engine->destroy(indexBuffer);
+        if (weatherMaterialInstance) engine->destroy(weatherMaterialInstance);
+        if (weatherVertexBuffer) engine->destroy(weatherVertexBuffer);
+        if (weatherIndexBuffer) engine->destroy(weatherIndexBuffer);
+        if (terrainVertexBuffer) engine->destroy(terrainVertexBuffer);
+        if (terrainIndexBuffer) engine->destroy(terrainIndexBuffer);
+        if (material) {
+            // Default material is engine-owned; do not destroy it.
+            material = nullptr;
+        }
+
+        if (meshEntity) engine->getEntityManager().destroy(meshEntity);
+        if (terrainEntity) engine->getEntityManager().destroy(terrainEntity);
+        if (weatherEntity) engine->getEntityManager().destroy(weatherEntity);
+        if (sunEntity) engine->getEntityManager().destroy(sunEntity);
+        if (cameraEntity) {
+            engine->destroyCameraComponent(cameraEntity);
+            engine->getEntityManager().destroy(cameraEntity);
+        }
+
+        if (view) {
+            view->setColorGrading(nullptr);
+            engine->destroy(view);
+        }
+        if (colorGrading) {
+            engine->destroy(colorGrading);
+            colorGrading = nullptr;
+        }
+        if (scene) engine->destroy(scene);
+        if (renderer) engine->destroy(renderer);
+        if (swapChain) engine->destroy(swapChain);
+
+        Engine::destroy(&engine);
+
+        if (window) {
+            ANativeWindow_release(window);
+            window = nullptr;
+        }
+
+        renderer = nullptr;
+        swapChain = nullptr;
+        view = nullptr;
+        scene = nullptr;
+        camera = nullptr;
+        vertexBuffer = nullptr;
+        indexBuffer = nullptr;
+        terrainVertexBuffer = nullptr;
+        terrainUvBuffer = nullptr;
+        terrainIndexBuffer = nullptr;
+        materialInstance = nullptr;
+    }
+};
+
+class RuntimeThreads {
+    std::atomic<bool> running{false}; std::thread physics; std::thread gameplay;
+public:
+    void start(){ if(running.exchange(true)) return; physics=std::thread([this]{using namespace std::chrono_literals; while(running){std::this_thread::sleep_for(8ms);}}); gameplay=std::thread([this]{using namespace std::chrono_literals; while(running){std::this_thread::sleep_for(16ms);}}); }
+    void stop(){running=false; if(physics.joinable())physics.join(); if(gameplay.joinable())gameplay.join();}
+};
+NativeRenderer g_renderer;
+RuntimeThreads g_runtime;
+
+} // namespace
+
+extern "C" void slayer_renderer_create(void* native_window) {
+    g_renderer.initialize(static_cast<ANativeWindow*>(native_window));
+}
+
+extern "C" void slayer_renderer_resize(uint32_t width, uint32_t height) {
+    g_renderer.setSize(width, height);
+}
+
+extern "C" void slayer_renderer_set_players(
+        const SlayerTransform* transforms, uint32_t count) {
+    const uint32_t n = std::min(count, NativeRenderer::MAX_PLAYERS);
+    const uint32_t published =
+        g_renderer.publishedPlayerBuffer.load(std::memory_order_acquire);
+    const uint32_t reading =
+        g_renderer.renderReadingBuffer.load(std::memory_order_acquire);
+
+    uint32_t target = (g_renderer.writerBuffer + 1u) % 3u;
+    for (uint32_t i = 0; i < 3; ++i) {
+        const uint32_t candidate = (target + i) % 3u;
+        if (candidate != published && candidate != reading) {
+            target = candidate;
+            break;
+        }
+    }
+
+    auto& buffer = g_renderer.playerBuffers[target];
+    buffer.count = 0;
+    if (transforms && n > 0) {
+        std::copy_n(transforms, n, buffer.transforms);
+        buffer.count = n;
+    }
+
+    std::atomic_thread_fence(std::memory_order_release);
+    g_renderer.publishedPlayerBuffer.store(target, std::memory_order_release);
+    g_renderer.writerBuffer = target;
+    g_renderer.stats.player_count = transforms ? n : 0;
+}
+
+extern "C" void slayer_renderer_set_settings(const slayer::SlayerSettings& settings) { g_renderer.setSettings(settings); }
+
+extern "C" void slayer_renderer_render(float delta_seconds) {
+    g_renderer.render(delta_seconds);
+}
+
+extern "C" SlayerFrameStats slayer_renderer_stats(void) {
+    return g_renderer.stats;
+}
+
+extern "C" void slayer_renderer_destroy(void) {
+    g_renderer.shutdown();
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_slayer_filament_MainActivity_nativeCreate(
+        JNIEnv* env, jobject, jobject surface) {
+    ANativeWindow* window = ANativeWindow_fromSurface(env, surface);
+    if (!window) return;
+    if (g_renderer.initialize(window)) {
+        slayer_game_reset();
+        g_renderer.loadUbershaderArchive();
+        g_runtime.start();
+    }
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_slayer_filament_MainActivity_nativeLoadEnvironment(
+        JNIEnv* env, jobject, jbyteArray data) {
+    if (!env || !data) return JNI_FALSE;
+    const jsize size = env->GetArrayLength(data);
+    if (size <= 0) return JNI_FALSE;
+    jbyte* raw = env->GetByteArrayElements(data, nullptr);
+    if (!raw) return JNI_FALSE;
+    const bool ok = g_renderer.loadEnvironmentKtx(
+        reinterpret_cast<const uint8_t*>(raw), static_cast<size_t>(size));
+    env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_slayer_filament_MainActivity_nativeLoadTerrainMaterial(
+        JNIEnv* env, jobject, jbyteArray data) {
+    if (!env || !data) return JNI_FALSE;
+    const jsize size = env->GetArrayLength(data);
+    if (size <= 0) return JNI_FALSE;
+    jbyte* raw = env->GetByteArrayElements(data, nullptr);
+    if (!raw) return JNI_FALSE;
+    const bool ok = g_renderer.loadTerrainMaterial(
+        reinterpret_cast<const uint8_t*>(raw), static_cast<size_t>(size));
+    env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_slayer_filament_MainActivity_nativeLoadStadium(
+        JNIEnv* env, jobject, jbyteArray data) {
+    if (!env || !data) return JNI_FALSE;
+    const jsize size = env->GetArrayLength(data);
+    if (size <= 0) return JNI_FALSE;
+    jbyte* raw = env->GetByteArrayElements(data, nullptr);
+    if (!raw) return JNI_FALSE;
+    const bool ok = g_renderer.loadStadiumGlb(reinterpret_cast<const uint8_t*>(raw), static_cast<size_t>(size));
+    env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_slayer_filament_MainActivity_nativeLoadPlayer(
+        JNIEnv* env, jobject, jbyteArray data) {
+    if (!env || !data) return JNI_FALSE;
+    const jsize size = env->GetArrayLength(data);
+    if (size <= 0) return JNI_FALSE;
+
+    jbyte* raw = env->GetByteArrayElements(data, nullptr);
+    if (!raw) return JNI_FALSE;
+
+    const bool ok = g_renderer.loadPlayerGlb(
+        reinterpret_cast<const uint8_t*>(raw),
+        static_cast<size_t>(size));
+
+    env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_slayer_filament_MainActivity_nativeResize(
+        JNIEnv*, jobject, jint width, jint height) {
+    slayer_renderer_resize(
+        static_cast<uint32_t>(std::max(1, width)),
+        static_cast<uint32_t>(std::max(1, height)));
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_slayer_filament_MainActivity_nativeRender(
+        JNIEnv*, jobject, jfloat deltaSeconds) {
+    slayer_renderer_render(deltaSeconds);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_slayer_filament_MainActivity_nativeDestroy(
+        JNIEnv*, jobject) {
+    g_runtime.stop();
+    slayer_renderer_destroy();
+}
+
+
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_slayer_filament_MainActivity_nativeSetInput(
+        JNIEnv*, jobject, jfloat moveX, jfloat moveY, jfloat pass,
+        jfloat shoot, jfloat sprint, jfloat tackle, jint selected) {
+    slayer_game_set_input(moveX, moveY, pass, shoot, sprint, tackle, selected);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_slayer_filament_MainActivity_nativeSetSettings(JNIEnv*, jobject, jint duration, jboolean extraTime, jboolean penalties, jint substitutions, jint conditionRandom, jint timeMode, jint weatherMode, jint grassMode, jint stadium, jint ball, jint control, jint passAssist, jint shotAssist, jint cursor, jint pressing, jint attack, jint targetFps, jint quality, jboolean dynamicResolution, jint cameraMode, jboolean radar, jint commentary, jfloat music, jfloat commentaryVolume, jfloat crowd, jfloat effects) {
+    slayer::SlayerSettings s{};
+    s.durationMinutes=std::clamp((int)duration,5,12); s.extraTime=extraTime; s.penalties=penalties; s.substitutions=std::clamp((int)substitutions,3,5); s.randomCondition=conditionRandom!=0;
+    s.time=(slayer::TimeMode)std::clamp((int)timeMode,0,2); s.weather=(slayer::WeatherMode)std::clamp((int)weatherMode,0,2); s.grass=(slayer::GrassMode)std::clamp((int)grassMode,0,2);
+    s.stadium=stadium; s.ball=ball; s.control=(slayer::ControlMode)std::clamp((int)control,0,2); s.passAssist=std::clamp((int)passAssist,1,4); s.shotAssist=(slayer::ShotAssistMode)std::clamp((int)shotAssist,0,1); s.cursor=(slayer::CursorMode)std::clamp((int)cursor,0,2); s.pressing=(slayer::PressMode)std::clamp((int)pressing,0,1); s.attack=(slayer::TacticalMode)std::clamp((int)attack,0,2); s.targetFps=targetFps; s.quality=(slayer::QualityMode)std::clamp((int)quality,0,3); s.dynamicResolution=dynamicResolution; s.camera=(slayer::CameraMode)std::clamp((int)cameraMode,0,4); s.radar=radar; s.commentaryLanguage=commentary; s.musicVolume=music; s.commentaryVolume=commentaryVolume; s.crowdVolume=crowd; s.effectsVolume=effects;
+    slayer_renderer_set_settings(s);
+    slayer_game_set_settings(s);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_slayer_filament_MainActivity_nativeResetMatch(JNIEnv*, jobject) {
+    slayer_game_reset();
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_slayer_filament_MainActivity_nativeGetFps(JNIEnv*, jobject) {
+    return g_renderer.stats.fps;
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_slayer_filament_MainActivity_nativeGetFrameMs(JNIEnv*, jobject) {
+    return g_renderer.stats.frame_ms;
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_slayer_filament_MainActivity_nativeGetDrawCalls(JNIEnv*, jobject) {
+    return static_cast<jint>(g_renderer.stats.draw_calls);
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_slayer_filament_MainActivity_nativeGetPlayerCount(JNIEnv*, jobject) {
+    return static_cast<jint>(g_renderer.stats.player_count);
+}
