@@ -473,7 +473,9 @@ Java_com_slayer_filament_MainActivity_nativeCreate(
         JNIEnv* env, jobject, jobject surface) {
     ANativeWindow* window = ANativeWindow_fromSurface(env, surface);
     if (!window) return;
-    g_renderer.initialize(window);
+    if (g_renderer.initialize(window)) {
+        g_renderer.loadUbershaderArchive();
+    }
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
