@@ -87,12 +87,8 @@ jobs:
       - name: Install Blender for FBX production asset conversion
         run: |
           sudo apt-get update
-          sudo apt-get install -y blender python3-pip
+          sudo apt-get install -y blender python3-numpy
           blender --version
-          BLENDER_PYTHON="$(blender --background --factory-startup --python-expr 'import sys; print(sys.executable)' 2>/dev/null | tail -n 1)"
-          test -x "$BLENDER_PYTHON"
-          "$BLENDER_PYTHON" -m ensurepip --upgrade || true
-          "$BLENDER_PYTHON" -m pip install --disable-pip-version-check --no-cache-dir "numpy==1.26.4"
           blender --background --factory-startup --python-expr 'import numpy as np; print("Blender NumPy:", np.__version__)'
 
       - name: Download Filament host tools for production assets
