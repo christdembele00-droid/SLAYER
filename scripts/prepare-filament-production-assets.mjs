@@ -15,10 +15,45 @@ const cloudinary = {
   environment: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790111036/slayer/stadium/ibl/orlando_stadium_1k.exr",
 };
 
+function signedCloudinaryRawUrl(url) {
+  const secret = process.env.CLOUDINARY_API_SECRET;
+  if (!secret) {
+    throw new Error(
+      "Cloudinary returned 401 for a production raw asset. Set the GitHub Actions secret CLOUDINARY_API_SECRET so CI can generate a signed delivery URL."
+    );
+  }
+
+  const parsed = new URL(url);
+  const marker = "/raw/upload/";
+  const index = parsed.pathname.indexOf(marker);
+  if (index < 0) throw new Error(`Unsupported Cloudinary delivery URL: ${url}`);
+
+  const deliveryPath = parsed.pathname.slice(index + marker.length);
+  const signature = createHash("sha1")
+    .update(`${deliveryPath}${secret}`)
+    .digest("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "")
+    .slice(0, 8);
+
+  parsed.pathname = parsed.pathname.slice(0, index + marker.length) + `s--${signature}--/` + deliveryPath;
+  return parsed.toString();
+}
+
 async function download(url, file) {
   await mkdir(dirname(file), { recursive: true });
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Cloudinary download failed: ${response.status} ${url}`);
+
+  let response = await fetch(url);
+  if (response.status === 401 && url.includes("/raw/upload/")) {
+    const signedUrl = signedCloudinaryRawUrl(url);
+    response = await fetch(signedUrl);
+  }
+
+  if (!response.ok) {
+    throw new Error(`Cloudinary download failed: ${response.status} ${url}`);
+  }
+
   const bytes = Buffer.from(await response.arrayBuffer());
   if (bytes.length < 128) throw new Error(`Asset too small: ${file}`);
   await writeFile(file, bytes);
