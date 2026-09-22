@@ -5,6 +5,7 @@ export type SlayerMatchAction = "Pass"|"Shoot"|"Control"|"Dribble"|"StandingTack
 export interface SlayerMoveInput { x:number; z:number; }
 
 type TeamPlayer={id:string;name:string;pos:string;rating:number;form:number;starter:boolean};
+type ControlLayout={x:number;y:number;scale:number};
 
 export class SlayerUI {
   private readonly root:HTMLDivElement;
@@ -27,8 +28,17 @@ export class SlayerUI {
   private abandonConfirm=false;
   private matchSettings={duration:10,extraTime:true,penalties:true,subs:5,form:"random",time:"day",weather:"clear",grass:"short-dry",stadium:"SLAYER Arena",ball:"SLAYER Pro",control:"virtual",passAssist:2,shotAssist:"manual",cursor:"semi",press:"individual",attack:"balanced",fps:60,quality:"high",dynamicResolution:true,camera:"broadcast",radar:true,commentary:"fr",music:55,commentaryVolume:85,crowd:80,effects:90};
   private menuSection:"modes"|"match-settings"|"controls"|"display"|"audio"="modes";
+  private layoutEditMode=false;
+  private controlLayout:Record<string,ControlLayout>={joystick:{x:9,y:76,scale:1},radar:{x:50,y:78,scale:1},ThroughBall:{x:84,y:67,scale:1},Pass:{x:77,y:75,scale:1},Dribble:{x:84,y:83,scale:1},Shoot:{x:91,y:75,scale:1}};
+  private layoutDefaults:Record<string,ControlLayout>=JSON.parse(JSON.stringify(this.controlLayout));
   private setOption<K extends keyof typeof this.matchSettings>(key:K,value:(typeof this.matchSettings)[K]):void{this.matchSettings[key]=value;this.render();}
   private optionButtons(key:string,values:string[],current:string):string{return values.map(v=>`<button class="option-chip ${v===current?"active":""}" data-option-key="${key}" data-option-value="${v}">${v}</button>`).join("");}
+  private loadControlLayout():void{try{const raw=localStorage.getItem("slayer.controlLayout");if(!raw)return;const parsed=JSON.parse(raw) as Record<string,ControlLayout>;for(const [id,v] of Object.entries(parsed))if(Number.isFinite(v.x)&&Number.isFinite(v.y)&&Number.isFinite(v.scale))this.controlLayout[id]={x:Math.max(2,Math.min(98,v.x)),y:Math.max(5,Math.min(95,v.y)),scale:Math.max(.55,Math.min(1.7,v.scale))};}catch{}}
+  private saveControlLayout():void{try{localStorage.setItem("slayer.controlLayout",JSON.stringify(this.controlLayout));}catch{}}
+  private controlStyle(id:string):string{const p=this.controlLayout[id]??{x:50,y:50,scale:1};return `left:${p.x}%;top:${p.y}%;--control-scale:${p.scale};`;}
+  private resetControlLayout():void{this.controlLayout=JSON.parse(JSON.stringify(this.layoutDefaults));this.saveControlLayout();this.render();}
+  private controlEditorButton():string{return `<button class="layout-edit-cta" data-layout-edit>PERSONNALISER LA DISPOSITION<small>Glisser pour déplacer · molette pour redimensionner</small></button>`;}
+
 
   private team:TeamPlayer[]=[
     {id:"p1",name:"K. N'GUESSAN",pos:"GB",rating:84,form:92,starter:true},
@@ -50,7 +60,7 @@ export class SlayerUI {
   ];
 
   constructor(app:HTMLDivElement,private readonly onStartMatch:()=>void,private readonly onMatchAction?:(action:SlayerMatchAction)=>void,private readonly onSprint?:(pressed:boolean)=>void,private readonly onMove?:(move:SlayerMoveInput)=>void,private readonly onCameraMode?:(mode:"match"|"hero"|"setpiece")=>void){
-    this.root=document.createElement("div"); this.root.className="slayer-ui"; app.appendChild(this.root); this.render();
+    this.root=document.createElement("div"); this.root.className="slayer-ui"; app.appendChild(this.root); this.loadControlLayout(); this.render();
   }
 
   setScreen(screen:SlayerScreen){this.screen=screen;this.abandonConfirm=false;if(screen==="modes")this.menuSection="modes";if(screen==="settings")this.menuSection="display";this.onCameraMode?.(screen==="home"?"hero":screen==="setpiece"?"setpiece":"match");this.render();}
@@ -92,19 +102,19 @@ export class SlayerUI {
       </div>
       ${section==="modes"?`<div class="mode-grid realistic-mode-grid">
         <button class="mode-card featured mode-match" data-start="1"><small>OFFLINE / 11v11</small><b>MATCH RAPIDE</b><span>Coup d'envoi immédiat · ${this.matchSettings.duration} MIN</span></button>
-        <button class="mode-card mode-dream"><small>TEAM BUILDING</small><b>DREAM TEAM</b><span>Ligue, événements PvP/IA, co-op, salles privées</span></button>
-        <button class="mode-card mode-auth"><small>EXHIBITION</small><b>MATCH AUTHENTIQUE</b><span>Clubs, sélections, stades et paramètres réels</span></button>
-        <button class="mode-card"><small>COMPÉTITION</small><b>COUPE</b><span>Tableau à élimination directe</span></button>
-        <button class="mode-card"><small>SAISON</small><b>CHAMPIONNAT</b><span>Classement, journées, montée et descente</span></button>
+        <button class="mode-card mode-dream" data-start="1"><small>TEAM BUILDING</small><b>DREAM TEAM</b><span>Ligue, événements PvP/IA, co-op, salles privées</span></button>
+        <button class="mode-card mode-auth" data-start="1"><small>EXHIBITION</small><b>MATCH AUTHENTIQUE</b><span>Clubs, sélections, stades et paramètres réels</span></button>
+        <button class="mode-card" data-start="1"><small>COMPÉTITION</small><b>COUPE</b><span>Tableau à élimination directe</span></button>
+        <button class="mode-card" data-start="1"><small>SAISON</small><b>CHAMPIONNAT</b><span>Classement, journées, montée et descente</span></button>
         <button class="mode-card" data-screen="career"><small>MANAGEMENT</small><b>CARRIÈRE</b><span>Effectif, progression, tactique et résultats</span></button>
-        <button class="mode-card"><small>SKILL LAB</small><b>ENTRAÎNEMENT</b><span>Libre · coups francs · corners · penalties · touches</span></button>
-        <button class="mode-card"><small>ONLINE</small><b>PvP / CO-OP</b><span>Matchmaking, amis, 2v2/3v3 et salles</span></button>
+        <button class="mode-card" data-screen="setpiece"><small>SKILL LAB</small><b>ENTRAÎNEMENT</b><span>Libre · coups francs · corners · penalties · touches</span></button>
+        <button class="mode-card" data-start="1"><small>ONLINE</small><b>PvP / CO-OP</b><span>Matchmaking, amis, 2v2/3v3 et salles</span></button>
       </div>`:section==="match-settings"?`<div class="settings-panel match-config">
         <article><b>FORMAT DU MATCH</b><label>DURÉE</label><div class="option-row">${this.optionButtons("duration",["5","8","10","12"],String(this.matchSettings.duration))}</div><label>PROLONGATIONS</label><div class="option-row">${this.optionButtons("extraTime",["on","off"],this.matchSettings.extraTime?"on":"off")}</div><label>PENALTYS</label><div class="option-row">${this.optionButtons("penalties",["on","off"],this.matchSettings.penalties?"on":"off")}</div><label>REMPLACEMENTS</label><div class="option-row">${this.optionButtons("subs",["3","4","5"],String(this.matchSettings.subs))}</div><label>FORME</label><div class="option-row">${this.optionButtons("form",["random","excellent","normal"],this.matchSettings.form)}</div></article>
         <article><b>ENVIRONNEMENT</b><label>MOMENT</label><div class="option-row">${this.optionButtons("time",["day","sunset","night"],this.matchSettings.time)}</div><label>MÉTÉO</label><div class="option-row">${this.optionButtons("weather",["clear","rain","snow"],this.matchSettings.weather)}</div><label>GAZON</label><div class="option-row">${this.optionButtons("grass",["short-dry","long-dry","short-wet"],this.matchSettings.grass)}</div><label>STADE</label><div class="option-row">${this.optionButtons("stadium",["SLAYER Arena","Abidjan Stadium","Metropolitan"],this.matchSettings.stadium)}</div><label>BALLON</label><div class="option-row">${this.optionButtons("ball",["SLAYER Pro","Classic","Match Ball"],this.matchSettings.ball)}</div></article>
       </div>`: `<div class="settings-panel controls-config">
         <article><b>COMMANDES</b><label>TYPE</label><div class="option-row">${this.optionButtons("control",["touch","virtual","gamepad"],this.matchSettings.control)}</div><label>ASSISTANCE PASSE</label><div class="option-row">${this.optionButtons("passAssist",["1","2","3","4"],String(this.matchSettings.passAssist))}</div><label>ASSISTANCE TIR</label><div class="option-row">${this.optionButtons("shotAssist",["assisted","manual"],this.matchSettings.shotAssist)}</div><label>CHANGEMENT JOUEUR</label><div class="option-row">${this.optionButtons("cursor",["auto","semi","manual"],this.matchSettings.cursor)}</div><label>PRESSING</label><div class="option-row">${this.optionButtons("press",["individual","double"],this.matchSettings.press)}</div></article>
-        <article><b>TACTIQUE EN MATCH</b><label>BLOC ATTAQUE / DÉFENSE</label><div class="option-row">${this.optionButtons("attack",["defensive","balanced","offensive"],this.matchSettings.attack)}</div><div class="tactic-meter"><i style="width:${this.matchSettings.attack==="defensive"?28:this.matchSettings.attack==="offensive"?82:50}%"></i></div><p>Le curseur dynamique sera accessible pendant le match.</p></article>
+        <article><b>TACTIQUE EN MATCH</b><label>BLOC ATTAQUE / DÉFENSE</label><div class="option-row">${this.optionButtons("attack",["defensive","balanced","offensive"],this.matchSettings.attack)}</div><div class="tactic-meter"><i style="width:${this.matchSettings.attack==="defensive"?28:this.matchSettings.attack==="offensive"?82:50}%"></i></div><p>Le curseur dynamique sera accessible pendant le match.</p>${this.controlEditorButton()}<button class="layout-reset-cta" data-layout-reset>RÉINITIALISER LA DISPOSITION</button></article>
       </div>`}
     </section>`;
   }
@@ -146,10 +156,10 @@ export class SlayerUI {
       <div class="match-score"><span>HOME</span><strong data-match-score>${this.score.home} — ${this.score.away}</strong><span>AWAY</span><em data-match-phase>${this.score.phase}</em></div><div class="match-clock" data-match-clock>${this.score.clock}</div>
       <button class="match-top-action" data-pause>Ⅱ</button><button class="match-top-action" data-camera>CAM</button></div>
       <div class="perf-overlay" data-performance>PERF MONITOR</div>
-      <div class="match-controls"><div class="virtual-joystick" data-joystick><div class="joystick-knob" data-joystick-knob></div></div>
-      <div class="radar" data-radar><i></i><b></b></div><div class="touch-diamond">
-      <button class="act up yellow" data-action="ThroughBall">↑<small>PROFONDE</small></button><button class="act left green" data-action="Pass">PASS</button>
-      <button class="act down blue" data-action="Dribble" data-sprint>DRIBBLE</button><button class="act right red" data-action="Shoot">TIR</button></div></div>
+      <div class="match-controls"><div class="virtual-joystick layout-control" data-control-id="joystick" style="${this.controlStyle("joystick")}" data-joystick><div class="joystick-knob" data-joystick-knob></div><span class="control-resize">↕</span></div>
+      <div class="radar layout-control" data-control-id="radar" style="${this.controlStyle("radar")}" data-radar><i></i><b></b><span class="control-resize">↕</span></div><div class="touch-diamond">
+      <button class="act up yellow layout-control" data-control-id="ThroughBall" style="${this.controlStyle("ThroughBall")}" data-action="ThroughBall">↑<small>PROFONDE</small><span class="control-resize">↕</span></button><button class="act left green layout-control" data-control-id="Pass" style="${this.controlStyle("Pass")}" data-action="Pass">PASS<span class="control-resize">↕</span></button>
+      <button class="act down blue layout-control" data-control-id="Dribble" style="${this.controlStyle("Dribble")}" data-action="Dribble" data-sprint>DRIBBLE<span class="control-resize">↕</span></button><button class="act right red layout-control" data-control-id="Shoot" style="${this.controlStyle("Shoot")}" data-action="Shoot">TIR<span class="control-resize">↕</span></button></div></div>${this.layoutEditMode?'<div class="layout-editor-banner">ÉDITEUR COMMANDES · GLISSER · MOLETTE = TAILLE · SAUVEGARDE AUTO</div>':""}
       <div class="player-indicator"><span>PLAYER 01</span><i></i><b>STAMINA 92%</b></div></div>`;
   }
 
@@ -195,13 +205,16 @@ export class SlayerUI {
     this.root.querySelector("[data-pause]")?.addEventListener("click",()=>this.openPause());
     this.root.querySelector("[data-result]")?.addEventListener("click",()=>this.showResult());
     this.root.querySelector("[data-resume]")?.addEventListener("click",()=>this.setScreen("match"));
-    this.root.querySelector("[data-start]")?.addEventListener("click",()=>{this.onStartMatch();this.setScreen("match");});
-    this.root.querySelectorAll<HTMLButtonElement>("[data-action]").forEach(b=>b.addEventListener("pointerdown",e=>{e.preventDefault();const a=b.dataset.action as SlayerMatchAction;this.onMatchAction?.(a);if(a==="Dribble")this.onSprint?.(true);}));
+    this.root.querySelectorAll<HTMLElement>("[data-start]").forEach(el=>el.addEventListener("click",e=>{e.preventDefault();this.onStartMatch();this.layoutEditMode=false;this.setScreen("match");}));
+    this.root.querySelectorAll<HTMLButtonElement>("[data-action]").forEach(b=>b.addEventListener("pointerdown",e=>{if(this.layoutEditMode){e.preventDefault();return;}e.preventDefault();const a=b.dataset.action as SlayerMatchAction;this.onMatchAction?.(a);if(a==="Dribble")this.onSprint?.(true);}));
     this.root.querySelector("[data-camera]")?.addEventListener("click",()=>this.onCameraMode?.("match"));
+    this.root.querySelector("[data-layout-edit]")?.addEventListener("click",()=>{this.layoutEditMode=!this.layoutEditMode;this.setScreen("match");});
+    this.root.querySelector("[data-layout-reset]")?.addEventListener("click",()=>this.resetControlLayout());
     const sprint=this.root.querySelector("[data-sprint]") as HTMLButtonElement|null;
     sprint?.addEventListener("pointerup",()=>this.onSprint?.(false));
     sprint?.addEventListener("pointercancel",()=>this.onSprint?.(false));
     sprint?.addEventListener("pointerleave",()=>this.onSprint?.(false));
+    if(this.screen==="match")this.bindControlLayout();
     const joystick=this.joystickEl,knob=this.joystickKnobEl;
     if(joystick&&knob){
       const move=(e:PointerEvent)=>{const r=joystick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,rad=r.width*.36;let x=e.clientX-cx,z=e.clientY-cy;const len=Math.hypot(x,z);if(len>rad){x*=rad/len;z*=rad/len;}knob.style.transform=`translate(${x}px,${z}px)`;this.onMove?.({x:x/rad,z:z/rad});};
@@ -213,6 +226,21 @@ export class SlayerUI {
     this.root.querySelector("[data-cancel-abandon]")?.addEventListener("click",()=>{this.abandonConfirm=false;this.render();});
     this.root.querySelector("[data-confirm-abandon]")?.addEventListener("click",()=>this.setScreen("result"));
     this.root.querySelectorAll<HTMLElement>("[data-result-tab]").forEach(b=>b.addEventListener("click",()=>{this.resultTab=(b.dataset.resultTab as "stats"|"players");this.render();}));
+  }
+
+  private bindControlLayout(){
+    if(!this.layoutEditMode)return;
+    this.root.querySelectorAll<HTMLElement>("[data-control-id]").forEach(el=>{
+      const id=el.dataset.controlId??"";
+      el.addEventListener("pointerdown",e=>{
+        e.preventDefault();e.stopPropagation();el.setPointerCapture(e.pointerId);
+        const sx=e.clientX,sy=e.clientY,rr=this.root.getBoundingClientRect(),base={...(this.controlLayout[id]??{x:50,y:50,scale:1})};
+        const move=(ev:PointerEvent)=>{const x=Math.max(2,Math.min(98,base.x+(ev.clientX-sx)/rr.width*100));const y=Math.max(5,Math.min(95,base.y+(ev.clientY-sy)/rr.height*100));this.controlLayout[id]={...base,x,y};el.style.left=`${x}%`;el.style.top=`${y}%`;};
+        const end=()=>{this.saveControlLayout();el.removeEventListener("pointermove",move);el.removeEventListener("pointerup",end);};
+        el.addEventListener("pointermove",move);el.addEventListener("pointerup",end);
+      });
+      el.addEventListener("wheel",e=>{e.preventDefault();e.stopPropagation();const p=this.controlLayout[id]??{x:50,y:50,scale:1};p.scale=Math.max(.55,Math.min(1.7,p.scale+(e.deltaY<0?.08:-.08)));this.controlLayout[id]=p;el.style.setProperty("--control-scale",String(p.scale));this.saveControlLayout();},{passive:false});
+    });
   }
 
   private bindTeam(){
