@@ -1,23 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820" role="img" aria-labelledby="title desc">
 <title id="title">SLAYER — Validation Status</title>
-<desc id="desc">Current truth status of the visual, GPU and Android validation chain.</desc>
-<rect width="1200" height="760" fill="#07110e"/>
-<rect x="40" y="35" width="1120" height="690" rx="28" fill="#0d1b17" stroke="#23463a"/>
+<desc id="desc">Operational validation chain. Green means proven, yellow means pending verification, red means not yet operational.</desc>
+<rect width="1200" height="820" fill="#07110e"/>
+<rect x="40" y="35" width="1120" height="750" rx="28" fill="#0d1b17" stroke="#23463a"/>
 <text x="80" y="95" fill="#f4fff9" font-family="Arial,sans-serif" font-size="36" font-weight="700">SLAYER</text>
-<text x="80" y="130" fill="#8eb8a7" font-family="Arial,sans-serif" font-size="18">VALIDATION — ÉTAT RÉEL</text>
+<text x="80" y="130" fill="#8eb8a7" font-family="Arial,sans-serif" font-size="18">VALIDATION — CHAÎNE OPÉRATIONNELLE</text>
 <line x1="80" y1="155" x2="1120" y2="155" stroke="#23463a"/>
-<g font-family="Arial,sans-serif" font-size="21">
-<text x="80" y="205" fill="#dff8ea">Pipeline GLB</text><text x="1080" y="205" text-anchor="end" fill="#54e38a">🟢 IMPLÉMENTÉ</text>
-<text x="80" y="250" fill="#dff8ea">Cache assets</text><text x="1080" y="250" text-anchor="end" fill="#54e38a">🟢 IMPLÉMENTÉ</text>
-<text x="80" y="295" fill="#dff8ea">GPU profiler</text><text x="1080" y="295" text-anchor="end" fill="#54e38a">🟢 INTÉGRÉ</text>
-<text x="80" y="340" fill="#dff8ea">Mesure FPS</text><text x="1080" y="340" text-anchor="end" fill="#54e38a">🟢 IMPLÉMENTÉE</text>
-<text x="80" y="385" fill="#dff8ea">Joueurs réalistes</text><text x="1080" y="385" text-anchor="end" fill="#ff6675">🔴 ABSENTS</text>
-<text x="80" y="430" fill="#dff8ea">Stade 3D réaliste</text><text x="1080" y="430" text-anchor="end" fill="#ff6675">🔴 NON INTÉGRÉ</text>
-<text x="80" y="475" fill="#dff8ea">Pelouse PBR</text><text x="1080" y="475" text-anchor="end" fill="#ff6675">🔴 NON INTÉGRÉE</text>
-<text x="80" y="520" fill="#dff8ea">GPU profiling Android</text><text x="1080" y="520" text-anchor="end" fill="#ffc857">⚪ À MESURER</text>
-<text x="80" y="565" fill="#dff8ea">60 FPS Android</text><text x="1080" y="565" text-anchor="end" fill="#ffc857">⚪ NON VALIDÉS</text>
-<text x="80" y="610" fill="#dff8ea">APK / test téléphone</text><text x="1080" y="610" text-anchor="end" fill="#ffc857">⚪ À FAIRE</text>
+<g font-family="Arial,sans-serif" font-size="20">
+<text x="80" y="200" fill="#dff8ea">Code</text><text x="1080" y="200" text-anchor="end" fill="#54e38a">🟢 IMPLÉMENTÉ</text>
+<text x="80" y="240" fill="#dff8ea">TypeScript</text><text x="1080" y="240" text-anchor="end" fill="#54e38a">🟢 VALIDÉ CI</text>
+<text x="80" y="280" fill="#dff8ea">Tests</text><text x="1080" y="280" text-anchor="end" fill="#54e38a">🟢 VALIDÉS CI</text>
+<text x="80" y="320" fill="#dff8ea">Intégration runtime</text><text x="1080" y="320" text-anchor="end" fill="#ffc857">🟡 À VÉRIFIER</text>
+<text x="80" y="360" fill="#dff8ea">CI complète</text><text x="1080" y="360" text-anchor="end" fill="#ffc857">🟡 ANDROID EN COURS</text>
+<text x="80" y="400" fill="#dff8ea">Build Android</text><text x="1080" y="400" text-anchor="end" fill="#ffc857">🟡 EN COURS</text>
+<text x="80" y="440" fill="#dff8ea">APK</text><text x="1080" y="440" text-anchor="end" fill="#ffc857">🟡 À PRODUIRE</text>
+<text x="80" y="480" fill="#dff8ea">Installation téléphone réel</text><text x="1080" y="480" text-anchor="end" fill="#ff6675">🔴 NON VALIDÉ</text>
+<text x="80" y="520" fill="#dff8ea">Interactions réelles</text><text x="1080" y="520" text-anchor="end" fill="#ff6675">🔴 NON VALIDÉES ANDROID</text>
+<text x="80" y="560" fill="#dff8ea">FPS Android mesurés</text><text x="1080" y="560" text-anchor="end" fill="#ff6675">🔴 NON MESURÉS</text>
+<text x="80" y="600" fill="#dff8ea">Corrections après mesure</text><text x="1080" y="600" text-anchor="end" fill="#ff6675">🔴 À FAIRE</text>
+<text x="80" y="640" fill="#dff8ea">AAB final</text><text x="1080" y="640" text-anchor="end" fill="#ffc857">🟡 À VALIDER</text>
 </g>
-<rect x="80" y="650" width="1040" height="42" rx="12" fill="#10251e"/>
-<text x="600" y="678" text-anchor="middle" fill="#b9d9ca" font-family="Arial,sans-serif" font-size="16">RÈGLE : aucun élément n'est déclaré validé sans preuve du niveau précédent.</text>
+<rect x="80" y="680" width="1040" height="60" rx="12" fill="#10251e"/>
+<text x="600" y="705" text-anchor="middle" fill="#b9d9ca" font-family="Arial,sans-serif" font-size="16">RÈGLE DE VÉRITÉ</text>
+<text x="600" y="728" text-anchor="middle" fill="#b9d9ca" font-family="Arial,sans-serif" font-size="14">Code ≠ intégré ≠ fonctionnel ≠ performant ≠ validé Android.</text>
 </svg>
