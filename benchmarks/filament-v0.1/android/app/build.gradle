@@ -1,0 +1,29 @@
+plugins { id "com.android.application"; id "org.jetbrains.kotlin.android" }
+
+android {
+    namespace "com.slayer.filament"
+    compileSdk 37
+    ndkVersion "29.0.14206865"
+
+    defaultConfig {
+        applicationId "com.slayer.filament"
+        minSdk 24
+        targetSdk 37
+        versionCode 1
+        versionName "0.1.0"
+        ndk { abiFilters "arm64-v8a" }
+    }
+
+    buildFeatures { buildConfig true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+    kotlinOptions { jvmTarget = "21" }
+}
+
+dependencies {
+    implementation "com.google.android.filament:filament-android:1.77.0"
+    implementation "com.google.android.filament:gltfio-android:1.77.0"
+    implementation "com.google.android.filament:filament-utils-android:1.77.0"
+}
