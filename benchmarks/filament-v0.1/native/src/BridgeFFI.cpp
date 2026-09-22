@@ -64,6 +64,8 @@ struct NativeRenderer {
     IndexBuffer* terrainIndexBuffer = nullptr;
     Material* material = nullptr;
     MaterialInstance* materialInstance = nullptr;
+    Material* terrainMaterial = nullptr;
+    MaterialInstance* terrainMaterialInstance = nullptr;
 
     gltfio::MaterialProvider* gltfMaterials = nullptr;
     gltfio::AssetLoader* assetLoader = nullptr;
@@ -266,6 +268,34 @@ struct NativeRenderer {
 
         setSize(1, 1);
         lastFrame = Clock::now();
+        return true;
+    }
+
+    bool loadTerrainMaterial(const uint8_t* bytes, size_t size) {
+        if (!engine || !bytes || size == 0 || !terrainEntity) return false;
+
+        Material* next = Material::Builder()
+            .package(bytes, size)
+            .build(*engine);
+        if (!next) return false;
+
+        MaterialInstance* nextInstance = next->createInstance();
+        if (!nextInstance) {
+            engine->destroy(next);
+            return false;
+        }
+
+        auto& rm = engine->getRenderableManager();
+        if (rm.hasComponent(terrainEntity)) {
+            auto instance = rm.getInstance(terrainEntity);
+            rm.setMaterialInstanceAt(instance, 0, nextInstance);
+        }
+
+        if (terrainMaterialInstance) engine->destroy(terrainMaterialInstance);
+        if (terrainMaterial) engine->destroy(terrainMaterial);
+
+        terrainMaterial = next;
+        terrainMaterialInstance = nextInstance;
         return true;
     }
 
@@ -474,6 +504,10 @@ struct NativeRenderer {
         if (scene && meshEntity) scene->remove(meshEntity);
 
         if (sunEntity) engine->getLightManager().destroy(sunEntity);
+        if (terrainMaterialInstance) engine->destroy(terrainMaterialInstance);
+        if (terrainMaterial) engine->destroy(terrainMaterial);
+        terrainMaterialInstance = nullptr;
+        terrainMaterial = nullptr;
         if (materialInstance) engine->destroy(materialInstance);
         if (vertexBuffer) engine->destroy(vertexBuffer);
         if (indexBuffer) engine->destroy(indexBuffer);
@@ -568,6 +602,20 @@ Java_com_slayer_filament_MainActivity_nativeCreate(
     if (g_renderer.initialize(window)) {
         g_renderer.loadUbershaderArchive();
     }
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_slayer_filament_MainActivity_nativeLoadTerrainMaterial(
+        JNIEnv* env, jobject, jbyteArray data) {
+    if (!env || !data) return JNI_FALSE;
+    const jsize size = env->GetArrayLength(data);
+    if (size <= 0) return JNI_FALSE;
+    jbyte* raw = env->GetByteArrayElements(data, nullptr);
+    if (!raw) return JNI_FALSE;
+    const bool ok = g_renderer.loadTerrainMaterial(
+        reinterpret_cast<const uint8_t*>(raw), static_cast<size_t>(size));
+    env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
+    return ok ? JNI_TRUE : JNI_FALSE;
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
