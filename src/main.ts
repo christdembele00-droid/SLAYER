@@ -171,7 +171,7 @@ function frame(now:number){
   match.update(delta);
   world.update(delta);
   ball.setSurface(world.weather==="Rain" ? "GrassWet" : "GrassDry",world.wetness);
-  quality.update(delta*1000);
+  quality.update(delta*1000,delta);
   crowd.update(delta,Math.min(1,ball.state.velocity.x**2+ball.state.velocity.z**2)/100);
   nets.forEach(n=>n.update(delta));
 
@@ -194,7 +194,7 @@ function frame(now:number){
   commentaryEl.textContent=commentary.recent.at(-1)??"";
   if(online) online.send({type:"snapshot",ball:{...ball.state.position},time:snapshot.timeSeconds});
 
-  renderer.renderer.setPixelRatio(Math.min(window.devicePixelRatio*quality.pixelRatio(),2));
+  renderer.setQuality(quality.pixelRatio());
   renderer.render();
   requestAnimationFrame(frame);
 }
