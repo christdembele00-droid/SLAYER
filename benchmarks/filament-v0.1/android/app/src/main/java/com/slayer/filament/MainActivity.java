@@ -131,8 +131,8 @@ public final class MainActivity extends Activity {
 
     private void loadBundledEnvironment() {
         try {
-            byte[] ibl = readAssetBytes("ibl/orlando_stadium/orlando_stadium_ibl.ktx");
-            byte[] skybox = readAssetBytes("ibl/orlando_stadium/orlando_stadium_skybox.ktx");
+            byte[] ibl = readAssetBytes("ibl/orlando_stadium/orlando_stadium_1k_ibl.ktx");
+            byte[] skybox = readAssetBytes("ibl/orlando_stadium/orlando_stadium_1k_skybox.ktx");
 
             if (!nativeLoadEnvironment(ibl)) {
                 android.util.Log.w("SLAYER", "Orlando Stadium IBL could not be loaded");
@@ -159,15 +159,15 @@ public final class MainActivity extends Activity {
         try {
             byte[] data;
             try {
-                data = readAssetBytes("models/stadium.glb");
+                data = readAssetBytes("models/pitch.glb");
             } catch (IOException missingGlb) {
-                data = readAssetBytes("models/stadium.gltf");
+                data = readAssetBytes("models/pitch.glb");
             }
             if (!nativeLoadStadium(data)) {
                 android.util.Log.w("SLAYER", "Bundled stadium asset could not be loaded");
             }
         } catch (IOException e) {
-            android.util.Log.i("SLAYER", "No bundled stadium asset");
+            android.util.Log.i("SLAYER", "No bundled pitch/stadium asset");
         }
     }
 
