@@ -294,6 +294,31 @@ struct NativeRenderer {
         return true;
     }
 
+    bool loadEnvironmentKtx(const uint8_t* bytes, size_t size) {
+        if (!engine || !scene || !bytes || size < 16) return false;
+        auto* bundle = new image::Ktx1Bundle(bytes, static_cast<uint32_t>(size));
+        if (!bundle->isCubemap()) { delete bundle; return false; }
+        if (indirectLight) { scene->setIndirectLight(nullptr); engine->destroy(indirectLight); indirectLight = nullptr; }
+        if (skybox) { scene->setSkybox(nullptr); engine->destroy(skybox); skybox = nullptr; }
+        if (environmentTexture) { engine->destroy(environmentTexture); environmentTexture = nullptr; }
+        environmentTexture = ktxreader::Ktx1Reader::createTexture(engine, bundle, false);
+        if (!environmentTexture) return false;
+        indirectLight = filament::IndirectLight::Builder()
+            .reflections(environmentTexture)
+            .intensity(30000.0f)
+            .build(*engine);
+        if (!indirectLight) { engine->destroy(environmentTexture); environmentTexture = nullptr; return false; }
+        skybox = filament::Skybox::Builder()
+            .environment(environmentTexture)
+            .showSun(true)
+            .intensity(30000.0f)
+            .build(*engine);
+        if (!skybox) { engine->destroy(indirectLight); engine->destroy(environmentTexture); indirectLight = nullptr; environmentTexture = nullptr; return false; }
+        scene->setIndirectLight(indirectLight);
+        scene->setSkybox(skybox);
+        return true;
+    }
+
     bool loadTerrainMaterial(const uint8_t* bytes, size_t size) {
         if (!engine || !bytes || size == 0 || !terrainEntity) return false;
 
