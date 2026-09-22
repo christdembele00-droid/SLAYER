@@ -4,8 +4,16 @@
 #include <android/native_window_jni.h>
 #include <jni.h>
 
+#include <gltfio/AssetLoader.h>
+#include <gltfio/Animator.h>
+#include <gltfio/FilamentAsset.h>
+#include <gltfio/MaterialProvider.h>
+#include <gltfio/ResourceLoader.h>
+#include <gltfio/TextureProvider.h>
+
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <vector>
 
@@ -47,6 +55,15 @@ struct NativeRenderer {
     IndexBuffer* terrainIndexBuffer = nullptr;
     Material* material = nullptr;
     MaterialInstance* materialInstance = nullptr;
+
+    gltfio::MaterialProvider* gltfMaterials = nullptr;
+    gltfio::AssetLoader* assetLoader = nullptr;
+    gltfio::ResourceLoader* resourceLoader = nullptr;
+    gltfio::TextureProvider* stbDecoder = nullptr;
+    gltfio::FilamentAsset* playerAsset = nullptr;
+    gltfio::Animator* playerAnimator = nullptr;
+    float playerAnimationTime = 0.0f;
+    uint32_t playerAnimationIndex = 0;
 
     ANativeWindow* window = nullptr;
     uint32_t width = 1;
@@ -210,6 +227,67 @@ struct NativeRenderer {
         return true;
     }
 
+    bool loadPlayerGlb(const uint8_t* bytes, size_t size) {
+        if (!engine || !bytes || size == 0) return false;
+
+        // gltfio owns the glTF-to-Filament translation. JIT materials keep this
+        // native benchmark independent from a precompiled ubershader archive.
+        if (!gltfMaterials) {
+            gltfMaterials = gltfio::createJitShaderProvider(engine, false);
+        }
+        if (!gltfMaterials) return false;
+
+        if (!assetLoader) {
+            assetLoader = gltfio::AssetLoader::create({engine, gltfMaterials});
+        }
+        if (!assetLoader) return false;
+
+        // Replace an already loaded player cleanly.
+        if (playerAsset) {
+            if (scene) {
+                scene->removeEntities(playerAsset->getEntities(), playerAsset->getEntityCount());
+            }
+            assetLoader->destroyAsset(playerAsset);
+            playerAsset = nullptr;
+            playerAnimator = nullptr;
+        }
+
+        playerAsset = assetLoader->createAsset(bytes, static_cast<uint32_t>(size));
+        if (!playerAsset) return false;
+
+        if (!resourceLoader) {
+            gltfio::ResourceConfiguration config{};
+            config.engine = engine;
+            config.gltfPath = nullptr;
+            config.normalizeSkinningWeights = true;
+            resourceLoader = new gltfio::ResourceLoader(config);
+
+            stbDecoder = gltfio::createStbProvider(engine);
+            if (stbDecoder) {
+                resourceLoader->addTextureProvider("image/png", stbDecoder);
+                resourceLoader->addTextureProvider("image/jpeg", stbDecoder);
+            }
+        }
+
+        // A GLB normally contains its binary buffer and can also embed textures.
+        // ResourceLoader still finalizes GPU buffers/textures and creates the
+        // Animator used by the render loop.
+        if (!resourceLoader->loadResources(playerAsset)) {
+            assetLoader->destroyAsset(playerAsset);
+            playerAsset = nullptr;
+            playerAnimator = nullptr;
+            return false;
+        }
+
+        scene->addEntities(playerAsset->getEntities(), playerAsset->getEntityCount());
+        playerAnimator = playerAsset->getInstance()->getAnimator();
+        playerAnimationTime = 0.0f;
+        playerAnimationIndex = 0;
+
+        stats.player_count = 1;
+        return true;
+    }
+
     void setSize(uint32_t w, uint32_t h) {
         width = std::max(1u, w);
         height = std::max(1u, h);
@@ -236,6 +314,19 @@ struct NativeRenderer {
         lastFrame = now;
 
         const float dt = measured > 0.0f ? measured : deltaSeconds;
+
+        if (playerAnimator && playerAnimator->getAnimationCount() > 0) {
+            playerAnimationTime += dt;
+            const float duration = playerAnimator->getAnimationDuration(playerAnimationIndex);
+            const float animationTime = duration > 0.0f
+                ? std::fmod(playerAnimationTime, duration)
+                : 0.0f;
+            playerAnimator->applyAnimation(playerAnimationIndex, animationTime);
+            // Filament consumes the resulting bone matrices in the renderable
+            // skinning path; vertex deformation therefore remains GPU-side.
+            playerAnimator->updateBoneMatrices();
+        }
+
         stats.frame_ms = dt * 1000.0f;
         stats.fps = dt > 0.0f ? 1.0f / dt : 0.0f;
         stats.player_count = 0;
@@ -265,6 +356,31 @@ struct NativeRenderer {
 
     void shutdown() {
         if (!engine) return;
+
+        if (playerAsset && scene) {
+            scene->removeEntities(playerAsset->getEntities(), playerAsset->getEntityCount());
+        }
+        if (playerAsset && assetLoader) {
+            assetLoader->destroyAsset(playerAsset);
+            playerAsset = nullptr;
+            playerAnimator = nullptr;
+        }
+        if (resourceLoader) {
+            delete resourceLoader;
+            resourceLoader = nullptr;
+        }
+        if (stbDecoder) {
+            delete stbDecoder;
+            stbDecoder = nullptr;
+        }
+        if (assetLoader) {
+            gltfio::AssetLoader::destroy(&assetLoader);
+        }
+        if (gltfMaterials) {
+            gltfMaterials->destroyMaterials();
+            delete gltfMaterials;
+            gltfMaterials = nullptr;
+        }
 
         if (scene && sunEntity) scene->remove(sunEntity);
         if (scene && terrainEntity) scene->remove(terrainEntity);
@@ -349,6 +465,24 @@ Java_com_slayer_filament_MainActivity_nativeCreate(
     ANativeWindow* window = ANativeWindow_fromSurface(env, surface);
     if (!window) return;
     g_renderer.initialize(window);
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_slayer_filament_MainActivity_nativeLoadPlayer(
+        JNIEnv* env, jobject, jbyteArray data) {
+    if (!env || !data) return JNI_FALSE;
+    const jsize size = env->GetArrayLength(data);
+    if (size <= 0) return JNI_FALSE;
+
+    jbyte* raw = env->GetByteArrayElements(data, nullptr);
+    if (!raw) return JNI_FALSE;
+
+    const bool ok = g_renderer.loadPlayerGlb(
+        reinterpret_cast<const uint8_t*>(raw),
+        static_cast<size_t>(size));
+
+    env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
+    return ok ? JNI_TRUE : JNI_FALSE;
 }
 
 extern "C" JNIEXPORT void JNICALL
