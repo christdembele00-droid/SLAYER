@@ -186,7 +186,8 @@ function frame(now:number){
     const p=players.get(mesh.object.userData.playerId as string);
     if(!p) continue;
     mesh.sync(p);
-    animation.state(p);
+    const motion=animation.update(p,delta,ball.state.position);
+    mesh.applyAnimation(motion,delta);
     mesh.applyIK(ik,ball.state.position);
   }
 
