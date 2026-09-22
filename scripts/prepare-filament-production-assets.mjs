@@ -203,6 +203,34 @@ const generated = [
   join(iblDir, "orlando_stadium_1k_skybox.ktx"),
 ];
 
+console.log("cmgen output tree:");
+try {
+  const { stdout } = await exec("find", [iblDir, "-maxdepth", "3", "-type", "f", "-print"]);
+  console.log(stdout || "(no KTX files found)");
+} catch (error) {
+  console.log(error.stdout || error.message);
+}
+
+async function locateKtx(expected, suffix) {
+  try {
+    await ensureFile(expected, "Generated KTX asset");
+    return expected;
+  } catch {}
+
+  const { stdout } = await exec("find", [iblDir, "-type", "f", "-name", "*" + suffix + ".ktx"]);
+  const candidates = stdout.split("\n").map(x => x.trim()).filter(Boolean);
+  if (candidates.length !== 1) {
+    throw new Error("cmgen did not produce a unique " + suffix + ".ktx file. Found: " + (candidates.join(", ") || "none"));
+  }
+  return candidates[0];
+}
+
+const resolvedIbl = await locateKtx(generated[0], "_ibl");
+const resolvedSkybox = await locateKtx(generated[1], "_skybox");
+
+if (resolvedIbl !== generated[0]) await exec("cp", [resolvedIbl, generated[0]]);
+if (resolvedSkybox !== generated[1]) await exec("cp", [resolvedSkybox, generated[1]]);
+
 for (const file of generated) {
   await ensureFile(file, "Generated KTX asset");
 }
