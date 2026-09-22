@@ -37,6 +37,7 @@ export class PlayerMesh{
   private readonly leftBoot:THREE.Mesh;
   private readonly rightBoot:THREE.Mesh;
   private readonly shoulders:THREE.Mesh;
+  private readonly numberMesh:THREE.Mesh;
   private productionRoot:THREE.Object3D|null=null;
   private mixer:THREE.AnimationMixer|null=null;
   private clips=new Map<string,THREE.AnimationAction>();
@@ -151,7 +152,7 @@ export class PlayerMesh{
     }
     return this.animationPromise;
   }
-\n  private async loadProductionVisual(teamColor:number):Promise<void>{
+\n  private async loadProductionVisual():Promise<void>{
     try{
       const [source,clips]=await Promise.all([PlayerMesh.loadHero(),PlayerMesh.loadAnimations()]);
       const root=SkeletonUtils.clone(source) as THREE.Object3D;
@@ -175,7 +176,7 @@ export class PlayerMesh{
       this.torso.visible=false;this.shoulders.visible=false;this.shorts.visible=false;this.neck.visible=false;
       this.head.visible=false;this.hair.visible=false;this.leftArm.visible=false;this.rightArm.visible=false;
       this.leftLeg.visible=false;this.rightLeg.visible=false;this.leftSock.visible=false;this.rightSock.visible=false;
-      this.leftBoot.visible=false;this.rightBoot.visible=false;
+      this.leftBoot.visible=false;this.rightBoot.visible=false;this.numberMesh.visible=false;
       this.mixer=new THREE.AnimationMixer(root);
       for(const clip of clips){
         const normalized=clip.name.toLowerCase();
