@@ -8,6 +8,7 @@ import { PlayerSystem } from "./player/PlayerSystem";
 import { PlayerInput } from "./player/PlayerInput";
 import { PlayerMesh } from "./player/PlayerMesh";
 import { BallSystem } from "./ball/BallSystem";
+import { InteractionSystem } from "./interaction/InteractionSystem";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("SLAYER root element not found");
@@ -82,7 +83,7 @@ function frame(now: number) {
   const snapshot = match.snapshot();
   homeScore.textContent = String(snapshot.score.homeGoals);
   awayScore.textContent = String(snapshot.score.awayGoals);
-  status.textContent = `PHASE 3 · BALL SYSTEM · ${snapshot.phase.toUpperCase()} · ${match.clock.format()}`;
+  status.textContent = `PHASE 4 · PLAYER ↔ BALL · ${snapshot.phase.toUpperCase()} · ${match.clock.format()}`;
 
   renderer.render();
   requestAnimationFrame(frame);
