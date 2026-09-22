@@ -13,9 +13,15 @@ import android.graphics.Color;
 import android.view.Gravity;
 import android.widget.FrameLayout;
 import android.widget.TextView;
+import android.content.Intent;
+import android.net.Uri;
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.util.Locale;
 
 public final class MainActivity extends Activity {
     static {
@@ -27,6 +33,10 @@ public final class MainActivity extends Activity {
     private long lastFrameNanos;
     private float moveX, moveY, sprint, pass, shoot, tackle;
     private int selectedPlayer = 9;
+    private int testScenario = 0;
+    private long testStartNanos = 0L;
+    private Uri testLogUri;
+    private int testPhase = 0;
 
     private static native void nativeCreate(android.view.Surface surface);
     private static native boolean nativeLoadTerrainMaterial(byte[] data);
@@ -53,6 +63,11 @@ public final class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        testScenario = readTestScenario(getIntent());
+        testLogUri = getIntent().getData();
+        if (testScenario > 0) {
+            android.util.Log.i("SLAYER_TEST", "Starting Game Loop scenario " + testScenario);
+        }
 
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(
@@ -81,12 +96,12 @@ public final class MainActivity extends Activity {
                 loadBundledStadium();
                 loadBundledPlayer();
                 lastFrameNanos = System.nanoTime();
+                testStartNanos = lastFrameNanos;
                 surface.postOnAnimation(frameRunnable);
             }
 
             @Override
-            public void surfaceChanged(
-                    SurfaceHolder holder, int format, int width, int height) {
+            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
                 nativeResize(width, height);
             }
 
@@ -99,7 +114,10 @@ public final class MainActivity extends Activity {
         setContentView(root);
     }
 
-
+    private int readTestScenario(Intent intent) {
+        if (!"com.google.intent.action.TEST_LOOP".equals(intent.getAction())) return 0;
+        return intent.getIntExtra("scenario", 1);
+    }
 
     private void addGameControls(FrameLayout root) {
         TextView stick = new TextView(this);
@@ -129,17 +147,70 @@ public final class MainActivity extends Activity {
         FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(112,72,gravity); lp.rightMargin=right; lp.bottomMargin=bottom; root.addView(b,lp); return b;
     }
 
+    private void applyGameLoopScenario(long elapsedMs) {
+        if (testScenario <= 0 || elapsedMs < 250) return;
+
+        switch (testScenario) {
+            case 1: // player-experience: movement + all action controls
+                if (elapsedMs < 1800) nativeSetInput(0.85f, -0.20f, 0, 0, 1, 0, selectedPlayer);
+                else if (elapsedMs < 2600) nativeSetInput(0, 0, 1, 0, 0, 0, selectedPlayer);
+                else if (elapsedMs < 3600) nativeSetInput(0.55f, 0.10f, 0, 1, 1, 0, selectedPlayer);
+                else if (elapsedMs < 4500) nativeSetInput(-0.45f, 0.0f, 0, 0, 0, 1, selectedPlayer);
+                else if (elapsedMs < 5200) nativeSetInput(0, 0, 0, 0, 0, 0, selectedPlayer);
+                else finishGameLoop("player_experience");
+                break;
+            case 2: // GPU compatibility
+                nativeSetInput(0.45f, 0.35f, 0, 0, 1, 0, selectedPlayer);
+                if (elapsedMs >= 15000) finishGameLoop("gpu_compatibility");
+                break;
+            case 3: // performance
+                nativeSetInput(0.70f, -0.25f, 0, 0, 1, 0, selectedPlayer);
+                if (elapsedMs >= 30000) finishGameLoop("performance");
+                break;
+            case 4: // compatibility / repeated control and render cycle
+                if ((elapsedMs / 700) % 2 == 0) nativeSetInput(0.35f, 0, 1, 0, 0, 0, selectedPlayer);
+                else nativeSetInput(0, 0, 0, 1, 0, 1, selectedPlayer);
+                if (elapsedMs >= 10000) finishGameLoop("compatibility");
+                break;
+            case 5: // full match smoke loop
+                nativeSetInput(0.6f, 0, 0, 0, 1, 0, selectedPlayer);
+                if (elapsedMs >= 60000) finishGameLoop("full_match_smoke");
+                break;
+            default:
+                finishGameLoop("unknown");
+                break;
+        }
+    }
+
+    private void finishGameLoop(String name) {
+        if (testPhase != 0) return;
+        testPhase = 1;
+        long elapsedMs = (System.nanoTime() - testStartNanos) / 1_000_000L;
+        String json = String.format(Locale.US,
+                "{\"name\":\"SLAYER %s\",\"scenario\":%d,\"elapsed_ms\":%d,\"fps\":%.2f,\"frame_ms\":%.3f,\"draw_calls\":%d,\"players\":%d,\"home_score\":%d,\"away_score\":%d,\"input_path\":\"native_game_loop\"}",
+                name, testScenario, elapsedMs, nativeGetFps(), nativeGetFrameMs(), nativeGetDrawCalls(),
+                nativeGetPlayerCount(), nativeGetHomeScore(), nativeGetAwayScore());
+        writeTestLog(json);
+        android.util.Log.i("SLAYER_TEST", json);
+        finish();
+    }
+
+    private void writeTestLog(String json) {
+        if (testLogUri == null) return;
+        try (FileOutputStream output = new FileOutputStream(
+                getContentResolver().openAssetFileDescriptor(testLogUri, "w").getFileDescriptor())) {
+            output.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            android.util.Log.w("SLAYER_TEST", "Could not write Test Lab output", e);
+        }
+    }
+
     private void loadBundledEnvironment() {
         try {
             byte[] ibl = readAssetBytes("ibl/orlando_stadium/orlando_stadium_1k_ibl.ktx");
             byte[] skybox = readAssetBytes("ibl/orlando_stadium/orlando_stadium_1k_skybox.ktx");
-
-            if (!nativeLoadEnvironment(ibl)) {
-                android.util.Log.w("SLAYER", "Orlando Stadium IBL could not be loaded");
-            }
-            if (!nativeLoadSkybox(skybox)) {
-                android.util.Log.w("SLAYER", "Orlando Stadium skybox could not be loaded");
-            }
+            if (!nativeLoadEnvironment(ibl)) android.util.Log.w("SLAYER", "Orlando Stadium IBL could not be loaded");
+            if (!nativeLoadSkybox(skybox)) android.util.Log.w("SLAYER", "Orlando Stadium skybox could not be loaded");
         } catch (IOException e) {
             android.util.Log.i("SLAYER", "No generated Orlando Stadium IBL; keeping direct stadium lights");
         }
@@ -157,15 +228,8 @@ public final class MainActivity extends Activity {
 
     private void loadBundledStadium() {
         try {
-            byte[] data;
-            try {
-                data = readAssetBytes("models/pitch.glb");
-            } catch (IOException missingGlb) {
-                data = readAssetBytes("models/pitch.glb");
-            }
-            if (!nativeLoadStadium(data)) {
-                android.util.Log.w("SLAYER", "Bundled stadium asset could not be loaded");
-            }
+            byte[] data = readAssetBytes("models/pitch.glb");
+            if (!nativeLoadStadium(data)) android.util.Log.w("SLAYER", "Bundled stadium asset could not be loaded");
         } catch (IOException e) {
             android.util.Log.i("SLAYER", "No bundled pitch/stadium asset");
         }
@@ -176,12 +240,8 @@ public final class MainActivity extends Activity {
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             byte[] buffer = new byte[16 * 1024];
             int read;
-            while ((read = input.read(buffer)) != -1) {
-                output.write(buffer, 0, read);
-            }
-            if (!nativeLoadTerrainMaterial(output.toByteArray())) {
-                android.util.Log.w("SLAYER", "materials/grass.filamat could not be loaded");
-            }
+            while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
+            if (!nativeLoadTerrainMaterial(output.toByteArray())) android.util.Log.w("SLAYER", "materials/grass.filamat could not be loaded");
         } catch (IOException e) {
             android.util.Log.i("SLAYER", "No compiled grass material yet; keeping default terrain");
         }
@@ -195,10 +255,7 @@ public final class MainActivity extends Activity {
             } catch (IOException missingGlb) {
                 data = readAssetBytes("models/player.gltf");
             }
-            boolean loaded = nativeLoadPlayer(data);
-            if (!loaded) {
-                android.util.Log.w("SLAYER", "Bundled player asset could not be loaded");
-            }
+            if (!nativeLoadPlayer(data)) android.util.Log.w("SLAYER", "Bundled player asset could not be loaded");
         } catch (IOException e) {
             android.util.Log.i("SLAYER", "No bundled player asset");
         }
@@ -207,27 +264,22 @@ public final class MainActivity extends Activity {
     private final Runnable frameRunnable = new Runnable() {
         @Override
         public void run() {
-            if (surface == null || !surface.getHolder().getSurface().isValid()) {
-                return;
-            }
-
+            if (surface == null || !surface.getHolder().getSurface().isValid()) return;
             long now = System.nanoTime();
             float dt = (now - lastFrameNanos) / 1_000_000_000.0f;
             lastFrameNanos = now;
-
             nativeRender(dt);
-            statsView.setText(String.format(java.util.Locale.US,
+            statsView.setText(String.format(Locale.US,
                     "SLAYER • FILAMENT / VULKAN\\n%.1f FPS • %.2f ms\\nScore %d - %d\\nDraws %d • Players %d",
                     nativeGetFps(), nativeGetFrameMs(), nativeGetHomeScore(), nativeGetAwayScore(), nativeGetDrawCalls(), nativeGetPlayerCount()));
+            applyGameLoopScenario((System.nanoTime() - testStartNanos) / 1_000_000L);
             surface.postOnAnimation(this);
         }
     };
 
     @Override
     protected void onDestroy() {
-        if (surface != null && surface.getHolder().getSurface().isValid()) {
-            nativeDestroy();
-        }
+        if (surface != null && surface.getHolder().getSurface().isValid()) nativeDestroy();
         surface = null;
         super.onDestroy();
     }
