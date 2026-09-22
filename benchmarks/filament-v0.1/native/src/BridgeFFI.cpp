@@ -2,6 +2,9 @@
 #include "slayer_input.h"
 #include "slayer_settings.h"
 #include "slayer_render_quality.h"
+#include "AnimationController.hpp"
+#include "CameraSystem.hpp"
+#include "SLAYERAssetLoader.hpp"
 
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
@@ -61,6 +64,8 @@ struct NativeRenderer {
     Camera* camera = nullptr;
     ColorGrading* colorGrading = nullptr;
     ACESToneMapper acesToneMapper{};
+    std::unique_ptr<Slayer::Camera::BroadcastCamera> broadcastCamera;
+    std::unique_ptr<Slayer::Animation::AnimationController> animationController;
 
     Entity cameraEntity{};
     Entity meshEntity{};
@@ -116,6 +121,9 @@ struct NativeRenderer {
     std::atomic<uint32_t> renderReadingBuffer{0xffffffffu};
     uint32_t writerBuffer = 1;
     uint32_t playerBoneCount = 0;
+    float previousLocalX = 0.0f;
+    float previousLocalZ = 0.0f;
+    bool havePreviousLocal = false;
 
     void applyWeatherVisuals() {
         if (!engine || !weatherEntity) return;
@@ -182,6 +190,7 @@ struct NativeRenderer {
 
         cameraEntity = engine->getEntityManager().create();
         camera = engine->createCamera(cameraEntity);
+        broadcastCamera = std::make_unique<Slayer::Camera::BroadcastCamera>(engine);
         view->setScene(scene);
         view->setCamera(camera);
         view->setPostProcessingEnabled(true);
@@ -191,6 +200,7 @@ struct NativeRenderer {
             .quality(ColorGrading::QualityLevel::MEDIUM)
             .build(*engine);
         if (colorGrading) view->setColorGrading(colorGrading);
+        if (broadcastCamera) view->setCamera(broadcastCamera->getCamera());
         View::TemporalAntiAliasingOptions taa{};
         taa.enabled = true;
         taa.feedback = 0.12f;
@@ -557,6 +567,7 @@ struct NativeRenderer {
             if (instance) scene->addEntities(instance->getEntities(), instance->getEntityCount());
         }
         playerAnimator = playerAsset->getInstance()->getAnimator();
+        animationController = std::make_unique<Slayer::Animation::AnimationController>(playerAnimator);
         playerAnimationTime = 0.0f;
         playerAnimationIndex = 0;
         playerBoneCount = 0;
@@ -614,7 +625,13 @@ struct NativeRenderer {
         if (playerCount > 0) playerLocal = readBuffer.transforms[0];
         renderReadingBuffer.store(0xffffffffu, std::memory_order_release);
         if (playerAsset && playerCount > 0) {
-            if(settings.camera==slayer::CameraMode::Dynamic || settings.camera==slayer::CameraMode::Pro || settings.camera==slayer::CameraMode::Custom) {
+            if (settings.camera == slayer::CameraMode::Broadcast && broadcastCamera) {
+                // Until the gameplay ABI exposes an authoritative ball transform,
+                // use the match focus origin as a deterministic fallback.
+                broadcastCamera->update(
+                    playerLocal.x, playerLocal.y, playerLocal.z,
+                    0.0f, 0.0f, 0.0f, dt);
+            } else if(settings.camera==slayer::CameraMode::Dynamic || settings.camera==slayer::CameraMode::Pro || settings.camera==slayer::CameraMode::Custom) {
                 const double distance=settings.camera==slayer::CameraMode::Pro?8.5:(settings.camera==slayer::CameraMode::Custom?12.0:15.5);
                 const double height=settings.camera==slayer::CameraMode::Pro?2.8:(settings.camera==slayer::CameraMode::Custom?5.5:7.0);
                 camera->lookAt({playerLocal.x,playerLocal.y+height,playerLocal.z+distance},{playerLocal.x,playerLocal.y+1.0,playerLocal.z},{0.0,1.0,0.0});
@@ -640,16 +657,20 @@ struct NativeRenderer {
             }
         }
 
-        if (playerAnimator && playerAnimator->getAnimationCount() > 0) {
-            playerAnimationTime += dt;
-            const float duration = playerAnimator->getAnimationDuration(playerAnimationIndex);
-            const float animationTime = duration > 0.0f
-                ? std::fmod(playerAnimationTime, duration)
-                : 0.0f;
-            playerAnimator->applyAnimation(playerAnimationIndex, animationTime);
-            // Filament consumes the resulting bone matrices in the renderable
-            // skinning path; vertex deformation therefore remains GPU-side.
-            playerAnimator->updateBoneMatrices();
+        if (playerAnimator && playerAnimator->getAnimationCount() > 0 && playerCount > 0) {
+            const auto& local = playerLocal;
+            float speed = 0.0f;
+            if (havePreviousLocal && dt > 0.0001f) {
+                const float dx = local.x - previousLocalX;
+                const float dz = local.z - previousLocalZ;
+                speed = std::sqrt(dx * dx + dz * dz) / dt;
+            }
+            previousLocalX = local.x;
+            previousLocalZ = local.z;
+            havePreviousLocal = true;
+            if (animationController) {
+                animationController->update(speed, false, false, dt);
+            }
         }
 
         stats.frame_ms = dt * 1000.0f;
@@ -702,6 +723,9 @@ struct NativeRenderer {
 
     void shutdown() {
         if (!engine) return;
+
+        broadcastCamera.reset();
+        animationController.reset();
 
         if (playerAsset && scene) {
             scene->removeEntities(playerAsset->getEntities(), playerAsset->getEntityCount());
