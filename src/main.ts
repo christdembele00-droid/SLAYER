@@ -202,7 +202,6 @@ function frame(now:number){
   commentaryEl.textContent=commentary.recent.at(-1)??"";
   if(online) online.send({type:"snapshot",ball:{...ball.state.position},time:snapshot.timeSeconds});
 
-  renderer.setQuality(quality.pixelRatio());
   renderer.render();
   requestAnimationFrame(frame);
 }
