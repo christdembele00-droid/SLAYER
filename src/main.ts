@@ -152,8 +152,7 @@ function applySlayerSettings(s:SlayerSettings):void{
   quality.setAdaptive(Boolean(s.dynamicResolution));
   const ratio=typeof s.dynamicResolution==="boolean" && s.dynamicResolution ? quality.pixelRatio() : ({low:.68,medium:.82,high:1,ultra:Math.min(window.devicePixelRatio||1,1.35)} as Record<string,number>)[String(s.quality)]??1;
   renderer.setQuality(ratio);
-  if(s.camera==="broadcast"||s.camera==="dynamic"||s.camera==="overview"||s.camera==="pro") camera.setMode("match");
-  if(s.camera==="overview") camera.setMode("match");
+  if(typeof s.camera==="string" && ["broadcast","dynamic","overview","pro","custom"].includes(s.camera)) camera.setMode(s.camera as "broadcast"|"dynamic"|"overview"|"pro"|"custom");
   world.setWeather(String(s.weather??"clear")); world.setGrass(String(s.grass??"short-dry")); world.setTime(String(s.time??"day"));
   document.documentElement.dataset.slayerWeather=String(s.weather??"clear");
   document.documentElement.dataset.slayerGrass=String(s.grass??"short-dry");
