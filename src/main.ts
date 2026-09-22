@@ -27,12 +27,16 @@ import type { PlayerAction, PlayerIntent } from "./player/PlayerTypes";
 import { SlayerUI } from "./ui/SLAYERUI";
 import { PerformanceMonitor } from "./performance/PerformanceMonitor";
 import { GPUProfiler } from "./performance/GPUProfiler";
+import { AdvancedBallControl } from "./gameplay/AdvancedBallControl";
+import { MatchPresentation } from "./render/MatchPresentation";
 
 const app=document.querySelector<HTMLDivElement>("#app");
 if(!app) throw new Error("SLAYER root element not found");
 
 const renderer=new SceneRenderer(app);
 const stadium=new AAAStadium();
+const presentation=new MatchPresentation();
+renderer.scene.add(presentation.group);
 renderer.scene.add(stadium.group);
 const pitch=new AdvancedPitch();
 renderer.scene.add(pitch.group);
@@ -64,6 +68,7 @@ ball.setPosition({x:0,y:.11,z:0});
 const interactions=new InteractionSystem();
 const goalkeepers=new GKSystem();
 const gameplay=new GameplaySystem(interactions);
+const advancedBallControl=new AdvancedBallControl();
 const transitions=new TransitionSystem();
 const ai=new FootballAI();
 const tactical=new TacticalBrain();
@@ -202,6 +207,8 @@ function frame(now:number){
   transitions.update(players,ball,delta);
   goalkeepers.update(players,ball);
   ensureControlledPlayerPossession();
+  const controlledPlayer=players.get(controlledId);
+  if(controlledPlayer) advancedBallControl.update(controlledPlayer,ball,delta,controlledPlayer.state.action==="Dribble"?"Burst":"None");
   const ballSpeed=Math.hypot(ball.state.velocity.x,ball.state.velocity.y,ball.state.velocity.z);
   const crossedGoalLine=(previousBallZ > -52.0 && ball.state.position.z <= -52.0) || (previousBallZ < 52.0 && ball.state.position.z >= 52.0);
   if(ballSpeed>10 && crossedGoalLine) nets[ball.state.position.z<0?0:1].impact(new THREE.Vector3(ball.state.position.x,ball.state.position.y,0),Math.min(2,ballSpeed/15));
@@ -211,6 +218,7 @@ function frame(now:number){
   world.update(delta);
   ball.setSurface(world.weather==="Rain" ? "GrassWet" : "GrassDry",world.wetness);
   pitch.setWetness(world.wetness);
+  presentation.update(delta,world.wetness);
   if(quality.update(rawFrameMs)) renderer.setQuality(quality.pixelRatio());
   crowd.update(delta,Math.min(1,ball.state.velocity.x**2+ball.state.velocity.z**2)/100);
   nets.forEach(n=>n.update(delta));
