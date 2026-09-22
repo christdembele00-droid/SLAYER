@@ -1,8 +1,10 @@
 from fastapi import FastAPI,WebSocket,WebSocketDisconnect
 from pydantic import BaseModel,Field
+from .routes import router
 app=FastAPI(title="SLAYER Online Server")
+app.include_router(router)
 class Intent(BaseModel):
- playerId:str; moveX:float=Field(ge=-1,le=1); moveZ:float=Field(ge=-1,le=1); action:str="None"; power:float=Field(ge=0,le=1)
+ playerId:str;moveX:float=Field(ge=-1,le=1);moveZ:float=Field(ge=-1,le=1);action:str="None";power:float=Field(ge=0,le=1)
 clients={}
 @app.get("/health")
 def health(): return {"status":"ok","service":"slayer-online"}
