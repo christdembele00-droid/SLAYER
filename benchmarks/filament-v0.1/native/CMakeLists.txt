@@ -9,7 +9,17 @@ if(NOT DEFINED FILAMENT_DIST_DIR OR FILAMENT_DIST_DIR STREQUAL "")
     message(FATAL_ERROR "FILAMENT_DIST_DIR must point to the extracted Filament Android native distribution")
 endif()
 
-set(FILAMENT_INCLUDE_DIR "${FILAMENT_DIST_DIR}/include")
+file(GLOB_RECURSE FILAMENT_ENGINE_HEADERS CONFIGURE_DEPENDS
+    "${FILAMENT_DIST_DIR}/include/filament/Engine.h"
+    "${FILAMENT_DIST_DIR}/*/include/filament/Engine.h"
+)
+list(LENGTH FILAMENT_ENGINE_HEADERS FILAMENT_ENGINE_HEADER_COUNT)
+if(FILAMENT_ENGINE_HEADER_COUNT EQUAL 0)
+    message(FATAL_ERROR "Could not find Filament headers under FILAMENT_DIST_DIR=${FILAMENT_DIST_DIR}")
+endif()
+list(GET FILAMENT_ENGINE_HEADERS 0 FILAMENT_ENGINE_HEADER)
+get_filename_component(FILAMENT_INCLUDE_DIR "${FILAMENT_ENGINE_HEADER}" DIRECTORY)
+get_filename_component(FILAMENT_INCLUDE_DIR "${FILAMENT_INCLUDE_DIR}" DIRECTORY)
 
 add_library(slayer_filament_benchmark SHARED
     src/BridgeFFI.cpp
@@ -25,10 +35,14 @@ target_include_directories(slayer_filament_benchmark PRIVATE
 file(GLOB_RECURSE FILAMENT_LIB_CANDIDATES CONFIGURE_DEPENDS
     "${FILAMENT_DIST_DIR}/lib/${ANDROID_ABI}/libfilament.a"
     "${FILAMENT_DIST_DIR}/*/lib/${ANDROID_ABI}/libfilament.a"
+    "${FILAMENT_DIST_DIR}/lib/${ANDROID_ABI}/libfilament.so"
+    "${FILAMENT_DIST_DIR}/*/lib/${ANDROID_ABI}/libfilament.so"
 )
 file(GLOB_RECURSE UTILS_LIB_CANDIDATES CONFIGURE_DEPENDS
     "${FILAMENT_DIST_DIR}/lib/${ANDROID_ABI}/libutils.a"
     "${FILAMENT_DIST_DIR}/*/lib/${ANDROID_ABI}/libutils.a"
+    "${FILAMENT_DIST_DIR}/lib/${ANDROID_ABI}/libutils.so"
+    "${FILAMENT_DIST_DIR}/*/lib/${ANDROID_ABI}/libutils.so"
 )
 
 list(LENGTH FILAMENT_LIB_CANDIDATES FILAMENT_LIB_COUNT)
