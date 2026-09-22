@@ -2,6 +2,7 @@ import "./ui.css";
 
 export type SlayerScreen = "home"|"match"|"team"|"career"|"competitions"|"online"|"settings";
 export type SlayerMatchAction = "Pass"|"Shoot"|"Control";
+export interface SlayerMoveInput { x:number; z:number; }
 
 export class SlayerUI {
   private readonly root: HTMLDivElement;
@@ -10,12 +11,16 @@ export class SlayerUI {
   private matchScoreEl: HTMLElement | null = null;
   private matchPhaseEl: HTMLElement | null = null;
   private matchClockEl: HTMLElement | null = null;
+  private joystickEl: HTMLElement | null = null;
+  private joystickKnobEl: HTMLElement | null = null;
+  private joystickPointerId: number | null = null;
 
   constructor(
     app: HTMLDivElement,
     private readonly onStartMatch: () => void,
     private readonly onMatchAction?: (action: SlayerMatchAction) => void,
-    private readonly onSprint?: (pressed: boolean) => void
+    private readonly onSprint?: (pressed: boolean) => void,
+    private readonly onMove?: (move: SlayerMoveInput) => void
   ) {
     this.root = document.createElement("div");
     this.root.className = "slayer-ui";
@@ -70,6 +75,8 @@ export class SlayerUI {
       this.matchScoreEl = this.root.querySelector("[data-match-score]");
       this.matchPhaseEl = this.root.querySelector("[data-match-phase]");
       this.matchClockEl = this.root.querySelector("[data-match-clock]");
+      this.joystickEl = this.root.querySelector("[data-joystick]");
+      this.joystickKnobEl = this.root.querySelector("[data-joystick-knob]");
       this.bind();
       return;
     }
@@ -119,6 +126,41 @@ export class SlayerUI {
         this.onMatchAction?.(action);
       });
     });
+
+    const joystick = this.joystickEl;
+    const knob = this.joystickKnobEl;
+    if (joystick && knob) {
+      const move = (event: PointerEvent) => {
+        const rect = joystick.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const radius = rect.width * .36;
+        let x = event.clientX - cx;
+        let z = event.clientY - cy;
+        const length = Math.hypot(x, z);
+        if (length > radius) { x *= radius / length; z *= radius / length; }
+        knob.style.transform = "translate(" + x + "px, " + z + "px)";
+        this.onMove?.({x:x/radius,z:z/radius});
+      };
+      const reset = () => {
+        this.joystickPointerId = null;
+        knob.style.transform = "translate(0, 0)";
+        this.onMove?.({x:0,z:0});
+      };
+      joystick.addEventListener("pointerdown", event => {
+        event.preventDefault();
+        this.joystickPointerId = event.pointerId;
+        joystick.setPointerCapture(event.pointerId);
+        move(event);
+      });
+      joystick.addEventListener("pointermove", event => {
+        if (event.pointerId === this.joystickPointerId) move(event);
+      });
+      joystick.addEventListener("pointerup", event => {
+        if (event.pointerId === this.joystickPointerId) reset();
+      });
+      joystick.addEventListener("pointercancel", reset);
+    }
 
     const sprint = this.root.querySelector<HTMLButtonElement>("[data-sprint]");
     if (sprint) {
