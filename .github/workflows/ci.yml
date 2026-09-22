@@ -65,6 +65,8 @@ jobs:
 
   filament:
     runs-on: ubuntu-latest
+    env:
+      CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v5
