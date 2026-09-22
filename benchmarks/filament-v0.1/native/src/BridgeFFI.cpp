@@ -428,7 +428,7 @@ struct NativeRenderer {
             auto &tm = engine->getTransformManager();
             const Entity root = playerAsset->getEntities()[0];
             if (tm.hasComponent(root)) {
-                tm.setTransform(tm.getInstance(root), filament::math::mat4f::translation({
+                tm.setTransform(tm.getInstance(root), filament::math::mat4f::translation(filament::math::float3{
                     playerLocal.x, playerLocal.y, playerLocal.z}));
             }
         }
