@@ -57,6 +57,7 @@ public:
     InputCommand PredictLocalMovement(Vec2 rawInput, bool kick, bool tackle,
                                        float power, float dt);
     void OnServerSnapshot(const AuthoritativeSnapshot& snapshot);
+    void ResetPrediction(const Vec3& authoritativePosition);
     void Update(float dt);
 
     [[nodiscard]] Vec3 GetRenderPosition() const;
@@ -74,6 +75,7 @@ private:
 
     uint16_t m_localNetworkId{0};
     uint32_t m_sequenceCounter{0};
+    uint32_t m_lastServerTick{0};
     Vec3 m_predictedPosition{};
     Vec3 m_predictedVelocity{};
     Vec3 m_errorOffset{};
