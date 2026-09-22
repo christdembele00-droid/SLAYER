@@ -1,5 +1,5 @@
 name: SLAYER CI
-on: [push,pull_request]
+on:\n  push:\n    branches: [main]\n  pull_request:\n  workflow_dispatch:
 jobs:
  web:
   runs-on: ubuntu-latest
@@ -44,3 +44,20 @@ jobs:
       path: |
        android/app/build/outputs/apk/debug/*.apk
        android/app/build/outputs/bundle/release/*.aab
+
+ filament:
+  runs-on: ubuntu-latest
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-java@v4
+     with:
+      distribution: temurin
+      java-version: "21"
+   - name: Check Gradle
+     run: gradle --version
+   - name: Build native Filament benchmark APK
+     run: gradle -p benchmarks/filament-v0.1/android assembleDebug --no-daemon
+   - uses: actions/upload-artifact@v4
+     with:
+      name: SLAYER-Filament-V0.1-${GITHUB_SHA}
+      path: benchmarks/filament-v0.1/android/app/build/outputs/apk/debug/*.apk
