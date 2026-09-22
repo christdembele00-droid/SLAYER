@@ -61,6 +61,7 @@ struct NativeRenderer {
     VertexBuffer* vertexBuffer = nullptr;
     IndexBuffer* indexBuffer = nullptr;
     VertexBuffer* terrainVertexBuffer = nullptr;
+    VertexBuffer* terrainUvBuffer = nullptr;
     IndexBuffer* terrainIndexBuffer = nullptr;
     Material* material = nullptr;
     MaterialInstance* materialInstance = nullptr;
@@ -191,14 +192,24 @@ struct NativeRenderer {
              12.0f, 0.0f,  8.0f,
             -12.0f, 0.0f,  8.0f
         };
+        static constexpr float terrainUv[] = {
+            0.0f, 0.0f,
+            6.0f, 0.0f,
+            6.0f, 4.0f,
+            0.0f, 4.0f
+        };
         static constexpr uint16_t terrainIndices[] = {0, 1, 2, 0, 2, 3};
 
         terrainVertexBuffer = VertexBuffer::Builder()
             .vertexCount(4)
-            .bufferCount(1)
+            .bufferCount(2)
             .attribute(VertexAttribute::POSITION, 0,
                        VertexBuffer::AttributeType::FLOAT3)
+            .attribute(VertexAttribute::UV0, 1,
+                       VertexBuffer::AttributeType::FLOAT2)
             .build(*engine);
+
+        terrainUvBuffer = terrainVertexBuffer;
 
         terrainIndexBuffer = IndexBuffer::Builder()
             .indexCount(6)
@@ -211,6 +222,10 @@ struct NativeRenderer {
             *engine, 0,
             VertexBuffer::BufferDescriptor(
                 terrainVertices, sizeof(terrainVertices), nullptr));
+        terrainVertexBuffer->setBufferAt(
+            *engine, 1,
+            VertexBuffer::BufferDescriptor(
+                terrainUv, sizeof(terrainUv), nullptr));
         terrainIndexBuffer->setBuffer(
             *engine,
             IndexBuffer::BufferDescriptor(
@@ -553,6 +568,7 @@ struct NativeRenderer {
         vertexBuffer = nullptr;
         indexBuffer = nullptr;
         terrainVertexBuffer = nullptr;
+        terrainUvBuffer = nullptr;
         terrainIndexBuffer = nullptr;
         materialInstance = nullptr;
     }
