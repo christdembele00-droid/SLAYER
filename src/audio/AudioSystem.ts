@@ -1,0 +1,1 @@
+export type AudioEvent="kick"|"pass"|"shot"|"tackle"|"save"|"goal"|"crowd"; export class AudioSystem{private enabled=true;setEnabled(v:boolean){this.enabled=v;}play(_event:AudioEvent,_intensity=1){if(!this.enabled)return;/* audio assets/Howler/WebAudio adapter later */}}
