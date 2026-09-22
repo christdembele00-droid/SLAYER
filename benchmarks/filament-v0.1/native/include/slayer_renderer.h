@@ -27,7 +27,7 @@ typedef struct SlayerFrameStats {
     uint32_t player_count;
 } SlayerFrameStats;
 
-void slayer_renderer_create(void* native_window);
+bool slayer_renderer_create(void* native_window);
 void slayer_renderer_resize(uint32_t width, uint32_t height);
 void slayer_renderer_set_players(const SlayerTransform* transforms, uint32_t count);
 void slayer_renderer_render(float delta_seconds);
