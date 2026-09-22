@@ -207,18 +207,30 @@ void MatchEngine::updateTactics(){
 void MatchEngine::resolveRules(){
     // Compact offside model: attackers cannot remain beyond the second-last
     // opponent while the ball is played forward.
-    for(int team=0;team<2;team++){
-        float attackZ=team==0?1.0f:-1.0f;
-        float secondLast=team==0?34.0f:-34.0f;
-        float keeperLine=secondLast;
-        float second=secondLast;
-        for(int i=0;i<22;i++) if(state_.players[i].team!=team){
-            float z=state_.players[i].z*attackZ;
-            if(z>keeperLine){second=keeperLine;keeperLine=z;}
+    for(int team=0; team<2; ++team) {
+        const float attackZ = team == 0 ? 1.0f : -1.0f;
+        float highest = -1000.0f;
+        float secondHighest = -1000.0f;
+        for (int i = 0; i < 22; ++i) {
+            if (state_.players[i].team == team) continue;
+            const float z = state_.players[i].z * attackZ;
+            if (z > highest) {
+                secondHighest = highest;
+                highest = z;
+            } else if (z > secondHighest) {
+                secondHighest = z;
+            }
         }
-        (void)second;
-        for(int i=0;i<22;i++) if(state_.players[i].team==team && i%11!=9){
-            state_.players[i].offside=(state_.players[i].z*attackZ>second+0.2f && state_.ball.z*attackZ<state_.players[i].z*attackZ);
+        if (secondHighest < -999.0f) secondHighest = 34.0f;
+
+        const float ballZ = state_.ball.z * attackZ;
+        for (int i = 0; i < 22; ++i) {
+            if (state_.players[i].team != team || i % 11 == 0) continue;
+            const float playerZ = state_.players[i].z * attackZ;
+            const bool inOppositionHalf = playerZ > 0.0f;
+            const bool beyondSecondLast = playerZ > secondHighest + 0.2f;
+            const bool aheadOfBall = playerZ > ballZ + 0.2f;
+            state_.players[i].offside = inOppositionHalf && beyondSecondLast && aheadOfBall;
         }
     }
 }
