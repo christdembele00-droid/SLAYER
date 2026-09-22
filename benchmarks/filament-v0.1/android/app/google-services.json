@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "253781179729",
+    "project_id": "slayer-bb60f",
+    "storage_bucket": "slayer-bb60f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:253781179729:android:2e48b25dae46a9c67f6770",
+        "android_client_info": {
+          "package_name": "com.slayer.filament"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBMOYRVVqzlXadiog3P4L7HsSrjLo1tNRI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
