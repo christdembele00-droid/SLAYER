@@ -118,7 +118,7 @@ export class PlayerMesh{
 
     const number=new THREE.Mesh(
       new THREE.PlaneGeometry(.13,.13),
-      new THREE.MeshBasicMaterial({map:numberTexture(String(Number(player.data.playerId.replace(/\\D/g,""))%99||1)),transparent:true,side:THREE.DoubleSide})
+      new THREE.MeshBasicMaterial({map:numberTexture(String(Number(player.data.playerId.replace(/\D/g,""))%99||1)),transparent:true,side:THREE.DoubleSide})
     );
     number.position.set(0,.9,.242);
     this.object.add(number);
