@@ -5,6 +5,7 @@ export type SlayerMatchAction = "Pass"|"Shoot"|"Control"|"Dribble"|"StandingTack
 export interface SlayerMoveInput { x:number; z:number; }
 
 export class SlayerUI {
+  // UI build-safe: keep a single performance telemetry element reference.
   private readonly root: HTMLDivElement;
   private screen: SlayerScreen = "home";
   private score = { home: 0, away: 0, clock: "00:00", phase: "KICKOFF" };
