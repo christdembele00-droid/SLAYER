@@ -42,6 +42,9 @@ public final class MainActivity extends Activity {
     private TextView loadingText;
     private boolean menuVisible = false;
     private boolean matchStarted = false;
+    private boolean nativeReady = false;
+    private View menuBackground;
+    private long menuOpenedAt = 0L;
 
     private static native void nativeCreate(android.view.Surface surface);
     private static native boolean nativeLoadTerrainMaterial(byte[] data);
@@ -96,20 +99,7 @@ public final class MainActivity extends Activity {
         surface.getHolder().addCallback(new SurfaceHolder.Callback() {
             @Override
             public void surfaceCreated(SurfaceHolder holder) {
-                android.util.Log.i("SLAYER", "Native surface created");
-                nativeCreate(holder.getSurface());
-                nativeSetSettings(10, true, true, 5, 1, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 1,
-                        60, 2, true, 0, true, 0, .55f, .85f, .80f, .90f);
-
-                // The main menu is not a match. Load only the stable stadium/environment
-                // first; player GLB + animation are deferred until the user launches a match.
-                loadBundledEnvironment();
-                loadBundledTerrainMaterial();
-                loadBundledStadium();
-
-                lastFrameNanos = System.nanoTime();
-                testStartNanos = lastFrameNanos;
-
+                android.util.Log.i("SLAYER", "Android surface ready; native engine deferred");
                 if (testScenario > 0) {
                     startMatch();
                 } else {
@@ -119,12 +109,15 @@ public final class MainActivity extends Activity {
 
             @Override
             public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-                nativeResize(width, height);
+                if (nativeReady) nativeResize(width, height);
             }
 
             @Override
             public void surfaceDestroyed(SurfaceHolder holder) {
-                nativeDestroy();
+                if (nativeReady) {
+                    nativeDestroy();
+                    nativeReady = false;
+                }
             }
         });
 
@@ -137,66 +130,59 @@ public final class MainActivity extends Activity {
         final FrameLayout splash = new FrameLayout(this);
         splash.setBackgroundColor(Color.BLACK);
 
-        TextView logo = new TextView(this);
-        logo.setText("SLAYER");
-        logo.setTextColor(Color.WHITE);
-        logo.setTextSize(42f);
-        logo.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        TextView logo = menuLabel("SLAYER", 46f, true);
         logo.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams logoParams =
-                new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
-        splash.addView(logo, logoParams);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
+        splash.addView(logo, lp);
 
-        TextView sub = new TextView(this);
-        sub.setText("FOOTBALL 2026");
-        sub.setTextColor(0xFFD8D8D8);
-        sub.setTextSize(14f);
+        TextView sub = menuLabel("FOOTBALL 2026", 14f, false);
         sub.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams subParams =
-                new FrameLayout.LayoutParams(-1, 60, Gravity.CENTER);
-        subParams.topMargin = 86;
-        splash.addView(sub, subParams);
+        FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(-1, 50, Gravity.CENTER);
+        sp.topMargin = 92;
+        splash.addView(sub, sp);
 
         root.addView(splash, new FrameLayout.LayoutParams(-1, -1));
-
         splash.postDelayed(() -> {
-            root.removeView(splash);
+            if (splash.getParent() != null) root.removeView(splash);
             showLoadingScreen();
         }, 2000L);
     }
 
     private void showLoadingScreen() {
         final FrameLayout loading = new FrameLayout(this);
-        loading.setBackgroundColor(0xFF08090C);
+        loading.setBackgroundColor(0xFF06101C);
 
-        TextView title = new TextView(this);
-        title.setText("SLAYER");
-        title.setTextColor(Color.WHITE);
-        title.setTextSize(30f);
-        title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        TextView title = menuLabel("SLAYER", 30f, true);
         title.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams titleParams =
-                new FrameLayout.LayoutParams(-1, 80, Gravity.TOP);
-        titleParams.topMargin = 54;
-        loading.addView(title, titleParams);
+        FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-1, 70, Gravity.TOP);
+        tp.topMargin = 42;
+        loading.addView(title, tp);
 
-        loadingText = new TextView(this);
-        loadingText.setText("PRÉPARATION DU STADE\n\nChargement...");
-        loadingText.setTextColor(Color.WHITE);
-        loadingText.setTextSize(17f);
+        TextView scene = menuLabel("STADE  •  ATLAS FC  ×  LAGOON UNITED", 13f, false);
+        scene.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams sc = new FrameLayout.LayoutParams(-1, 50, Gravity.CENTER);
+        sc.topMargin = -40;
+        loading.addView(scene, sc);
+
+        loadingText = menuLabel("CHARGEMENT\n\n● ● ●", 18f, true);
         loadingText.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams textParams =
-                new FrameLayout.LayoutParams(-1, 180, Gravity.CENTER);
-        loading.addView(loadingText, textParams);
+        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(-1, 180, Gravity.CENTER);
+        loading.addView(loadingText, cp);
+
+        TextView status = menuLabel("Préparation de l'expérience SLAYER", 12f, false);
+        status.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams st = new FrameLayout.LayoutParams(-1, 50, Gravity.BOTTOM);
+        st.bottomMargin = 48;
+        loading.addView(status, st);
 
         root.addView(loading, new FrameLayout.LayoutParams(-1, -1));
 
-        // The native scene is already being prepared behind this screen. Give the
-        // Android UI a short transition instead of exposing a partially initialized menu.
+        // No network is required for the menu. The game enters the native renderer
+        // only when the user explicitly launches a match.
         loading.postDelayed(() -> {
-            root.removeView(loading);
+            if (loading.getParent() != null) root.removeView(loading);
             showMainMenu();
-        }, 1400L);
+        }, 1600L);
     }
 
     private void showMainMenu() {
@@ -205,67 +191,188 @@ public final class MainActivity extends Activity {
         menuVisible = true;
         matchStarted = false;
         statsView.setVisibility(View.GONE);
+        menuOpenedAt = System.nanoTime();
 
         menuOverlay = new FrameLayout(this);
-        menuOverlay.setBackgroundColor(0xCC07090D);
 
-        TextView brand = menuLabel("SLAYER", 28f, true);
-        FrameLayout.LayoutParams brandParams =
-                new FrameLayout.LayoutParams(260, 70, Gravity.TOP | Gravity.LEFT);
-        brandParams.leftMargin = 30;
-        brandParams.topMargin = 22;
-        menuOverlay.addView(brand, brandParams);
+        // Football-style dark navy + electric blue + yellow accent palette,
+        // inspired by modern football game menus without copying branded assets.
+        menuBackground = new MenuBackgroundView(this);
+        menuOverlay.addView(menuBackground, new FrameLayout.LayoutParams(-1, -1));
+
+        View shade = new View(this);
+        shade.setBackgroundColor(0x55000000);
+        menuOverlay.addView(shade, new FrameLayout.LayoutParams(-1, -1));
+
+        TextView brand = menuLabel("SLAYER", 30f, true);
+        FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(300, 64, Gravity.TOP | Gravity.LEFT);
+        bp.leftMargin = 28; bp.topMargin = 18;
+        menuOverlay.addView(brand, bp);
 
         TextView season = menuLabel("FOOTBALL 2026", 12f, false);
-        FrameLayout.LayoutParams seasonParams =
-                new FrameLayout.LayoutParams(220, 45, Gravity.TOP | Gravity.LEFT);
-        seasonParams.leftMargin = 34;
-        seasonParams.topMargin = 76;
-        menuOverlay.addView(season, seasonParams);
+        season.setTextColor(0xFFFFFF66);
+        FrameLayout.LayoutParams sep = new FrameLayout.LayoutParams(220, 40, Gravity.TOP | Gravity.LEFT);
+        sep.leftMargin = 32; sep.topMargin = 70;
+        menuOverlay.addView(season, sep);
 
-        Button settings = menuButton("⚙  PARAMÈTRES", 15f);
-        FrameLayout.LayoutParams settingsParams =
-                new FrameLayout.LayoutParams(180, 58, Gravity.TOP | Gravity.RIGHT);
-        settingsParams.rightMargin = 24;
-        settingsParams.topMargin = 22;
-        menuOverlay.addView(settings, settingsParams);
+        Button settings = menuButton("⚙", 22f);
+        FrameLayout.LayoutParams setp = new FrameLayout.LayoutParams(70, 60, Gravity.TOP | Gravity.RIGHT);
+        setp.rightMargin = 22; setp.topMargin = 18;
+        menuOverlay.addView(settings, setp);
         settings.setOnClickListener(v -> showSettingsCard());
 
-        TextView hero = menuLabel("LE FOOTBALL\nCOMMENCE ICI", 30f, true);
+        TextView hero = menuLabel("MATCHDAY", 12f, true);
+        hero.setTextColor(0xFFFFFF66);
         hero.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams heroParams =
-                new FrameLayout.LayoutParams(-1, 150, Gravity.CENTER);
-        heroParams.topMargin = -120;
-        menuOverlay.addView(hero, heroParams);
+        FrameLayout.LayoutParams hp = new FrameLayout.LayoutParams(-1, 40, Gravity.TOP);
+        hp.topMargin = 112;
+        menuOverlay.addView(hero, hp);
+
+        TextView teams = menuLabel("ATLAS FC     VS     LAGOON UNITED", 20f, true);
+        teams.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams teamsP = new FrameLayout.LayoutParams(-1, 60, Gravity.TOP);
+        teamsP.topMargin = 142;
+        menuOverlay.addView(teams, teamsP);
 
         Button quick = menuButton("▶  MATCH RAPIDE", 18f);
-        addMenuButton(quick, Gravity.CENTER, 0, -5, 420, 72);
+        quick.setTextColor(Color.BLACK);
+        quick.setBackgroundColor(0xFFFFD400);
+        FrameLayout.LayoutParams qp = new FrameLayout.LayoutParams(390, 70, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        qp.topMargin = 225;
+        menuOverlay.addView(quick, qp);
         quick.setOnClickListener(v -> startMatch());
 
-        Button career = menuButton("CARRIÈRE", 16f);
-        addMenuButton(career, Gravity.CENTER, 0, 82, 190, 64);
-        career.setOnClickListener(v -> showModeMessage("CARRIÈRE", "Club • Saison • Championnat • Transferts"));
+        // Two-column mode grid: no overlapping text and no accidental horizontal stacking.
+        addModeCard("CARRIÈRE", 20, 310, 250, 64, () -> showModeScreen("CARRIÈRE",
+                "CLUB  •  SAISON  •  CHAMPIONNAT  •  TRANSFERTS"));
+        addModeCard("COMPÉTITION", 285, 310, 250, 64, () -> showModeScreen("COMPÉTITION",
+                "LIGUES  •  COUPES  •  TOURNOIS"));
+        addModeCard("ENTRAÎNEMENT", 20, 386, 250, 64, () -> showModeScreen("ENTRAÎNEMENT",
+                "TIR  •  PASSE  •  DRIBBLE  •  DÉFENSE"));
+        addModeCard("ÉQUIPE", 285, 386, 250, 64, () -> showModeScreen("ÉQUIPE",
+                "EFFECTIF  •  TACTIQUES  •  KITS  •  PROGRESSION"));
 
-        Button competition = menuButton("COMPÉTITION", 16f);
-        addMenuButton(competition, Gravity.CENTER, 0, 154, 190, 64);
-        competition.setOnClickListener(v -> showModeMessage("COMPÉTITIONS", "Ligues • Coupes • Tournois"));
+        Button profile = menuButton("PROFIL", 13f);
+        FrameLayout.LayoutParams pp = new FrameLayout.LayoutParams(150, 48, Gravity.BOTTOM | Gravity.LEFT);
+        pp.leftMargin = 22; pp.bottomMargin = 20;
+        menuOverlay.addView(profile, pp);
+        profile.setOnClickListener(v -> showModeScreen("PROFIL", "JOUEUR  •  PROGRESSION  •  STATISTIQUES"));
 
-        Button training = menuButton("ENTRAÎNEMENT", 16f);
-        addMenuButton(training, Gravity.CENTER, 0, 226, 190, 64);
-        training.setOnClickListener(v -> showModeMessage("ENTRAÎNEMENT", "Tir • Passe • Dribble • Défense"));
-
-        Button team = menuButton("ÉQUIPE", 16f);
-        addMenuButton(team, Gravity.CENTER, 0, 298, 190, 64);
-        team.setOnClickListener(v -> showModeMessage("ÉQUIPE", "Effectif • Tactiques • Kits • Progression"));
-
-        TextView footer = menuLabel("MATCH  •  CARRIÈRE  •  COMPÉTITIONS  •  ENTRAÎNEMENT", 11f, false);
-        footer.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams footerParams =
-                new FrameLayout.LayoutParams(-1, 48, Gravity.BOTTOM);
-        footerParams.bottomMargin = 18;
-        menuOverlay.addView(footer, footerParams);
+        Button other = menuButton("AUTRES", 13f);
+        FrameLayout.LayoutParams op = new FrameLayout.LayoutParams(150, 48, Gravity.BOTTOM | Gravity.RIGHT);
+        op.rightMargin = 22; op.bottomMargin = 20;
+        menuOverlay.addView(other, op);
+        other.setOnClickListener(v -> showModeScreen("AUTRES", "AIDE  •  INFORMATIONS  •  OPTIONS"));
 
         root.addView(menuOverlay, new FrameLayout.LayoutParams(-1, -1));
+    }
+
+    private void addModeCard(String text, int left, int top, int width, int height, Runnable action) {
+        Button b = menuButton(text, 14f);
+        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(width, height, Gravity.TOP | Gravity.LEFT);
+        p.leftMargin = left;
+        p.topMargin = top;
+        menuOverlay.addView(b, p);
+        b.setOnClickListener(v -> action.run());
+    }
+
+    private void showModeScreen(String title, String details) {
+        final FrameLayout page = new FrameLayout(this);
+        page.setBackgroundColor(0xFF07111E);
+
+        TextView t = menuLabel(title, 30f, true);
+        FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-1, 70, Gravity.TOP);
+        tp.topMargin = 42; tp.leftMargin = 30;
+        page.addView(t, tp);
+
+        TextView d = menuLabel(details, 15f, false);
+        d.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams dp = new FrameLayout.LayoutParams(-1, 160, Gravity.CENTER);
+        page.addView(d, dp);
+
+        Button back = menuButton("‹  RETOUR", 14f);
+        FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(170, 56, Gravity.BOTTOM | Gravity.LEFT);
+        bp.leftMargin = 24; bp.bottomMargin = 24;
+        page.addView(back, bp);
+        back.setOnClickListener(v -> {
+            root.removeView(page);
+            showMainMenu();
+        });
+
+        root.addView(page, new FrameLayout.LayoutParams(-1, -1));
+    }
+
+    private void showSettingsCard() {
+        showModeScreen("PARAMÈTRES", "GRAPHISMES  •  VULKAN  •  COMMANDES  •  AUDIO");
+    }
+
+    private void startMatch() {
+        if (matchStarted) return;
+        matchStarted = true;
+        menuVisible = false;
+
+        if (menuOverlay != null) {
+            root.removeView(menuOverlay);
+            menuOverlay = null;
+        }
+
+        statsView.setVisibility(View.VISIBLE);
+
+        // Initialize the native renderer only now. This isolates the menu from
+        // missing/invalid production assets and prevents the app from closing
+        // while the player is still on the home screen.
+        if (!nativeReady) {
+            nativeCreate(surface.getHolder().getSurface());
+            nativeReady = true;
+            nativeSetSettings(10, true, true, 5, 1, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 1,
+                    60, 2, true, 0, true, 0, .55f, .85f, .80f, .90f);
+            loadBundledEnvironment();
+            loadBundledTerrainMaterial();
+            loadBundledStadium();
+            loadBundledPlayer();
+            android.util.Log.i("SLAYER", "Native match renderer initialized");
+        }
+
+        addGameControls(root);
+        lastFrameNanos = System.nanoTime();
+        testStartNanos = lastFrameNanos;
+        surface.postOnAnimation(frameRunnable);
+    }
+
+    private static final class MenuBackgroundView extends View {
+        private final android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.LinearGradient gradient;
+
+        MenuBackgroundView(android.content.Context context) {
+            super(context);
+            gradient = new android.graphics.LinearGradient(
+                    0, 0, 0, 900,
+                    new int[]{0xFF04101C, 0xFF0A3151, 0xFF02070D},
+                    null, android.graphics.Shader.TileMode.CLAMP);
+        }
+
+        @Override
+        protected void onDraw(android.graphics.Canvas canvas) {
+            super.onDraw(canvas);
+            paint.setShader(gradient);
+            canvas.drawRect(0, 0, getWidth(), getHeight(), paint);
+            paint.setShader(null);
+
+            // Abstract stadium lights / pitch perspective, so the menu is never
+            // an empty black screen while real 3D menu art is being integrated.
+            paint.setColor(0x332FA8FF);
+            canvas.drawOval(-180, getHeight() - 260, getWidth() + 180, getHeight() + 220, paint);
+            paint.setColor(0x55FFFFFF);
+            for (int i = 0; i < 8; i++) {
+                float x = 30 + i * (getWidth() - 60) / 7f;
+                canvas.drawCircle(x, 120 + (i % 2) * 18, 3.5f, paint);
+            }
+            paint.setStyle(android.graphics.Paint.Style.STROKE);
+            paint.setStrokeWidth(2);
+            paint.setColor(0x3388CCFF);
+            canvas.drawArc(-getWidth(), getHeight() - 300, getWidth() * 2, getHeight() + 300, 190, 160, false, paint);
+            paint.setStyle(android.graphics.Paint.Style.FILL);
+        }
     }
 
     private TextView menuLabel(String text, float size, boolean bold) {
@@ -509,7 +616,7 @@ public final class MainActivity extends Activity {
         @Override
         public void run() {
             if (surface == null || !surface.getHolder().getSurface().isValid()) return;
-            if (!matchStarted && testScenario <= 0) return;
+            if (!nativeReady || !matchStarted) return;
             long now = System.nanoTime();
             float dt = (now - lastFrameNanos) / 1_000_000_000.0f;
             lastFrameNanos = now;
