@@ -9,7 +9,7 @@ export class GameplaySystem{
    const ok=this.interactions.tryKick(players,playerId,ball,direction,power,type);
    return{success:ok,action,quality:ok?1-fatigue*0.35:0,reason:ok?"contact":"contact_failed"};
   }
-  if(action==="Control"){const ok=this.interactions.tryControl(players,playerId,ball);return{success:ok,action,quality:ok?1:0,reason:ok?"controlled":"control_failed"};}
+  if(action==="Dribble" || action==="Control"){const ok=this.interactions.tryControl(players,playerId,ball);return{success:ok,action,quality:ok?1:0,reason:ok?"controlled":"control_failed"};}
   return{success:true,action,quality:Math.max(0,1-fatigue),reason:"intent_registered"};
  }
 }
