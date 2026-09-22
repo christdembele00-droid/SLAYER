@@ -177,8 +177,8 @@ const ui=new SlayerUI(
   applySlayerSettings
 );
 const config=(window as unknown as {__SLAYER_CONFIG__?:{wsUrl?:string;wsToken?:string}}).__SLAYER_CONFIG__??{};
-const online=config.wsUrl?new WebSocketClient():null;
-if(online) online.connect(config.wsUrl!);
+const online=(config.wsUrl && config.wsToken) ? new WebSocketClient() : null;
+if(online) online.connect(config.wsUrl!, config.wsToken!);
 
 window.addEventListener("pointerdown",()=>void audio.resume(),{once:true});
 
