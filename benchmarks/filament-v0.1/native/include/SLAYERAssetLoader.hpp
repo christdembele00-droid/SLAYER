@@ -21,16 +21,16 @@ public:
     bool loadEnvironment(const std::string&, filament::Scene*);
     bool loadSkybox(const std::string&, filament::Scene*);
     filament::Material* loadMaterial(const std::string&);
-    gltfio::FilamentAsset* loadGLB(const std::string&);
-    void destroyAsset(gltfio::FilamentAsset*&);
+    filament::gltfio::FilamentAsset* loadGLB(const std::string&);
+    void destroyAsset(filament::gltfio::FilamentAsset*&);
 private:
     bool readAsset(const std::string&, std::vector<uint8_t>&) const;
     filament::Engine* m_engine{};
     AAssetManager* m_assetManager{};
-    gltfio::MaterialProvider* m_materialProvider{};
-    gltfio::AssetLoader* m_gltfLoader{};
-    gltfio::ResourceLoader* m_resourceLoader{};
-    gltfio::TextureProvider* m_stbDecoder{};
+    filament::gltfio::MaterialProvider* m_materialProvider{};
+    filament::gltfio::AssetLoader* m_gltfLoader{};
+    filament::gltfio::ResourceLoader* m_resourceLoader{};
+    filament::gltfio::TextureProvider* m_stbDecoder{};
     filament::Texture* m_iblTexture{};
     filament::Texture* m_skyboxTexture{};
     filament::IndirectLight* m_indirectLight{};
