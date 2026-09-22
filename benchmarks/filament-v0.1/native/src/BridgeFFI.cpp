@@ -7,6 +7,7 @@
 #include <gltfio/AssetLoader.h>
 #include <gltfio/Animator.h>
 #include <gltfio/FilamentAsset.h>
+#include <gltfio/FilamentInstance.h>
 #include <gltfio/MaterialProvider.h>
 #include <gltfio/ResourceLoader.h>
 #include <gltfio/TextureProvider.h>
@@ -20,6 +21,8 @@
 #include <atomic>
 
 #include <filament/Camera.h>
+#include <filament/IndirectLight.h>
+#include <filament/Skybox.h>
 #include <filament/ColorGrading.h>
 #include <filament/ToneMapper.h>
 #include <filament/Engine.h>
@@ -36,6 +39,8 @@
 #include <math/mat4.h>
 #include <filament/LightManager.h>
 #include <utils/EntityManager.h>
+#include <image/Ktx1Bundle.h>
+#include <ktxreader/Ktx1Reader.h>
 
 namespace {
 
@@ -58,6 +63,9 @@ struct NativeRenderer {
     Entity terrainEntity{};
     Entity sunEntity{};
     Entity floodlightEntities[4]{};
+    IndirectLight* indirectLight = nullptr;
+    Skybox* skybox = nullptr;
+    Texture* environmentTexture = nullptr;
     VertexBuffer* vertexBuffer = nullptr;
     IndexBuffer* indexBuffer = nullptr;
     VertexBuffer* terrainVertexBuffer = nullptr;
