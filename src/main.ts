@@ -146,7 +146,8 @@ const ui=new SlayerUI(
   startMatch,
   action => input.setAction(action,.75),
   pressed => input.setSprint(pressed),
-  move => input.setMovement(move.x, move.z)
+  move => input.setMovement(move.x, move.z),
+  mode => camera.setMode(mode)
 );
 const config=(window as unknown as {__SLAYER_CONFIG__?:{wsUrl?:string}}).__SLAYER_CONFIG__??{};
 const online=config.wsUrl?new WebSocketClient():null;
