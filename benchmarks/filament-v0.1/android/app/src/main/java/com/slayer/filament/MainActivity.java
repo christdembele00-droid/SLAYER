@@ -120,6 +120,10 @@ public final class MainActivity extends Activity {
                     nativeDestroy();
                     nativeReady = false;
                 }
+                matchStarted = false;
+                menuVisible = false;
+                removeGameControls();
+                if (statsView != null) statsView.setVisibility(View.GONE);
             }
         });
 
