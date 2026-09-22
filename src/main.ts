@@ -284,6 +284,7 @@ function frame(now:number){
 
   const snapshot=match.snapshot();
   ui.updateMatch(snapshot.score.homeGoals,snapshot.score.awayGoals,match.clock.format(),snapshot.phase.toUpperCase());
+  ui.updatePerformance(perf.fps || gpu.fps,perf.frameMs || gpu.frameMs,perf.p95Ms || gpu.p95Ms,gpu.drawCalls,gpu.triangles,quality.tier);
   if(online && now-lastOnlineSnapshotAt>=100){ online.send({type:"snapshot",ball:{...ball.state.position},time:snapshot.timeSeconds}); lastOnlineSnapshotAt=now; }
 
   renderer.render();
