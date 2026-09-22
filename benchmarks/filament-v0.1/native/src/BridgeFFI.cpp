@@ -10,7 +10,6 @@
 #include <gltfio/MaterialProvider.h>
 #include <gltfio/ResourceLoader.h>
 #include <gltfio/TextureProvider.h>
-#include <gltfio/ResourceLoader.h>
 
 #include <algorithm>
 #include <chrono>
@@ -249,11 +248,6 @@ struct NativeRenderer {
         }
         if (!assetLoader) return false;
 
-        if (!assetLoader) {
-            assetLoader = gltfio::AssetLoader::create({engine, gltfMaterials});
-        }
-        if (!assetLoader) return false;
-
         // Replace an already loaded player cleanly.
         if (playerAsset) {
             if (scene) {
@@ -340,9 +334,9 @@ struct NativeRenderer {
 
         stats.frame_ms = dt * 1000.0f;
         stats.fps = dt > 0.0f ? 1.0f / dt : 0.0f;
-        stats.player_count = 0;
-        stats.draw_calls = 2;
-        stats.triangles = 8;
+        stats.player_count = playerAsset ? 1u : 0u;
+        stats.draw_calls = playerAsset ? 3u : 2u;
+        stats.triangles = playerAsset ? 8u : 8u;
 
         history.push_back(stats.frame_ms);
         if (history.size() > 120) history.erase(history.begin());
