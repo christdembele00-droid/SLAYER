@@ -2,6 +2,7 @@ import { Ball } from "../ball/Ball";
 import { Player } from "../player/Player";
 import { BallContactType } from "../ball/BallTypes";
 import { ContactEvaluation } from "./InteractionTypes";
+import { strikeProfile } from "../ball/BallKinematics";
 
 const ACCESS_RADIUS = 1.65;
 const EFFECTIVE_RADIUS = 1.05;
@@ -65,17 +66,20 @@ export class PlayerBallInteraction {
     const technique = this.technicalModifier(player, type);
     const quality = this.qualityModifier(evaluation.quality);
     const adjustedPower = Math.min(1, Math.max(0, power * technique * quality));
+    const profile = strikeProfile(type, adjustedPower, ball.state.wetness);
     const directionLength = Math.hypot(direction.x,direction.y,direction.z)||1;
-    const impulseScale=8+20*adjustedPower;
+    const nx=direction.x/directionLength, nz=direction.z/directionLength;
+    const side=(player.data.preferredFoot==="right"?1:-1);
     ball.physics.applyImpulse(ball.state, {
-      x: direction.x/directionLength*impulseScale,
-      y: direction.y/directionLength*(4+8*adjustedPower),
-      z: direction.z/directionLength*impulseScale
+      x:nx*profile.speed*ball.physics.data.mass,
+      y:Math.max(0,profile.lift*profile.speed*ball.physics.data.mass + direction.y*profile.speed*.08*ball.physics.data.mass),
+      z:nz*profile.speed*ball.physics.data.mass
     }, {
-      x: 0,
-      y: (player.data.preferredFoot === "right" ? 1 : -1) * adjustedPower * 3,
-      z: 0
-    }, { playerId: player.data.playerId, teamId: player.data.teamId, type, time: performance.now() / 1000 });
+      x:0,
+      y:side*profile.spin,
+      z:0
+    }, { playerId: player.data.playerId, teamId: player.data.teamId, type, time: performance.now()/1000 });
+    ball.physics.data.drag = 0.018 * profile.dragMultiplier;
     ball.state.controlledByPlayerId = undefined;
     player.state.ballMode = "NoBall";
     player.state.action = type === "Shot" ? "Shoot" : type === "Pass" ? "Pass" : type === "ThroughBall" ? "ThroughBall" : type === "Cross" ? "Cross" : type === "Clearance" ? "Clearance" : "None";
