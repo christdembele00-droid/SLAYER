@@ -66,9 +66,9 @@ target_link_libraries(slayer_filament_benchmark
     "-Wl,--end-group"
     android
     log
-    GLESv3
-    EGL
+    vulkan
 )
 target_compile_definitions(slayer_filament_benchmark PRIVATE
     SLAYER_FILAMENT_BENCHMARK=1
+    SLAYER_VULKAN_ONLY=1
 )
