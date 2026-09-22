@@ -18,8 +18,11 @@ describe("SLAYER runtime integration",()=>{
     const p=ps.create(PlayerFactory.createPlayerData("p1","P1","home","ST"),{x:0,y:0,z:0});
     const bs=new BallSystem(); const interactions=new InteractionSystem(); const gameplay=new GameplaySystem(interactions);
     expect(interactions.tryControl(ps,"p1",bs.ball)).toBe(true);
-    expect(p.state.ballMode).toBe("Control");
+    bs.update(1/60,ps);
+    expect(bs.ball.state.controlledByPlayerId).toBe("p1");
+    expect(bs.ball.state.position.z).toBeGreaterThan(.5);
     expect(gameplay.execute(ps,bs.ball,"p1","Pass",{x:0,y:0,z:1},.6).success).toBe(true);
+    expect(bs.ball.state.controlledByPlayerId).toBeUndefined();
     expect(bs.ball.state.velocity.z).toBeGreaterThan(0);
   });
   it("executes an AI decision into a runtime intent",()=>{
