@@ -30,45 +30,69 @@ target_include_directories(slayer_filament_benchmark PRIVATE
     ${FILAMENT_INCLUDE_DIR}
 )
 
-# The release archive may contain a top-level distribution directory.
-# Search recursively so the build does not depend on that layout.
-file(GLOB_RECURSE FILAMENT_LIB_CANDIDATES CONFIGURE_DEPENDS
-    "${FILAMENT_DIST_DIR}/lib/${ANDROID_ABI}/libfilament.a"
-    "${FILAMENT_DIST_DIR}/*/lib/${ANDROID_ABI}/libfilament.a"
-    "${FILAMENT_DIST_DIR}/lib/${ANDROID_ABI}/libfilament.so"
-    "${FILAMENT_DIST_DIR}/*/lib/${ANDROID_ABI}/libfilament.so"
+# Filament's Android native archive is a collection of static libraries.
+# libfilament.a intentionally does not contain every backend / utility implementation,
+# so linking only libfilament.a + libutils.a leaves many symbols unresolved.
+# The official Filament Android build links these components together.
+set(FILAMENT_LIB_DIR "${FILAMENT_DIST_DIR}/lib/${ANDROID_ABI}")
+
+function(import_filament_static NAME)
+    set(LIB_PATH "${FILAMENT_LIB_DIR}/lib${NAME}.a")
+    if(NOT EXISTS "${LIB_PATH}")
+        message(FATAL_ERROR "Missing Filament library: ${LIB_PATH}")
+    endif()
+    add_library("filament_${NAME}" STATIC IMPORTED GLOBAL)
+    set_target_properties("filament_${NAME}" PROPERTIES
+        IMPORTED_LOCATION "${LIB_PATH}"
+        INTERFACE_INCLUDE_DIRECTORIES "${FILAMENT_INCLUDE_DIR}"
+    )
+endfunction()
+
+# Core runtime + backend dependencies used by Engine::create(VULKAN/OPENGL).
+foreach(LIB_NAME
+    filament
+    backend
+    bluevk
+    bluegl
+    vkshaders
+    filabridge
+    filaflat
+    ibl-lite
+    math
+    utils
+    perfetto
+    smol-v
+    zstd
 )
-file(GLOB_RECURSE UTILS_LIB_CANDIDATES CONFIGURE_DEPENDS
-    "${FILAMENT_DIST_DIR}/lib/${ANDROID_ABI}/libutils.a"
-    "${FILAMENT_DIST_DIR}/*/lib/${ANDROID_ABI}/libutils.a"
-    "${FILAMENT_DIST_DIR}/lib/${ANDROID_ABI}/libutils.so"
-    "${FILAMENT_DIST_DIR}/*/lib/${ANDROID_ABI}/libutils.so"
-)
+    import_filament_static(${LIB_NAME})
+endforeach()
 
-list(LENGTH FILAMENT_LIB_CANDIDATES FILAMENT_LIB_COUNT)
-list(LENGTH UTILS_LIB_CANDIDATES UTILS_LIB_COUNT)
+message(STATUS "SLAYER Filament library directory: ${FILAMENT_LIB_DIR}")
 
-if(FILAMENT_LIB_COUNT EQUAL 0)
-    message(FATAL_ERROR "Could not find libfilament.a under FILAMENT_DIST_DIR=${FILAMENT_DIST_DIR} for ABI=${ANDROID_ABI}")
-endif()
-
-if(UTILS_LIB_COUNT EQUAL 0)
-    message(FATAL_ERROR "Could not find libutils.a under FILAMENT_DIST_DIR=${FILAMENT_DIST_DIR} for ABI=${ANDROID_ABI}")
-endif()
-
-list(GET FILAMENT_LIB_CANDIDATES 0 FILAMENT_LIB)
-list(GET UTILS_LIB_CANDIDATES 0 UTILS_LIB)
-
-message(STATUS "SLAYER Filament library: ${FILAMENT_LIB}")
-message(STATUS "SLAYER Filament utils library: ${UTILS_LIB}")
-
+# Static-library ordering is significant. A linker group lets lld rescan the
+# Filament archives until all inter-library references are resolved.
 target_link_libraries(slayer_filament_benchmark
-    ${FILAMENT_LIB}
-    ${UTILS_LIB}
+    PRIVATE
+    "-Wl,--start-group"
+    filament_filament
+    filament_backend
+    filament_bluevk
+    filament_bluegl
+    filament_vkshaders
+    filament_filabridge
+    filament_filaflat
+    filament_ibl-lite
+    filament_math
+    filament_utils
+    filament_perfetto
+    filament_smol-v
+    filament_zstd
+    "-Wl,--end-group"
     android
     log
+    GLESv3
+    EGL
 )
-
 target_compile_definitions(slayer_filament_benchmark PRIVATE
     SLAYER_FILAMENT_BENCHMARK=1
 )
