@@ -68,10 +68,9 @@ jobs:
       - name: Prepare Cloudinary assets and Filament IBL
         run: node scripts/prepare-filament-production-assets.mjs
       - name: Build native Filament debug APK and release AAB
-        run: gradle -p benchmarks/filament-v0.1/android assembleDebug bundleRelease --no-daemon
+        run: gradle -p benchmarks/filament-v0.1/android assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: SLAYER-Native-${{ github.sha }}
           path: |
             benchmarks/filament-v0.1/android/app/build/outputs/apk/debug/*.apk
-            benchmarks/filament-v0.1/android/app/build/outputs/bundle/release/*.aab
