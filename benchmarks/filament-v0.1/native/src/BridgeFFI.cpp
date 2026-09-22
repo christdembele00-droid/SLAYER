@@ -842,8 +842,9 @@ RuntimeThreads g_runtime;
 
 } // namespace
 
-extern "C" void slayer_renderer_create(void* native_window) {
-    g_renderer.initialize(static_cast<ANativeWindow*>(native_window));
+extern "C" bool slayer_renderer_create(void* native_window) {
+    if (g_renderer.engine) return true;
+    return g_renderer.initialize(static_cast<ANativeWindow*>(native_window));
 }
 
 extern "C" void slayer_renderer_resize(uint32_t width, uint32_t height) {
@@ -894,16 +895,23 @@ extern "C" void slayer_renderer_destroy(void) {
     g_renderer.shutdown();
 }
 
-extern "C" JNIEXPORT void JNICALL
+extern "C" JNIEXPORT jboolean JNICALL
 Java_com_slayer_filament_MainActivity_nativeCreate(
         JNIEnv* env, jobject, jobject surface) {
+    if (!env || !surface) return JNI_FALSE;
     ANativeWindow* window = ANativeWindow_fromSurface(env, surface);
-    if (!window) return;
-    if (g_renderer.initialize(window)) {
-        slayer_game_reset();
-        g_renderer.loadUbershaderArchive();
-        g_runtime.start();
+    if (!window) return JNI_FALSE;
+    if (!slayer_renderer_create(window)) {
+        g_renderer.shutdown();
+        return JNI_FALSE;
     }
+    slayer_game_reset();
+    if (!g_renderer.loadUbershaderArchive()) {
+        g_renderer.shutdown();
+        return JNI_FALSE;
+    }
+    g_runtime.start();
+    return JNI_TRUE;
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
