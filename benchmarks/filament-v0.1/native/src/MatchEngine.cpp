@@ -12,6 +12,9 @@ static float approach(float v,float target,float rate,float dt){
 
 MatchEngine::MatchEngine(){ reset(); }
 
+void MatchEngine::setSettings(const SlayerSettings& settings){ settings_=settings; input_.selectedPlayer=state_.selected; }
+
+
 void MatchEngine::setupTeams(){
     // Original 4-3-3 match layout. Team 0 attacks +Z, team 1 attacks -Z.
     const float home[11][2]={{0,-27},{-9,-20},{-3,-22},{3,-22},{9,-20},{-10,-10},{0,-12},{10,-10},{-11,1},{0,0},{11,1}};
@@ -28,6 +31,8 @@ void MatchEngine::reset(){
     setupTeams();
     state_.ball={0,0.22f,0,0,0,0,0,0,0,false};
     state_.phase=MatchPhase::FirstHalf;
+    state_.selected=9;
+    input_.selectedPlayer=9;
     state_.selected=9;
     secondAccumulator_=fixedAccumulator_=0;
 }
@@ -46,8 +51,17 @@ void MatchEngine::update(float dt){
     secondAccumulator_+=dt;
     if(secondAccumulator_>=1.0f){
         secondAccumulator_-=1.0f; state_.matchSeconds++;
-        if(state_.matchSeconds==45*60) state_.phase=MatchPhase::HalfTime;
-        if(state_.matchSeconds>=90*60) state_.phase=MatchPhase::FullTime;
+            const uint32_t halfSeconds=static_cast<uint32_t>(std::max(1,settings_.durationMinutes)*60);
+        if(state_.matchSeconds==halfSeconds) state_.phase=MatchPhase::HalfTime;
+        if(state_.matchSeconds>=halfSeconds*2u){
+            if(settings_.extraTime) state_.phase=MatchPhase::ExtraTime;
+            else if(settings_.penalties) state_.phase=MatchPhase::Penalties;
+            else state_.phase=MatchPhase::FullTime;
+        }
+        if(state_.phase==MatchPhase::ExtraTime && state_.matchSeconds>=halfSeconds*2u+30u*60u){
+            if(settings_.penalties) state_.phase=MatchPhase::Penalties;
+            else state_.phase=MatchPhase::FullTime;
+        }
     }
     updateTactics();
 }
@@ -58,6 +72,8 @@ void MatchEngine::updateControlled(float dt){
     p.controlled=true;
     float mx=clampf(input_.moveX,-1,1), mz=clampf(input_.moveY,-1,1);
     float sprint= input_.sprint>0.5f && p.stamina>0.08f ? 1.35f:1.0f;
+    if(settings_.attack==TacticalMode::UltraDefensive) sprint*=0.94f;
+    if(settings_.attack==TacticalMode::UltraOffensive) sprint*=1.06f;
     float targetX=mx*p.speed*sprint, targetZ=mz*p.speed*sprint;
     p.vx=approach(p.vx,targetX,p.acceleration,dt);
     p.vz=approach(p.vz,targetZ,p.acceleration,dt);
@@ -65,8 +81,15 @@ void MatchEngine::updateControlled(float dt){
     p.z=clampf(p.z+p.vz*dt,-34.0f,34.0f);
     float dx=state_.ball.x-p.x,dz=state_.ball.z-p.z;
     if(len(dx,dz)<1.45f){
-        if(input_.pass>0.5f){state_.ball.vx=mx*18.0f; state_.ball.vz=mz*18.0f+4.0f; state_.ball.vy=1.4f;}
-        if(input_.shoot>0.5f){float goalZ=(p.team==0?34.0f:-34.0f);state_.ball.vx=(state_.ball.x-p.x)*4;state_.ball.vz=(goalZ-p.z)*1.7f;state_.ball.vy=4.2f;}
+        if(input_.pass>0.5f){
+            const float assist=1.0f+0.08f*clampf(static_cast<float>(settings_.passAssist),0.0f,4.0f);
+            state_.ball.vx=mx*18.0f*assist; state_.ball.vz=mz*18.0f*assist+4.0f; state_.ball.vy=1.4f;
+        }
+        if(input_.shoot>0.5f){
+            float goalZ=(p.team==0?34.0f:-34.0f);
+            float aim=(settings_.shotAssist==ShotAssistMode::Assisted)?1.12f:1.0f;
+            state_.ball.vx=(state_.ball.x-p.x)*4*aim; state_.ball.vz=(goalZ-p.z)*1.7f*aim; state_.ball.vy=4.2f;
+        }
     }
 }
 
