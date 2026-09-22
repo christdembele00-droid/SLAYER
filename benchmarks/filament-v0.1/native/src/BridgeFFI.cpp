@@ -945,7 +945,7 @@ Java_com_slayer_filament_MainActivity_nativeSetSettings(JNIEnv*, jobject, jint d
     s.time=(slayer::TimeMode)std::clamp((int)timeMode,0,2); s.weather=(slayer::WeatherMode)std::clamp((int)weatherMode,0,2); s.grass=(slayer::GrassMode)std::clamp((int)grassMode,0,2);
     s.stadium=stadium; s.ball=ball; s.control=(slayer::ControlMode)std::clamp((int)control,0,2); s.passAssist=std::clamp((int)passAssist,1,4); s.shotAssist=(slayer::ShotAssistMode)std::clamp((int)shotAssist,0,1); s.cursor=(slayer::CursorMode)std::clamp((int)cursor,0,2); s.pressing=(slayer::PressMode)std::clamp((int)pressing,0,1); s.attack=(slayer::TacticalMode)std::clamp((int)attack,0,2); s.targetFps=targetFps; s.quality=(slayer::QualityMode)std::clamp((int)quality,0,3); s.dynamicResolution=dynamicResolution; s.camera=(slayer::CameraMode)std::clamp((int)cameraMode,0,4); s.radar=radar; s.commentaryLanguage=commentary; s.musicVolume=music; s.commentaryVolume=commentaryVolume; s.crowdVolume=crowd; s.effectsVolume=effects;
     slayer_renderer_set_settings(s);
-    g_game.setSettings(s);
+    slayer_game_set_settings(s);
 }
 
 extern "C" JNIEXPORT void JNICALL
