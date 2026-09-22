@@ -162,8 +162,9 @@ if (glb) {
     }
     const sourcePath = join(fieldSourceDir, fbx);
     const blenderScript = join(fieldSourceDir, "export_fbx_to_glb.py");
-    await writeFile(blenderScript, `import bpy\nimport sys\n\ninput_path = sys.argv[1]\noutput_path = sys.argv[2]\n\nbpy.ops.wm.read_factory_settings(use_empty=True)\nbpy.ops.import_scene.fbx(filepath=input_path, use_custom_normals=True)\nbpy.ops.export_scene.gltf(filepath=output_path, export_format="GLB", export_image_format="AUTO", export_materials="EXPORT", export_cameras=False, export_lights=False)\n`);
-    await exec(blender, [
+    await writeFile(blenderScript, `import bpy\nimport sys\n\nseparator = sys.argv.index("--")\ninput_path = sys.argv[separator + 1]\noutput_path = sys.argv[separator + 2]\n\nbpy.ops.wm.read_factory_settings(use_empty=True)\nbpy.ops.import_scene.fbx(filepath=input_path, use_custom_normals=True)\nbpy.ops.export_scene.gltf(filepath=output_path, export_format="GLB", export_image_format="AUTO", export_materials="EXPORT", export_cameras=False, export_lights=False)\n`);
+    await mkdir(dirname(extractedPitch), { recursive: true });
+    const blenderResult = await exec(blender, [
       "--background",
       "--python",
       blenderScript,
@@ -171,7 +172,10 @@ if (glb) {
       sourcePath,
       extractedPitch,
     ], { maxBuffer: 128 * 1024 * 1024 });
-    console.log(`Converted ${fbx} to production GLB with Blender`);
+    if (blenderResult.stdout) console.log(blenderResult.stdout);
+    if (blenderResult.stderr) console.error(blenderResult.stderr);
+    await ensureFile(extractedPitch, "Blender-exported pitch GLB");
+    console.log(`Converted ${fbx} to production GLB with Blender: ${extractedPitch}`);
   } else {
     throw new Error(
       `No supported 3D model found in soccer_field_cc0.zip. Entries:\n${normalized.join("\n")}`
