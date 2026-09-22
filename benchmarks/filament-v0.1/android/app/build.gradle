@@ -20,7 +20,7 @@ android {
         }
     }
 
-    buildFeatures { buildConfig true }
+    // This module is Java-only. AGP 9 enables built-in Kotlin by default; disable it here\n    // so Filament's Kotlin metadata does not force an unrelated Kotlin compile task.\n    enableKotlin = false\n\n    buildFeatures { buildConfig true }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_21
         targetCompatibility JavaVersion.VERSION_21
