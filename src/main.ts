@@ -23,6 +23,7 @@ import { AudioEngine } from "./audio/AudioEngine";
 import { CommentarySystem } from "./audio/CommentarySystem";
 import { WebSocketClient } from "./online/WebSocketClient";
 import type { PlayerAction, PlayerIntent } from "./player/PlayerTypes";
+import { SlayerUI } from "./ui/SLAYERUI";
 
 const app=document.querySelector<HTMLDivElement>("#app");
 if(!app) throw new Error("SLAYER root element not found");
@@ -82,6 +83,7 @@ const awayScore=hud.querySelector(".away-score") as HTMLSpanElement;
 const commentaryEl=hud.querySelector(".commentary") as HTMLDivElement;
 
 const controlledId="home-1";
+new SlayerUI(app,()=>{ match.start(); });
 const config=(window as unknown as {__SLAYER_CONFIG__?:{wsUrl?:string}}).__SLAYER_CONFIG__??{};
 const online=config.wsUrl?new WebSocketClient():null;
 if(online) online.connect(config.wsUrl!);
