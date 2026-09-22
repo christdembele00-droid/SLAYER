@@ -31,6 +31,7 @@ public final class MainActivity extends Activity {
     private static native void nativeCreate(android.view.Surface surface);
     private static native boolean nativeLoadTerrainMaterial(byte[] data);
     private static native boolean nativeLoadEnvironment(byte[] data);
+    private static native boolean nativeLoadSkybox(byte[] data);
     private static native boolean nativeLoadPlayer(byte[] data);
     private static native boolean nativeLoadStadium(byte[] data);
     private static native float nativeGetFps();
@@ -125,16 +126,28 @@ public final class MainActivity extends Activity {
     }
 
     private void loadBundledEnvironment() {
-        try (InputStream input = getAssets().open("ibl/stadium_ibl.ktx");
+        try {
+            byte[] ibl = readAssetBytes("ibl/orlando_stadium/orlando_stadium_ibl.ktx");
+            byte[] skybox = readAssetBytes("ibl/orlando_stadium/orlando_stadium_skybox.ktx");
+
+            if (!nativeLoadEnvironment(ibl)) {
+                android.util.Log.w("SLAYER", "Orlando Stadium IBL could not be loaded");
+            }
+            if (!nativeLoadSkybox(skybox)) {
+                android.util.Log.w("SLAYER", "Orlando Stadium skybox could not be loaded");
+            }
+        } catch (IOException e) {
+            android.util.Log.i("SLAYER", "No generated Orlando Stadium IBL; keeping direct stadium lights");
+        }
+    }
+
+    private byte[] readAssetBytes(String path) throws IOException {
+        try (InputStream input = getAssets().open(path);
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             byte[] buffer = new byte[64 * 1024];
             int read;
             while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
-            if (!nativeLoadEnvironment(output.toByteArray())) {
-                android.util.Log.w("SLAYER", "ibl/stadium_ibl.ktx could not be loaded");
-            }
-        } catch (IOException e) {
-            android.util.Log.i("SLAYER", "No bundled IBL yet; keeping direct stadium lights");
+            return output.toByteArray();
         }
     }
 
