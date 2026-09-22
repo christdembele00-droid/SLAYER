@@ -22,12 +22,13 @@ export class SceneRenderer {
     });
     this.renderer.outputColorSpace=THREE.SRGBColorSpace;
     this.renderer.toneMapping=THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure=1.1;
+    this.renderer.toneMappingExposure=1.12;
     this.renderer.shadowMap.autoUpdate=true;
     this.renderer.shadowMap.enabled=true;
     this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    this.renderer.info.autoReset=true;
     this.renderer.localClippingEnabled=false;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.35));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));
     this.renderer.outputColorSpace=THREE.SRGBColorSpace;
     this.renderer.setSize(container.clientWidth,container.clientHeight,false);
 
@@ -79,7 +80,7 @@ export class SceneRenderer {
   setQuality(pixelRatio:number){
     this.qualityRatio=Math.min(Math.max(pixelRatio,.65),1.35);
     this.renderer.setPixelRatio(this.qualityRatio);
-    this.renderer.toneMappingExposure=this.qualityRatio>=1.15?1.1:this.qualityRatio>=.9?1.07:1.03;
+    this.renderer.toneMappingExposure=this.qualityRatio>=1.15?1.12:this.qualityRatio>=.9?1.08:1.03;
     const enableShadows=this.qualityRatio>=.8;
     this.renderer.shadowMap.enabled=enableShadows;
     this.sun.castShadow=enableShadows;
