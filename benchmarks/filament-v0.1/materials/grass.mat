@@ -1,12 +1,6 @@
 material {
     name : "SLAYER_ProceduralGrass",
     shadingModel : lit,
-    parameters : [
-        {
-            type : float,
-            name : grassScale
-        }
-    ],
     requires : [ uv0 ]
 }
 
@@ -14,15 +8,16 @@ fragment {
     void material(inout MaterialInputs material) {
         prepareMaterial(material);
 
-        vec2 uv = getUV0() * materialParams_grassScale;
+        vec2 uv = getUV0() * 6.0;
         float waveA = sin(uv.x * 6.28318) * 0.035;
         float waveB = sin((uv.x + uv.y) * 12.56636) * 0.02;
         float variation = clamp(0.18 + waveA + waveB, 0.08, 0.28);
 
-        material.baseColor = vec4(0.035 + variation * 0.18,
-                                  0.16 + variation * 0.32,
-                                  0.045 + variation * 0.08,
-                                  1.0);
+        material.baseColor = vec4(
+            0.035 + variation * 0.18,
+            0.16 + variation * 0.32,
+            0.045 + variation * 0.08,
+            1.0);
         material.roughness = 0.78;
         material.metallic = 0.0;
     }
