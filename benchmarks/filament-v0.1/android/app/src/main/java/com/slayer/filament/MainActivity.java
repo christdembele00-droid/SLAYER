@@ -104,19 +104,19 @@ public final class MainActivity extends Activity {
             else {float cx=90,cy=90; moveX=Math.max(-1,Math.min(1,(e.getX()-cx)/70)); moveY=Math.max(-1,Math.min(1,(e.getY()-cy)/70));}
             nativeSetInput(moveX,moveY,pass,shoot,sprint,tackle,selectedPlayer); return true;
         });
-        Button passButton=button("PASS",Gravity.BOTTOM|Gravity.RIGHT,250,36);
-        Button shootButton=button("TIR",Gravity.BOTTOM|Gravity.RIGHT,125,130);
-        Button sprintButton=button("SPRINT",Gravity.BOTTOM|Gravity.RIGHT,260,150);
+        Button passButton=button(root,"PASS",Gravity.BOTTOM|Gravity.RIGHT,250,36);
+        Button shootButton=button(root,"TIR",Gravity.BOTTOM|Gravity.RIGHT,125,130);
+        Button sprintButton=button(root,"SPRINT",Gravity.BOTTOM|Gravity.RIGHT,260,150);
         passButton.setOnTouchListener((v,e)->{pass=e.getAction()==MotionEvent.ACTION_UP?0:1;nativeSetInput(moveX,moveY,pass,shoot,sprint,tackle,selectedPlayer);return true;});
         shootButton.setOnTouchListener((v,e)->{shoot=e.getAction()==MotionEvent.ACTION_UP?0:1;nativeSetInput(moveX,moveY,pass,shoot,sprint,tackle,selectedPlayer);return true;});
         sprintButton.setOnTouchListener((v,e)->{sprint=e.getAction()==MotionEvent.ACTION_UP?0:1;nativeSetInput(moveX,moveY,pass,shoot,sprint,tackle,selectedPlayer);return true;});
-        Button reset=button("RESTART",Gravity.TOP|Gravity.LEFT,24,130);
+        Button reset=button(root,"RESTART",Gravity.TOP|Gravity.LEFT,24,130);
         reset.setOnClickListener(v->nativeResetMatch());
     }
 
-    private Button button(String label,int gravity,int right,int bottom){
+    private Button button(FrameLayout root,String label,int gravity,int right,int bottom){
         Button b=new Button(this); b.setText(label); b.setTextSize(12); b.setTextColor(Color.WHITE); b.setBackgroundColor(0x88444444);
-        FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(112,72,gravity); lp.rightMargin=right; lp.bottomMargin=bottom; ((FrameLayout)findViewById(android.R.id.content)).addView(b,lp); return b;
+        FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(112,72,gravity); lp.rightMargin=right; lp.bottomMargin=bottom; root.addView(b,lp); return b;
     }
 
     private void loadBundledEnvironment() {
