@@ -978,6 +978,20 @@ Java_com_slayer_filament_MainActivity_nativeLoadPlayer(
 }
 
 
+extern "C" JNIEXPORT jint JNICALL
+Java_com_slayer_filament_MainActivity_nativeGetHomeScore(JNIEnv*, jobject) {
+    uint32_t home = 0;
+    slayer_game_get_score(&home, nullptr, nullptr);
+    return static_cast<jint>(home);
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_slayer_filament_MainActivity_nativeGetAwayScore(JNIEnv*, jobject) {
+    uint32_t away = 0;
+    slayer_game_get_score(nullptr, &away, nullptr);
+    return static_cast<jint>(away);
+}
+
 extern "C" JNIEXPORT void JNICALL
 Java_com_slayer_filament_MainActivity_nativeResize(
         JNIEnv*, jobject, jint width, jint height) {
