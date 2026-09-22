@@ -63,6 +63,25 @@ const pitch=new AdvancedPitch();
 renderer.scene.add(pitch.group);
 const crowd=new CrowdSystem();
 renderer.scene.add(crowd.group);
+
+const heroAnchor=new THREE.Object3D();
+heroAnchor.position.set(7,0,0);
+renderer.scene.add(heroAnchor);
+void (async()=>{
+  try{
+    const hero=await new GLTFLoader().loadAsync("/assets/3d/players/player-hero.glb");
+    hero.scene.scale.setScalar(2.35);
+    hero.scene.traverse(object=>{
+      const mesh=object as THREE.Mesh;
+      if(!mesh.isMesh) return;
+      mesh.castShadow=true; mesh.receiveShadow=true; mesh.frustumCulled=true;
+    });
+    heroAnchor.add(hero.scene);
+    camera.setHeroTarget({x:7,y:2.8,z:0});
+  }catch(error){
+    console.warn("[SLAYER] Hero player GLB unavailable; procedural fallback retained.",error);
+  }
+})();
 const nets=[new GoalNetCloth(),new GoalNetCloth()];
 nets[0].mesh.position.z=-52.5;
 nets[1].mesh.position.z=52.5;
@@ -94,7 +113,7 @@ const transitions=new TransitionSystem();
 const ai=new FootballAI();
 const tactical=new TacticalBrain();
 const animation=new AnimationSystem();
-const camera=new CameraDirector();
+
 const ik=new FootballIK();
 const audio=new AudioEngine();
 const commentary=new CommentarySystem(audio);
@@ -109,6 +128,7 @@ ballMesh.receiveShadow=true;
 renderer.scene.add(ballMesh);
 
 const controlledId="home-11";
+const camera=new CameraDirector();
 const nextAIActionAt=new Map<string,number>();
 let lastOnlineSnapshotAt=0;
 function ensureControlledPlayerPossession(): void {
@@ -137,6 +157,7 @@ window.addEventListener("pointerdown",()=>void audio.resume(),{once:true});
 let matchStarted = false;
 function startMatch(): void {
   if (matchStarted) return;
+  camera.setMode("match");
   matchStarted = true;
   match.start();
   match.kickOff("home");
