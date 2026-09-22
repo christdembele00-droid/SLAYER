@@ -32,7 +32,7 @@ jobs:
           python-version: "3.12"
       - run: pip install -r server/requirements.txt
       - run: python -m compileall server
-      - run: python -m unittest server/test_matchmaking.py
+      - run: python -m unittest server/test_matchmaking.py server/test_career.py server/test_training.py server/test_competition.py
 
   android:
     needs: web
