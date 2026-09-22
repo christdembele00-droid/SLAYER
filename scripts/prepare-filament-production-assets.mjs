@@ -37,7 +37,10 @@ function signedCloudinaryRawUrl(url) {
     .replace(/=+$/g, "")
     .slice(0, 8);
 
-  parsed.pathname = parsed.pathname.slice(0, index + marker.length) + `s--${signature}--/` + deliveryPath;
+  parsed.pathname =
+    parsed.pathname.slice(0, index + marker.length) +
+    `s--${signature}--/` +
+    deliveryPath;
   return parsed.toString();
 }
 
@@ -46,8 +49,7 @@ async function download(url, file) {
 
   let response = await fetch(url);
   if (response.status === 401 && url.includes("/raw/upload/")) {
-    const signedUrl = signedCloudinaryRawUrl(url);
-    response = await fetch(signedUrl);
+    response = await fetch(signedCloudinaryRawUrl(url));
   }
 
   if (!response.ok) {
@@ -83,12 +85,25 @@ async function findExecutable(name) {
 
 async function ensureFile(file, label) {
   const info = await stat(file);
-  if (info.size < 128) throw new Error(`${label} is unexpectedly small: ${info.size} bytes`);
+  if (info.size < 128) {
+    throw new Error(`${label} is unexpectedly small: ${info.size} bytes`);
+  }
+}
+
+async function extractZipEntry(zipFile, entry, destination) {
+  await mkdir(dirname(destination), { recursive: true });
+  await exec("unzip", ["-p", zipFile, entry], {
+    maxBuffer: 128 * 1024 * 1024,
+  }).then(({ stdout }) => {
+    if (!stdout) throw new Error(`unzip returned an empty asset: ${entry}`);
+    return writeFile(destination, stdout);
+  });
 }
 
 await mkdir(out, { recursive: true });
 const tmp = join(root, ".slayer-asset-cache");
-await mkdir(tmp, { recursive: true });
+const fieldSourceDir = join(tmp, "soccer_field_source");
+await mkdir(fieldSourceDir, { recursive: true });
 
 const playerFile = join(out, "models/player.glb");
 const animationFile = join(out, "models/animation_library.glb");
@@ -105,24 +120,60 @@ const zipList = (await exec("unzip", ["-Z1", fieldZip])).stdout
   .map(x => x.trim())
   .filter(Boolean);
 
-const glb = zipList.find(x => x.toLowerCase().endsWith(".glb"));
-if (!glb) throw new Error("No GLB found in soccer_field_cc0.zip");
+console.log("Cloudinary pitch archive entries:");
+console.log(zipList.join("\n"));
+
+const normalized = zipList.filter(x => !x.endsWith("/"));
+const glb = normalized.find(x => x.toLowerCase().endsWith(".glb"));
+const gltf = normalized.find(x => x.toLowerCase().endsWith(".gltf"));
+const obj = normalized.find(x => x.toLowerCase().endsWith(".obj"));
 
 const extractedPitch = join(out, "models/pitch.glb");
-await exec("unzip", ["-p", fieldZip, glb], {
-  maxBuffer: 64 * 1024 * 1024,
-}).then(({ stdout }) => {
-  if (!stdout) throw new Error("unzip returned an empty pitch asset");
-  return writeFile(extractedPitch, stdout);
-});
 
+if (glb) {
+  await extractZipEntry(fieldZip, glb, extractedPitch);
+  console.log(`Using GLB pitch source: ${glb}`);
+} else {
+  const gltfpack = await findExecutable("gltfpack");
+  if (!gltfpack) {
+    throw new Error(
+      "soccer_field_cc0.zip contains no GLB. A GLTF/OBJ source requires the Filament gltfpack host tool."
+    );
+  }
+
+  await exec("unzip", ["-q", fieldZip, "-d", fieldSourceDir]);
+
+  const source = gltf || obj;
+  if (!source) {
+    throw new Error(
+      `No supported 3D model found in soccer_field_cc0.zip. Entries:\n${normalized.join("\n")}`
+    );
+  }
+
+  const sourcePath = join(fieldSourceDir, source);
+  await exec(gltfpack, [
+    "-i",
+    sourcePath,
+    "-o",
+    extractedPitch,
+    "-noq",
+  ], {
+    maxBuffer: 64 * 1024 * 1024,
+  });
+
+  console.log(`Converted ${source} to production GLB with gltfpack`);
+}
+
+await ensureFile(extractedPitch, "Pitch GLB");
 const pitchData = await readFile(extractedPitch);
-if (pitchData.length < 128 || pitchData.subarray(0, 4).toString() !== "glTF") {
-  throw new Error("Extracted pitch asset is not a valid GLB");
+if (pitchData.subarray(0, 4).toString() !== "glTF") {
+  throw new Error("Generated pitch asset is not a valid GLB");
 }
 
 const cmgen = await findExecutable("cmgen");
-if (!cmgen) throw new Error("cmgen is required to generate the Android KTX IBL/Skybox");
+if (!cmgen) {
+  throw new Error("cmgen is required to generate the Android KTX IBL/Skybox");
+}
 
 const iblDir = join(out, "ibl/orlando_stadium");
 await mkdir(iblDir, { recursive: true });
@@ -144,7 +195,10 @@ const manifest = {
   assets: {
     player: { path: "models/player.glb", sha256: await sha256(playerFile) },
     pitch: { path: "models/pitch.glb", sha256: await sha256(extractedPitch) },
-    animation_library: { path: "models/animation_library.glb", sha256: await sha256(animationFile) },
+    animation_library: {
+      path: "models/animation_library.glb",
+      sha256: await sha256(animationFile),
+    },
     ibl: { path: "ibl/orlando_stadium/orlando_stadium_1k_ibl.ktx" },
     skybox: { path: "ibl/orlando_stadium/orlando_stadium_1k_skybox.ktx" },
   },
