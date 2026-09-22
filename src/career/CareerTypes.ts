@@ -1,0 +1,2 @@
+export type CareerType="Manager"|"Player"; export interface CareerPlayerState{playerId:string;age:number;rating:number;potential:number;form:number;fitness:number;contractEnd:string;marketValue:number;}
+export interface CareerState{careerId:string;type:CareerType;currentDate:string;currentSeason:string;controlledEntity:string;players:CareerPlayerState[];budget:number;transferBudget:number;wageBudget:number;history:string[];}
