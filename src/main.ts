@@ -16,7 +16,8 @@ import { GameplaySystem } from "./gameplay/GameplaySystem";
 import { TransitionSystem } from "./gameplay/TransitionSystem";
 import { AnimationSystem, CameraDirector } from "./animation/PresentationSystems";
 import { FootballIK } from "./animation/FootballIK";
-import { WorldSystem, QualityManager } from "./world/WorldSystems";
+import { WorldSystem } from "./world/WorldSystem";
+import { QualityManager } from "./performance/QualityManager";
 import { AAAStadium } from "./render/AAAStadium";
 import { AdvancedPitch } from "./render/AdvancedPitch";
 import { CrowdSystem } from "./render/CrowdSystem";
@@ -112,7 +113,7 @@ const nextAIActionAt=new Map<string,number>();
 let lastOnlineSnapshotAt=0;
 function ensureControlledPlayerPossession(): void {
   const p=players.get(controlledId);
-  if(!p || match.snapshot().phase!=="FirstHalf" || ball.state.controlledByPlayerId) return;
+  if(!p || !["FirstHalf","SecondHalf","ExtraTimeFirstHalf","ExtraTimeSecondHalf"].includes(match.snapshot().phase) || ball.state.controlledByPlayerId) return;
   const d=Math.hypot(p.state.position.x-ball.state.position.x,p.state.position.z-ball.state.position.z);
   if(d<2.2) {
     p.state.ballMode="Control";
