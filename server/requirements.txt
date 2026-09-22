@@ -3,3 +3,4 @@ uvicorn[standard]>=0.30,<1
 pydantic>=2,<3
 sqlalchemy>=2,<3
 firebase-admin>=6,<8
+psycopg[binary]>=3.2,<4
