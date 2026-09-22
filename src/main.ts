@@ -110,20 +110,24 @@ let previousBallZ=ball.state.position.z;
 function detectGoal(): void {
   const p=ball.state.position;
   if(Math.abs(p.x)>3.66 || Math.abs(p.y)>2.44) return;
-  if(p.z<=-52.5) {
+  if(p.z>=52.5) {
     match.goal("home",{ballPosition:{...p}});
     ball.setPosition({x:0,y:.11,z:0});
     ball.state.velocity={x:0,y:0,z:0};
     ball.state.state="Free";
     ball.state.controlledByPlayerId=undefined;
+    match.restartAfterGoal("away");
+    match.completeRestart();
     return;
   }
-  if(p.z>=52.5) {
+  if(p.z<=-52.5) {
     match.goal("away",{ballPosition:{...p}});
     ball.setPosition({x:0,y:.11,z:0});
     ball.state.velocity={x:0,y:0,z:0};
     ball.state.state="Free";
     ball.state.controlledByPlayerId=undefined;
+    match.restartAfterGoal("home");
+    match.completeRestart();
   }
 }
 
