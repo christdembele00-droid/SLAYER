@@ -75,6 +75,17 @@ jobs:
           mkdir -p /tmp/filament-native
           tar -xzf /tmp/filament-native.tgz -C /tmp/filament-native
           echo "FILAMENT_DIST_DIR=/tmp/filament-native" >> "$GITHUB_ENV"
+      - name: Stage Filament ubershader archive
+        run: |
+          mkdir -p benchmarks/filament-v0.1/android/app/src/main/assets/filament
+          UBERZ="$(find /tmp/filament-native -type f -name '*.uberz' | head -n 1)"
+          if [ -z "$UBERZ" ]; then
+            echo "No .uberz archive found in the Filament native distribution"
+            find /tmp/filament-native -maxdepth 5 -type f | grep -E 'uber|gltfio' | head -n 100 || true
+            exit 1
+          fi
+          echo "Using ubershader archive: $UBERZ"
+          cp "$UBERZ" benchmarks/filament-v0.1/android/app/src/main/assets/filament/default.uberz
       - name: Build native Filament benchmark APK
         run: gradle -p benchmarks/filament-v0.1/android assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
