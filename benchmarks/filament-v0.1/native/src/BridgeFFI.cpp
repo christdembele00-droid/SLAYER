@@ -402,6 +402,16 @@ struct NativeRenderer {
 
         stats.frame_ms = dt * 1000.0f;
         stats.fps = dt > 0.0f ? 1.0f / dt : 0.0f;
+        // Renderer::FrameInfo is the authoritative GPU timing source when the
+        // backend exposes timer queries. Keep the CPU frame time as fallback.
+        const auto frameHistory = renderer->getFrameInfoHistory(4);
+        if (!frameHistory.empty()) {
+            const auto &fi = frameHistory.back();
+            if (fi.denoisedGpuFrameDuration > 0) {
+                stats.frame_ms = static_cast<float>(fi.denoisedGpuFrameDuration) / 1000000.0f;
+                stats.fps = stats.frame_ms > 0.0f ? 1000.0f / stats.frame_ms : 0.0f;
+            }
+        }
         stats.player_count = playerAsset ? 1u : 0u;
         stats.draw_calls = playerAsset ? 3u : 2u;
         stats.triangles = playerAsset ? 8u : 8u;
