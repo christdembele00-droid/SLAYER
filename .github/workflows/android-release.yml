@@ -7,30 +7,54 @@ on:
         required: true
         default: "0.1.0"
         type: string
+      version_code:
+        required: true
+        default: "1"
+        type: string
 
 permissions:
   contents: read
 
 jobs:
-  build-native:
+  build-native-release:
     runs-on: ubuntu-latest
     env:
       CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+      VERSION_NAME: ${{ inputs.version_name }}
+      VERSION_CODE: ${{ inputs.version_code }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.1.0"
+
+      - name: Require release signing secrets
+        env:
+          KEYSTORE_B64: ${{ secrets.SLAYER_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.SLAYER_KEY_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.SLAYER_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.SLAYER_KEY_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_B64"
+          test -n "$KEY_ALIAS"
+          test -n "$KEYSTORE_PASSWORD"
+          test -n "$KEY_PASSWORD"
+          echo "$KEYSTORE_B64" | base64 --decode > /tmp/slayer-release.jks
+          test -s /tmp/slayer-release.jks
+
       - name: Download Filament native distribution
         run: |
           curl -L --fail --retry 3 -o /tmp/filament-native.tgz https://github.com/google/filament/releases/download/v1.77.0/filament-v1.77.0-android-native.tgz
           mkdir -p /tmp/filament-native
           tar -xzf /tmp/filament-native.tgz -C /tmp/filament-native
           echo "FILAMENT_DIST_DIR=/tmp/filament-native" >> "$GITHUB_ENV"
+
       - name: Download Filament host tools
         run: |
           curl -L --fail --retry 3 -o /tmp/filament-linux.tgz https://github.com/google/filament/releases/download/v1.77.0/filament-v1.77.0-linux.tgz
@@ -39,13 +63,31 @@ jobs:
           CMGEN=$(find /tmp/filament-linux -type f -name cmgen -perm -111 | head -n 1)
           test -n "$CMGEN"
           echo "FILAMENT_TOOLS_DIR=$(dirname "$CMGEN")" >> "$GITHUB_ENV"
+
       - name: Prepare and validate production assets
         run: node scripts/prepare-filament-production-assets.mjs
-      - name: Build native Filament APK and AAB
-        run: gradle -p benchmarks/filament-v0.1/android assembleDebug bundleRelease --no-daemon
+
+      - name: Build signed native Filament release
+        env:
+          SLAYER_KEYSTORE_PATH: /tmp/slayer-release.jks
+          SLAYER_KEYSTORE_PASSWORD: ${{ secrets.SLAYER_KEYSTORE_PASSWORD }}
+          SLAYER_KEY_ALIAS: ${{ secrets.SLAYER_KEY_ALIAS }}
+          SLAYER_KEY_PASSWORD: ${{ secrets.SLAYER_KEY_PASSWORD }}
+        run: |
+          gradle -p benchmarks/filament-v0.1/android assembleRelease bundleRelease --no-daemon
+
+      - name: Verify signed APK and AAB
+        run: |
+          APK=$(find benchmarks/filament-v0.1/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)
+          AAB=$(find benchmarks/filament-v0.1/android/app/build/outputs/bundle/release -name '*.aab' | head -n 1)
+          test -n "$APK"
+          test -n "$AAB"
+          $ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)/apksigner verify --verbose "$APK"
+          jarsigner -verify "$AAB" >/dev/null
+
       - uses: actions/upload-artifact@v4
         with:
-          name: SLAYER-Native-${{ inputs.version_name }}
+          name: SLAYER-Native-${{ inputs.version_name }}-${{ inputs.version_code }}
           path: |
-            benchmarks/filament-v0.1/android/app/build/outputs/apk/debug/*.apk
+            benchmarks/filament-v0.1/android/app/build/outputs/apk/release/*.apk
             benchmarks/filament-v0.1/android/app/build/outputs/bundle/release/*.aab
