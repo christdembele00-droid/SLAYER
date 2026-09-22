@@ -11,7 +11,6 @@ export class StadiumEnvironment {
 
     const envScene = new RoomEnvironment();
     this.environment = this.pmrem.fromScene(envScene, 0.04).texture;
-    envScene.dispose();
 
     scene.environment = this.environment;
     scene.environmentIntensity = 0.75;
