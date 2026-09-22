@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { configureShadow } from "./GraphicsQuality";
+import { StadiumEnvironment } from "./StadiumEnvironment";
 
 export class SceneRenderer {
   readonly scene=new THREE.Scene();
@@ -7,6 +8,7 @@ export class SceneRenderer {
   readonly renderer:THREE.WebGLRenderer;
   private readonly container:HTMLElement;
   private readonly sun:THREE.DirectionalLight;
+  private readonly stadiumEnvironment:StadiumEnvironment;
   private qualityRatio=1;
 
 
@@ -22,6 +24,7 @@ export class SceneRenderer {
     });
     this.renderer.outputColorSpace=THREE.SRGBColorSpace;
     this.renderer.toneMapping=THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure=1.08;
     this.renderer.toneMappingExposure=1.12;
     this.renderer.shadowMap.autoUpdate=true;
     this.renderer.shadowMap.enabled=true;
@@ -32,6 +35,7 @@ export class SceneRenderer {
     this.renderer.outputColorSpace=THREE.SRGBColorSpace;
     this.renderer.setSize(container.clientWidth,container.clientHeight,false);
 
+    this.stadiumEnvironment=new StadiumEnvironment(this.renderer,this.scene);
     this.scene.background=new THREE.Color(0x06100d);
     this.scene.fog=new THREE.Fog(0x06100d,75,240);
 
