@@ -14,6 +14,7 @@ export class PlayerInput {
   setMovement(x: number, z: number, timestamp = performance.now()): void {
     const magnitude = Math.min(1, Math.hypot(x, z));
     this.intent.moveDirection = { x, y: 0, z };
+    if (magnitude > 0.01) this.intent.targetDirection = { x, y: 0, z };
     this.intent.moveMagnitude = magnitude;
     this.intent.timestamp = timestamp;
   }
