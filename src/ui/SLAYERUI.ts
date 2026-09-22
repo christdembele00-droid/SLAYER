@@ -53,7 +53,7 @@ export class SlayerUI {
   openSetPiece(){this.screen="setpiece";this.render();}
   showResult(){this.screen="result";this.render();}
   updatePerformance(fps:number,frameMs:number,p95Ms:number,drawCalls:number,triangles:number,tier:string){
-    if(this.perfEl)this.perfEl.textContent=`FPS ${fps.toFixed(0)} | ${frameMs.toFixed(1)}ms | P95 ${p95Ms.toFixed(1)}ms | DC ${drawCalls} | TRI ${(triangles/1000).toFixed(0)}k | ${tier}`;
+    if(this.perfEl)this.perfEl.textContent=`FPS ${fps.toFixed(0)} | ${frameMs.toFixed(1)}ms | P95 ${p95Ms.toFixed(1)}ms | GPU DC ${drawCalls} | TRI ${(triangles/1000).toFixed(0)}k | ${tier}`;
   }
   updateMatch(home:number,away:number,clock:string,phase:string){
     this.score={home,away,clock,phase};
