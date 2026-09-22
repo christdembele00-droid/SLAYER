@@ -1,0 +1,2 @@
+export type AnimationState="Idle"|"Walk"|"Jog"|"Run"|"Sprint"|"Brake"|"Turn"|"Backpedal"|"Strafe"|"Control"|"Pass"|"Shoot"|"Tackle"|"Header"|"Fall"|"Recover";
+export interface AnimationInput{speed:number;direction:number;acceleration:number;rotation:number;ballMode:string;action:string;stamina:number;distanceToBall:number;}
