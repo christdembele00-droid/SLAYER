@@ -108,7 +108,7 @@ ballMesh.receiveShadow=true;
 renderer.scene.add(ballMesh);
 
 const controlledId="home-11";
-const nextAIActionAt=new Map<string,number>();
+const nextAIActionAt=new Map<string,number>();\nlet lastOnlineSnapshotAt=0;
 function ensureControlledPlayerPossession(): void {
   const p=players.get(controlledId);
   if(!p || match.snapshot().phase!=="FirstHalf" || ball.state.controlledByPlayerId) return;
@@ -149,19 +149,24 @@ function startMatch(): void {
     ball.state.controlledByPlayerId=controlledId;
   }
 }
+const keyboard={w:false,a:false,s:false,d:false};
+function updateKeyboardMovement():void{
+  const x=(keyboard.d?1:0)-(keyboard.a?1:0);
+  const z=(keyboard.s?1:0)-(keyboard.w?1:0);
+  input.setMovement(x,z);
+}
 window.addEventListener("keydown",event=>{
-  if(event.key==="Shift") input.setSprint(true);
   const key=event.key.toLowerCase();
-  const keys:Record<string,[number,number]>={w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]};
-  const move=keys[key];
-  if(move) input.setMovement(move[0],move[1]);
+  if(key in keyboard){keyboard[key as keyof typeof keyboard]=true;updateKeyboardMovement();event.preventDefault();}
+  if(event.key==="Shift") input.setSprint(true);
   if(key==="1") input.setAction("Pass",.55);
   if(key==="2") input.setAction("Shoot",.85);
   if(key==="3") input.setAction("Control",.3);
 });
 window.addEventListener("keyup",event=>{
+  const key=event.key.toLowerCase();
+  if(key in keyboard){keyboard[key as keyof typeof keyboard]=false;updateKeyboardMovement();event.preventDefault();}
   if(event.key==="Shift") input.setSprint(false);
-  if("wasd".includes(event.key.toLowerCase())) input.setMovement(0,0);
 });
 
 let last=window.performance.now();
@@ -277,7 +282,7 @@ function frame(now:number){
 
   const snapshot=match.snapshot();
   ui.updateMatch(snapshot.score.homeGoals,snapshot.score.awayGoals,match.clock.format(),snapshot.phase.toUpperCase());
-  if(online) online.send({type:"snapshot",ball:{...ball.state.position},time:snapshot.timeSeconds});
+  if(online && now-lastOnlineSnapshotAt>=100){ online.send({type:"snapshot",ball:{...ball.state.position},time:snapshot.timeSeconds}); lastOnlineSnapshotAt=now; }
 
   renderer.render();
   requestAnimationFrame(frame);
