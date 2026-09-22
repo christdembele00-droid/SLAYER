@@ -105,7 +105,7 @@ const ballMesh=new THREE.Mesh(
 );
 renderer.scene.add(ballMesh);
 
-const controlledId="home-1";
+const controlledId="home-11";
 function ensureControlledPlayerPossession(): void {
   const p=players.get(controlledId);
   if(!p || match.snapshot().phase!=="FirstHalf" || ball.state.controlledByPlayerId) return;
@@ -183,11 +183,11 @@ function detectGoal(): void {
 }
 
 function executeAction(playerId:string, action:PlayerAction, direction:{x:number;y:number;z:number}, power:number): void {
-  if(action==="Control") {
-    gameplay.execute(players,ball,playerId,"Control",direction,power);
-    return;
-  }
-  if(action==="Shoot"||action==="Pass"||action==="ThroughBall"||action==="Cross"||action==="Clearance") {
+  const supported:PlayerAction[]=[
+    "Control","Dribble","ProtectBall","Shoot","Pass","ThroughBall","Cross","Clearance",
+    "StandingTackle","SlideTackle","Intercept","Press","Contain"
+  ];
+  if(supported.includes(action)){
     gameplay.execute(players,ball,playerId,action,direction,power);
   }
 }
