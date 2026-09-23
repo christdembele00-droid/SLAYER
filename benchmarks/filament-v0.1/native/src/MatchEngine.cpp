@@ -1,6 +1,7 @@
 #include "slayer_game.h"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace slayer {
 static float clampf(float v,float a,float b){return std::max(a,std::min(b,v));}
@@ -139,17 +140,24 @@ void MatchEngine::updateControlled(float dt){
 }
 
 void MatchEngine::updateAI(float dt){
+    float bx=state_.ball.x,bz=state_.ball.z;
+    int nearestAI=-1;
+    float nearestDistance=std::numeric_limits<float>::max();
+    for(int i=0;i<22;i++){
+        const auto& p=state_.players[i];
+        if(p.controlled) continue;
+        const float d=len(bx-p.x,bz-p.z);
+        if(d<nearestDistance){ nearestDistance=d; nearestAI=i; }
+    }
+
     for(int i=0;i<22;i++){
         auto &p=state_.players[i]; if(p.controlled) continue;
         float tx=p.x,tz=p.z;
-        float bx=state_.ball.x,bz=state_.ball.z;
-        bool own=p.team==(state_.ball.vz>=0?0:1);
         if(len(bx-p.x,bz-p.z)<18){tx=bx;tz=bz;}
         else {
             float attack=p.team==0?1:-1;
             tx += (bx-p.x)*0.10f;
             tz += attack*(2.0f+(i%3));
-            if(!own) tz += -attack*2.0f;
         }
         p.vx=approach(p.vx,(tx-p.x)*1.2f,10,dt);
         p.vz=approach(p.vz,(tz-p.z)*1.2f,10,dt);
@@ -157,8 +165,12 @@ void MatchEngine::updateAI(float dt){
         float s=len(p.vx,p.vz); if(s>vmax){p.vx*=vmax/s;p.vz*=vmax/s;}
         p.x=clampf(p.x+p.vx*dt,-52.5f,52.5f);
         p.z=clampf(p.z+p.vz*dt,-34.0f,34.0f);
-        if(len(bx-p.x,bz-p.z)<1.2f && p.team==(state_.ball.x>0?0:1)){
-            state_.ball.vz=(p.team==0?10:-10); state_.ball.vy=1.0f;
+        const float dToBall=len(bx-p.x,bz-p.z);
+        if(i==nearestAI && dToBall<1.2f){
+            state_.ball.vx=0.0f;
+            state_.ball.vz=(p.team==0?10.0f:-10.0f);
+            state_.ball.vy=1.0f;
+            state_.ball.airborne=true;
         }
     }
 }
@@ -204,12 +216,16 @@ void MatchEngine::updateFatigue(float dt){
 }
 
 void MatchEngine::updateTactics(){
-    // Dynamic tactical block: pressing expands the active defensive radius.
-    if(state_.homeStyle==TacticalStyle::Pressing){
-        for(int i=0;i<11;i++) if(!state_.players[i].controlled) state_.players[i].speed=5.8f;
-    }
-    if(state_.awayStyle==TacticalStyle::Defensive){
-        for(int i=11;i<22;i++) state_.players[i].speed=5.0f;
+    // Recompute the tactical speed modifier every frame so a previous tactical
+    // state cannot permanently leak into later settings.
+    for(int i=0;i<22;i++){
+        if(state_.players[i].controlled) continue;
+        float base=5.4f;
+        if(i<11 && state_.homeStyle==TacticalStyle::Pressing) base=5.8f;
+        if(i<11 && state_.homeStyle==TacticalStyle::Defensive) base=5.0f;
+        if(i>=11 && state_.awayStyle==TacticalStyle::Pressing) base=5.8f;
+        if(i>=11 && state_.awayStyle==TacticalStyle::Defensive) base=5.0f;
+        state_.players[i].speed=base;
     }
 }
 

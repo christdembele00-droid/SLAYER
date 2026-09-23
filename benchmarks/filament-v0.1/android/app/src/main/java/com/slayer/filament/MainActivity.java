@@ -10,6 +10,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.widget.FrameLayout;
 import android.widget.TextView;
@@ -24,8 +25,16 @@ import java.io.PrintWriter;
 import java.util.Locale;
 
 public final class MainActivity extends Activity {
+    private static final boolean NATIVE_LIBRARY_LOADED;
     static {
-        System.loadLibrary("slayer_filament_benchmark");
+        boolean loaded = false;
+        try {
+            System.loadLibrary("slayer_filament_benchmark");
+            loaded = true;
+        } catch (UnsatisfiedLinkError error) {
+            android.util.Log.e("SLAYER", "Native engine library unavailable; keeping menu-only mode", error);
+        }
+        NATIVE_LIBRARY_LOADED = loaded;
     }
 
     private SurfaceView surface;
@@ -317,6 +326,10 @@ public final class MainActivity extends Activity {
 
     private void startMatch() {
         if (matchStarted) return;
+        if (!NATIVE_LIBRARY_LOADED) {
+            android.widget.Toast.makeText(this, "Le moteur SLAYER n'est pas disponible sur cette architecture.", android.widget.Toast.LENGTH_LONG).show();
+            return;
+        }
         matchStarted = true;
         menuVisible = false;
 
@@ -419,7 +432,12 @@ public final class MainActivity extends Activity {
         b.setTextSize(size);
         b.setAllCaps(false);
         b.setGravity(Gravity.CENTER);
-        b.setBackgroundColor(0xB31B1D22);
+        b.setPadding(uiPx(8), uiPx(4), uiPx(8), uiPx(4));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(0xB31B1D22);
+        bg.setCornerRadius(uiPx(18));
+        bg.setStroke(Math.max(1, uiPx(1)), 0x553FA9FF);
+        b.setBackground(bg);
         return b;
     }
 
@@ -494,8 +512,14 @@ public final class MainActivity extends Activity {
 
     private Button button(FrameLayout root,String label,int gravity,int right,int bottom){
         Button b=new Button(this);
-        b.setText(label); b.setTextSize(12); b.setTextColor(Color.WHITE); b.setBackgroundColor(0x88444444);
-        FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(uiPx(112),uiPx(72),gravity);
+        b.setText(label); b.setTextSize(12); b.setTextColor(Color.WHITE); b.setAllCaps(false);
+        b.setGravity(Gravity.CENTER); b.setPadding(uiPx(4),uiPx(4),uiPx(4),uiPx(4));
+        GradientDrawable bg=new GradientDrawable();
+        bg.setShape(GradientDrawable.OVAL);
+        bg.setColor(0x88313A46);
+        bg.setStroke(Math.max(1,uiPx(2)),0x8866B7FF);
+        b.setBackground(bg);
+        FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(uiPx(86),uiPx(86),gravity);
         lp.rightMargin=uiPx(right); lp.bottomMargin=uiPx(bottom);
         root.addView(b,lp); return b;
     }
@@ -636,6 +660,7 @@ public final class MainActivity extends Activity {
             if (!nativeReady || !matchStarted) return;
             long now = System.nanoTime();
             float dt = (now - lastFrameNanos) / 1_000_000_000.0f;
+            dt = Math.max(0.0f, Math.min(0.05f, dt));
             lastFrameNanos = now;
             nativeRender(dt);
             if (matchStarted) statsView.setText(String.format(Locale.US,
@@ -650,6 +675,7 @@ public final class MainActivity extends Activity {
     public void onBackPressed() {
         if (matchStarted && !menuVisible) {
             surface.removeCallbacks(frameRunnable);
+            resetNativeInput();
             removeGameControls();
             matchStarted = false;
             menuVisible = true;
@@ -673,6 +699,7 @@ public final class MainActivity extends Activity {
     @Override
     protected void onPause() {
         if (surface != null) surface.removeCallbacks(frameRunnable);
+        resetNativeInput();
         super.onPause();
     }
 
@@ -682,8 +709,15 @@ public final class MainActivity extends Activity {
         if (surface != null && nativeReady && matchStarted) surface.postOnAnimation(frameRunnable);
     }
 
+    private void resetNativeInput() {
+        moveX = moveY = pass = shoot = sprint = tackle = 0.0f;
+        if (nativeReady) nativeSetInput(0, 0, 0, 0, 0, 0, selectedPlayer);
+    }
+
     @Override
     protected void onDestroy() {
+        if (surface != null) surface.removeCallbacks(frameRunnable);
+        resetNativeInput();
         if (nativeReady) {
             nativeDestroy();
             nativeReady = false;
