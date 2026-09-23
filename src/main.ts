@@ -28,6 +28,7 @@ import { CommentarySystem } from "./audio/CommentarySystem";
 import { WebSocketClient } from "./online/WebSocketClient";
 import { firebaseReady, getFirebaseIdToken, loginWithGoogle, logoutFirebase, observeFirebaseUser } from "./online/FirebaseWebAuth";
 import type { PlayerAction, PlayerIntent } from "./player/PlayerTypes";
+import type { User } from "firebase/auth";
 import { SlayerUI, type SlayerSettings } from "./ui/SLAYERUI";
 import { PerformanceMonitor } from "./performance/PerformanceMonitor";
 import { GPUProfiler } from "./performance/GPUProfiler";
@@ -224,7 +225,7 @@ async function verifyBackendSession(): Promise<string> {
   return token;
 }
 
-async function connectAuthenticatedUser(user: NonNullable<Parameters<typeof observeFirebaseUser>[0]> extends (u: infer U)=>void ? U : never): Promise<void> {
+async function connectAuthenticatedUser(user: User): Promise<void> {
   if(!user) return;
   try{
     const token=await verifyBackendSession();
