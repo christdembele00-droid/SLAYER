@@ -165,3 +165,10 @@
   .pause-card,.result-card{margin:7vh auto;padding:22px}.result-hero{margin:-22px -22px 18px}.result-body{grid-template-columns:1fr}.result-card h2,.pause-card h2{font-size:44px}.final-score strong{font-size:31px}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+.touch-diamond .act.pressed{transform:scale(.90)!important;filter:brightness(1.45);box-shadow:0 0 0 3px rgba(255,255,255,.14),0 16px 36px rgba(0,0,0,.42),inset 0 0 26px rgba(255,255,255,.10)}
+.defensive-mode .touch-diamond .act{background:linear-gradient(145deg,rgba(30,12,18,.92),rgba(8,7,12,.88));border-color:rgba(255,94,122,.35)}
+.defensive-mode .touch-diamond .up.yellow{color:#ffbdc8;border-color:rgba(255,102,130,.58)}
+.defensive-mode .touch-diamond .left.green{color:#ffcf72;border-color:rgba(255,207,114,.58)}
+.defensive-mode .touch-diamond .down.blue{color:#ff6e91;border-color:rgba(255,110,145,.60)}
+.defensive-mode .touch-diamond .right.red{color:#ffd0d9;border-color:rgba(255,208,217,.58)}
