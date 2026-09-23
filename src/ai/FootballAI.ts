@@ -1,52 +1,155 @@
 import { PlayerSystem } from "../player/PlayerSystem";
 import { Player } from "../player/Player";
 import { Ball } from "../ball/Ball";
-import { PlayerIntent } from "../player/PlayerTypes";
+import { PlayerIntent, PlayerPosition } from "../player/PlayerTypes";
 
 export interface WorldModel{
   ball:{x:number;y:number;z:number;speed:number};
-  players:Array<{id:string;team:string;x:number;z:number;stamina:number}>;
+  players:Array<{id:string;team:string;position:PlayerPosition;x:number;z:number;stamina:number}>;
   time:number
 }
 export type AIDecision = "None"|"Control"|"Move"|"Pass"|"Shoot";
 export interface Tactic{formation:string;width:number;depth:number;tempo:number;pressing:number;buildUp:number;attackingRisk:number}
 export const defaultTactic:Tactic={formation:"4-3-3",width:55,depth:50,tempo:50,pressing:50,buildUp:50,attackingRisk:50};
 
+const anchors:Record<PlayerPosition,{x:number;z:number}>={
+  GK:{x:0,z:-48},CB:{x:0,z:-36},LB:{x:-18,z:-32},RB:{x:18,z:-32},LWB:{x:-22,z:-28},RWB:{x:22,z:-28},
+  DM:{x:0,z:-20},CM:{x:0,z:-12},AM:{x:0,z:-5},LW:{x:-22,z:4},RW:{x:22,z:4},ST:{x:0,z:14}
+};
+
+const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
+const distance=(a:{x:number;z:number},b:{x:number;z:number})=>Math.hypot(a.x-b.x,a.z-b.z);
+
 export class FootballAI{
   world(ps:PlayerSystem,b:Ball,time:number):WorldModel{
-    return{time,ball:{...b.state.position,speed:Math.hypot(b.state.velocity.x,b.state.velocity.y,b.state.velocity.z)},players:ps.all().map(p=>({id:p.data.playerId,team:p.data.teamId,x:p.state.position.x,z:p.state.position.z,stamina:p.state.stamina}))};
+    return{
+      time,
+      ball:{...b.state.position,speed:Math.hypot(b.state.velocity.x,b.state.velocity.y,b.state.velocity.z)},
+      players:ps.all().map(p=>({
+        id:p.data.playerId,team:p.data.teamId,position:p.data.position,
+        x:p.state.position.x,z:p.state.position.z,stamina:p.state.stamina
+      }))
+    };
   }
-  choose(p:Player,w:WorldModel):AIDecision{
-    const d=Math.hypot(w.ball.x-p.state.position.x,w.ball.z-p.state.position.z);
-    if(p.state.ballMode==="Control"){
-      const goalZ=p.data.teamId==="home"?52.5:-52.5;
-      const goalDistance=Math.hypot(w.ball.x,goalZ-w.ball.z);
-      const forward=p.data.teamId==="home"?w.ball.z>0:w.ball.z<0;
-      if(goalDistance<24 && p.data.mental.composure+p.data.technical.shooting>145) return "Shoot";
-      if(d<1.4 && forward && p.data.technical.dribbling>70) return "Move";
-      return "Pass";
+
+  private intent(moveX:number,moveZ:number,action:PlayerIntent["action"]="None",power=0,sprint=false):PlayerIntent{
+    const len=Math.hypot(moveX,moveZ)||1;
+    return{
+      moveDirection:{x:moveX,y:0,z:moveZ},
+      moveMagnitude:Math.min(1,Math.hypot(moveX,moveZ)/8),
+      sprintPressed:sprint,
+      action,
+      targetDirection:{x:moveX/len,y:action==="Shoot"?.08:0,z:moveZ/len},
+      power,
+      timestamp:performance.now()
+    };
+  }
+
+  private setFormationIntent(p:Player,w:WorldModel,attacking:boolean):PlayerIntent{
+    const base=anchors[p.data.position]??{x:0,z:0};
+    const side=p.data.teamId==="home"?1:-1;
+    const bx=w.ball.x,bz=w.ball.z;
+    const width=defaultTactic.width/100;
+
+    let targetX=base.x*width+bx*.18;
+    let targetZ=base.z*side+bz*.10;
+
+    // Teammates stretch into useful lanes rather than chasing the ball.
+    if(attacking){
+      const forwardBias=p.data.teamId==="home"?1:-1;
+      if(["LW","RW","ST","AM"].includes(p.data.position)){
+        targetZ+=forwardBias*clamp((forwardBias*bz+20)*.22,-4,9);
+      }
+      if(["LB","RB","LWB","RWB"].includes(p.data.position)){
+        targetX+=base.x>0?3:-3;
+      }
+    }else{
+      targetZ+=side*clamp(-side*bz*.16,-7,7);
+      targetX*=.92;
     }
-    const danger=p.data.teamId==="home"?w.ball.z<-30:w.ball.z>30;
-    if(d<1.6) return "Control";
-    if(danger && p.data.technical.tackling>65) return "Move";
-    return "Move";
+
+    const dx=targetX-p.state.position.x,dz=targetZ-p.state.position.z;
+    const d=Math.hypot(dx,dz);
+    return this.intent(dx,dz,"None",0,d>11 || p.state.stamina>65);
   }
-  update(ps:PlayerSystem,b:Ball,time:number){
-    const w=this.world(ps,b,time);
+
+  update(ps:PlayerSystem,b:Ball,time:number):void{
+    const w=this.world(ps,b);
+    const ownerId=b.state.controlledByPlayerId;
+    const owner=ownerId?ps.get(ownerId):undefined;
+
     for(const p of ps.all()){
-      const action=this.choose(p,w);
-      const dx=w.ball.x-p.state.position.x,dz=w.ball.z-p.state.position.z;
-      const distance=Math.hypot(dx,dz)||1;
-      const playerAction: PlayerIntent["action"] = action==="Shoot"?"Shoot":action==="Pass"?"Pass":action==="Control"?"Control":"None";
-      p.state.lastIntent={
-        moveDirection:{x:dx,y:0,z:dz},
-        moveMagnitude:Math.min(1,distance/10),
-        sprintPressed:action==="Move" && distance>8,
-        action:playerAction,
-        targetDirection:{x:dx/distance,y:action==="Shoot"?.12:0,z:dz/distance},
-        power:action==="Shoot"?.9:.55,
-        timestamp:time
-      };
+      const isOwner=p.data.playerId===ownerId;
+      const attacking=owner?.data.teamId===p.data.teamId;
+      const pPos={x:p.state.position.x,z:p.state.position.z};
+      const ballPos={x:w.ball.x,z:w.ball.z};
+      const dBall=distance(pPos,ballPos);
+
+      if(isOwner){
+        const forward=p.data.teamId==="home"?1:-1;
+        const goalZ=forward*52.5;
+        const goalDistance=Math.abs(goalZ-w.ball.z);
+        const shootChance=p.data.technical.shooting>=72 && goalDistance<25 && Math.abs(w.ball.x)<22;
+
+        if(shootChance){
+          const gx=-w.ball.x*.12;
+          const gz=goalZ-w.ball.z;
+          p.state.lastIntent=this.intent(gx,gz,"Shoot",.78,true);
+        }else{
+          const nextLaneX=p.data.position==="LW"?-18:p.data.position==="RW"?18:0;
+          const dx=nextLaneX-w.ball.x*.28;
+          const dz=forward*24;
+          p.state.lastIntent=this.intent(dx,dz,"None",0,dBall<8 && p.state.stamina>55);
+        }
+        continue;
+      }
+
+      const sameTeam=owner?.data.teamId===p.data.teamId;
+      const nearestHomeOrAway=ps.all()
+        .filter(x=>x.data.teamId!==p.data.teamId)
+        .sort((a,b)=>distance({x:a.state.position.x,z:a.state.position.z},ballPos)-distance({x:b.state.position.x,z:b.state.position.z}))[0];
+      const isBallChaser=!owner && dBall===Math.min(...ps.all().filter(x=>x.data.teamId===p.data.teamId).map(x=>distance({x:x.state.position.x,z:x.state.position.z},ballPos)));
+
+      if(!owner){
+        if(isBallChaser || dBall<2.4){
+          p.state.lastIntent=this.intent(w.ball.x-p.state.position.x,w.ball.z-p.state.position.z,"Control",.35,dBall>5);
+        }else{
+          p.state.lastIntent=this.setFormationIntent(p,w,false);
+        }
+        continue;
+      }
+
+      if(sameTeam){
+        // Supporting players move continuously and preserve formation.
+        const support=this.setFormationIntent(p,w,true);
+        if(dBall<2.0 && p.data.position!=="GK" && p.data.position!=="CB"){
+          support.moveMagnitude=Math.min(1,support.moveMagnitude+.15);
+        }
+        p.state.lastIntent=support;
+      }else{
+        // Defending AI: one player presses, the next covers the passing lane,
+        // the rest maintain a compact block.
+        const opponents=[...ps.all()]
+          .filter(x=>x.data.teamId===owner.data.teamId)
+          .sort((a,b)=>distance({x:a.state.position.x,z:a.state.position.z},pPos)-distance({x:b.state.position.x,z:b.state.position.z},pPos));
+        const nearestDefender=ps.all()
+          .filter(x=>x.data.teamId===p.data.teamId)
+          .sort((a,b)=>distance({x:a.state.position.x,z:a.state.position.z},ballPos)-distance({x:b.state.position.x,z:b.state.position.z},ballPos))[0];
+        if(nearestDefender?.data.playerId===p.data.playerId || dBall<3.2){
+          const dx=owner.state.position.x-p.state.position.x,dz=owner.state.position.z-p.state.position.z;
+          p.state.lastIntent=this.intent(dx,dz,dBall<1.7?"StandingTackle":"Press",dBall<1.7?.8:.35,dBall>5);
+        }else{
+          const support=this.setFormationIntent(p,w,false);
+          const markX=owner.state.position.x*.38+p.state.position.x*.62;
+          const markZ=owner.state.position.z*.38+p.state.position.z*.62;
+          support.moveDirection={x:markX-p.state.position.x,y:0,z:markZ-p.state.position.z};
+          support.moveMagnitude=Math.min(1,Math.hypot(markX-p.state.position.x,markZ-p.state.position.z)/8);
+          p.state.lastIntent=support;
+        }
+      }
+
+      void nearestHomeOrAway;
+      void opponents;
     }
   }
 }
