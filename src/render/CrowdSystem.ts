@@ -16,6 +16,6 @@ export class CrowdSystem{
   update(dt:number,intensity:number){
     this.phase+=dt*(1+intensity*5);const o=new THREE.Object3D();
     for(let i=0;i<this.count;i++){const x=this.anchors[i*4],y=this.anchors[i*4+1],z=this.anchors[i*4+2],p=this.anchors[i*4+3];o.position.set(x,y+Math.sin(this.phase+p)*(.018+intensity*.045),z);o.scale.setScalar(.72+((i*37)%24)/100);o.rotation.y=Math.sin(this.phase*.35+p)*.08;o.updateMatrix();this.mesh.setMatrixAt(i,o.matrix);}
-    this.mesh.instanceMatrix.needsUpdate;
+    this.mesh.instanceMatrix.needsUpdate=true;
   }
 }
