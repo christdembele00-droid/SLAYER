@@ -43,6 +43,15 @@ def api_health():
     return {"status": "ok", "database": "ok"}
 
 
+@router.get("/auth/me")
+def auth_me(user=Depends(require_bearer)):
+    return {
+        "authenticated": True,
+        "uid": str(user.get("uid", "")),
+        "email": user.get("email"),
+    }
+
+
 @router.get("/profile")
 def profile(_=Depends(require_bearer)):
     return {"service": "profile", "status": "ready"}
