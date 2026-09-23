@@ -5,6 +5,7 @@ plugins {
 
 def slayerVersionCode = (System.getenv("VERSION_CODE") ?: "1").toInteger()
 def slayerVersionName = System.getenv("VERSION_NAME") ?: "0.1.0"
+def slayerApiUrl = System.getenv("SLAYER_API_URL") ?: ""
 
 
 android {
@@ -16,6 +17,8 @@ android {
         applicationId "com.slayer.filament"
         minSdk 24
         targetSdk 37
+
+        buildConfigField "String", "SLAYER_API_URL", "\\"" + slayerApiUrl.replace("\\", "\\\\").replace("\"", "\\\"") + "\\""
         versionCode slayerVersionCode
         versionName slayerVersionName
 
@@ -71,6 +74,7 @@ android {
 dependencies {
     implementation "com.google.android.filament:filament-android:1.77.0"
     implementation "com.google.android.filament:gltfio-android:1.77.0"
+    implementation "com.android.billingclient:billing:9.1.0"
 
     // Firebase Auth is the identity layer; match state never travels through Firebase.
     implementation platform("com.google.firebase:firebase-bom:34.19.0")
