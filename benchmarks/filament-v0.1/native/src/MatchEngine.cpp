@@ -33,8 +33,7 @@ void MatchEngine::reset(){
     state_.phase=MatchPhase::FirstHalf;
     state_.selected=9;
     input_.selectedPlayer=9;
-    state_.selected=9;
-    secondAccumulator_=fixedAccumulator_=0;
+    secondAccumulator_=fixedAccumulator_=phaseAccumulator_=0;
 }
 
 void MatchEngine::setInput(const InputState& input){
@@ -49,11 +48,31 @@ void MatchEngine::setInput(const InputState& input){
 void MatchEngine::update(float dt){
     if(state_.paused || state_.phase==MatchPhase::FullTime) return;
     dt=clampf(dt,0.0f,0.05f);
-    fixedAccumulator_+=dt;
-    while(fixedAccumulator_>=0.008f){
-        const float h=0.008f;
-        updateControlled(h); updateAI(h); updateBall(h); updateFatigue(h); resolveRules();
-        fixedAccumulator_-=h;
+    if (state_.phase == MatchPhase::HalfTime) {
+        phaseAccumulator_ += dt;
+        if (phaseAccumulator_ >= 2.0f) {
+            state_.phase = MatchPhase::SecondHalf;
+            phaseAccumulator_ = 0.0f;
+            secondAccumulator_ = 0.0f;
+        } else {
+            return;
+        }
+    }
+    fixedAccumulator_ += dt;
+    constexpr float FIXED_STEP = 1.0f / 60.0f;
+    constexpr int MAX_STEPS = 4;
+    int steps = 0;
+    while (fixedAccumulator_ >= FIXED_STEP && steps < MAX_STEPS) {
+        updateControlled(FIXED_STEP);
+        updateAI(FIXED_STEP);
+        updateBall(FIXED_STEP);
+        updateFatigue(FIXED_STEP);
+        resolveRules();
+        fixedAccumulator_ -= FIXED_STEP;
+        ++steps;
+    }
+    if (steps == MAX_STEPS && fixedAccumulator_ > FIXED_STEP * MAX_STEPS) {
+        fixedAccumulator_ = 0.0f;
     }
     secondAccumulator_+=dt;
     if(secondAccumulator_>=1.0f){
@@ -197,18 +216,30 @@ void MatchEngine::updateTactics(){
 void MatchEngine::resolveRules(){
     // Compact offside model: attackers cannot remain beyond the second-last
     // opponent while the ball is played forward.
-    for(int team=0;team<2;team++){
-        float attackZ=team==0?1.0f:-1.0f;
-        float secondLast=team==0?34.0f:-34.0f;
-        float keeperLine=secondLast;
-        float second=secondLast;
-        for(int i=0;i<22;i++) if(state_.players[i].team!=team){
-            float z=state_.players[i].z*attackZ;
-            if(z>keeperLine){second=keeperLine;keeperLine=z;}
+    for(int team=0; team<2; ++team) {
+        const float attackZ = team == 0 ? 1.0f : -1.0f;
+        float highest = -1000.0f;
+        float secondHighest = -1000.0f;
+        for (int i = 0; i < 22; ++i) {
+            if (state_.players[i].team == team) continue;
+            const float z = state_.players[i].z * attackZ;
+            if (z > highest) {
+                secondHighest = highest;
+                highest = z;
+            } else if (z > secondHighest) {
+                secondHighest = z;
+            }
         }
-        (void)second;
-        for(int i=0;i<22;i++) if(state_.players[i].team==team && i%11!=9){
-            state_.players[i].offside=(state_.players[i].z*attackZ>second+0.2f && state_.ball.z*attackZ<state_.players[i].z*attackZ);
+        if (secondHighest < -999.0f) secondHighest = 34.0f;
+
+        const float ballZ = state_.ball.z * attackZ;
+        for (int i = 0; i < 22; ++i) {
+            if (state_.players[i].team != team || i % 11 == 0) continue;
+            const float playerZ = state_.players[i].z * attackZ;
+            const bool inOppositionHalf = playerZ > 0.0f;
+            const bool beyondSecondLast = playerZ > secondHighest + 0.2f;
+            const bool aheadOfBall = playerZ > ballZ + 0.2f;
+            state_.players[i].offside = inOppositionHalf && beyondSecondLast && aheadOfBall;
         }
     }
 }

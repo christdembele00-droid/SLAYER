@@ -15,60 +15,37 @@ jobs:
   web:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - run: git diff --check
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
       - run: npm install
+      - name: Audit JavaScript dependencies
+        run: npm audit --audit-level=moderate
       - run: npm run build
       - run: npm run test -- --run
 
   server:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install -r server/requirements.txt
       - run: python -m compileall server
-      - run: python -m unittest server/test_matchmaking.py server/test_career.py server/test_training.py server/test_competition.py
-
-  android:
-    needs: web
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-      - run: npm install
-      - run: npm install @capacitor/core @capacitor/cli @capacitor/android
-      - run: npm run build
-      - run: npx cap add android
-      - run: npx cap sync android
-      - name: Build Android debug APK and release AAB
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug bundleRelease
-      - uses: actions/upload-artifact@v4
-        with:
-          name: SLAYER-Android-${{ github.sha }}
-          path: |
-            android/app/build/outputs/apk/debug/*.apk
-            android/app/build/outputs/bundle/release/*.aab
+      - name: Build server container
+        run: docker build -f server/Dockerfile .
+      - run: python -m unittest discover -s server -p "test_*.py"
 
   filament:
     runs-on: ubuntu-latest
     env:
       CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - run: git diff --check
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -76,40 +53,30 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.1.0"
-
       - name: Download Filament 1.77 Android native distribution
         run: |
           curl -L --fail --retry 3 -o /tmp/filament-native.tgz https://github.com/google/filament/releases/download/v1.77.0/filament-v1.77.0-android-native.tgz
           mkdir -p /tmp/filament-native
           tar -xzf /tmp/filament-native.tgz -C /tmp/filament-native
           echo "FILAMENT_DIST_DIR=/tmp/filament-native" >> "$GITHUB_ENV"
-
-      - name: Install Blender for FBX production asset conversion
+      - name: Install Blender and host tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y blender python3-numpy
-          blender --version
-          blender --background --factory-startup --python-expr 'import numpy as np; print("Blender NumPy:", np.__version__)'
-
-      - name: Download Filament host tools for production assets
-        run: |
+          sudo apt-get install -y blender python3-numpy unzip
           curl -L --fail --retry 3 -o /tmp/filament-linux.tgz https://github.com/google/filament/releases/download/v1.77.0/filament-v1.77.0-linux.tgz
           mkdir -p /tmp/filament-linux
           tar -xzf /tmp/filament-linux.tgz -C /tmp/filament-linux
           CMGEN=$(find /tmp/filament-linux -type f -name cmgen -perm -111 | head -n 1)
           test -n "$CMGEN"
           echo "FILAMENT_TOOLS_DIR=$(dirname "$CMGEN")" >> "$GITHUB_ENV"
-          echo "Using cmgen: $CMGEN"
-
-      - name: Prepare Cloudinary HD assets and Filament IBL
-        run: |
-          node scripts/prepare-filament-production-assets.mjs
-
-      - name: Build native Filament playable APK
-        run: |
-          gradle -p benchmarks/filament-v0.1/android assembleDebug --no-daemon
-
+      - name: Prepare Cloudinary assets and Filament IBL
+        run: node scripts/prepare-filament-production-assets.mjs
+      - name: Build native Filament debug APK
+        run: gradle -p benchmarks/filament-v0.1/android assembleDebug assembleRelease --no-daemon
       - uses: actions/upload-artifact@v4
         with:
-          name: SLAYER-Filament-V0.1-${{ github.sha }}
-          path: benchmarks/filament-v0.1/android/app/build/outputs/apk/debug/*.apk
+          name: SLAYER-Native-${{ github.sha }}
+          path: |
+            benchmarks/filament-v0.1/android/app/build/outputs/apk/debug/*.apk
+            benchmarks/filament-v0.1/android/app/build/outputs/apk/release/*.apk
+            benchmarks/filament-v0.1/android/app/build/outputs/bundle/release/*.aab

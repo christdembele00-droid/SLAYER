@@ -85,8 +85,10 @@ The current native Android launcher uses the bundled SLAYER vector icon.
 
 ## Architecture
 
+The **official Android game path** is native C++20 + Filament + Vulkan. The root Vite/Three.js application is a web preview/development surface and is not the production Android renderer.
+
 ```
-Android UI / game screens
+Native Android UI
         |
         v
 Native C++20 game core
@@ -100,6 +102,16 @@ Filament
         |
         v
 Vulkan
+```
+
+Web preview:
+
+```
+Vite + TypeScript + Three.js
+        |
+        +--> feature/UI prototyping
+        +--> web validation
+        +--> no role in the canonical native renderer
 ```
 
 Persistent services are separate from frame-critical gameplay:
@@ -135,8 +147,13 @@ The repository currently contains a playable match foundation and the first serv
 
 ## CI
 
-GitHub Actions validates web, server, Android and native Filament builds. The server test job covers matchmaking plus career, training and competition domain tests. The Filament job builds the native Vulkan APK and prepares the production asset pipeline.
+GitHub Actions validates:
+- the web preview build and tests;
+- the Python server and domain tests;
+- the native Filament/Vulkan Android debug build and production asset pipeline.
 
-Three.js/WebGL is not the canonical renderer. The native Filament/Vulkan path is the target renderer.
+The dedicated Android release workflow builds the **native Filament/Vulkan AAB** and requires release-signing secrets before producing a publishable artifact.
+
+Three.js/WebGL remains a web preview only. It is not the canonical Android renderer.
 
 CI validation trigger: 2026-09-22T21:50:01.238Z

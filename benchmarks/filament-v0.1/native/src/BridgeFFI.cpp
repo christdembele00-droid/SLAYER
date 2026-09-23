@@ -27,7 +27,6 @@
 #include <memory>
 #include <vector>
 #include <atomic>
-#include <thread>
 
 #include <filament/Camera.h>
 #include <filament/IndirectLight.h>
@@ -67,7 +66,7 @@ struct NativeRenderer {
     ColorGrading* colorGrading = nullptr;
     ACESToneMapper acesToneMapper{};
     std::unique_ptr<Slayer::Camera::BroadcastCamera> broadcastCamera;
-    std::unique_ptr<Slayer::Animation::AnimationController> animationController;
+    std::vector<std::unique_ptr<Slayer::Animation::AnimationController>> animationControllers;
 
     Entity cameraEntity{};
     Entity meshEntity{};
@@ -100,7 +99,6 @@ struct NativeRenderer {
     gltfio::FilamentAsset* playerAsset = nullptr;
     gltfio::FilamentAsset* stadiumAsset = nullptr;
     std::vector<gltfio::FilamentInstance*> playerInstances;
-    gltfio::Animator* playerAnimator = nullptr;
     slayer::SlayerSettings settings{};
     float playerAnimationTime = 0.0f;
     uint32_t playerAnimationIndex = 0;
@@ -123,9 +121,9 @@ struct NativeRenderer {
     std::atomic<uint32_t> renderReadingBuffer{0xffffffffu};
     uint32_t writerBuffer = 1;
     uint32_t playerBoneCount = 0;
-    float previousLocalX = 0.0f;
-    float previousLocalZ = 0.0f;
-    bool havePreviousLocal = false;
+    float previousPlayerX[MAX_PLAYERS]{};
+    float previousPlayerZ[MAX_PLAYERS]{};
+    bool havePreviousPlayers = false;
 
     void applyWeatherVisuals() {
         if (!engine || !weatherEntity) return;
@@ -244,16 +242,16 @@ struct NativeRenderer {
 
         // Stadium-style ground plane for the first PBR lighting milestone.
         static constexpr float terrainVertices[] = {
-            -12.0f, 0.0f, -8.0f,
-             12.0f, 0.0f, -8.0f,
-             12.0f, 0.0f,  8.0f,
-            -12.0f, 0.0f,  8.0f
+            -52.5f, 0.0f, -34.0f,
+             52.5f, 0.0f, -34.0f,
+             52.5f, 0.0f,  34.0f,
+            -52.5f, 0.0f,  34.0f
         };
         static constexpr float terrainUv[] = {
             0.0f, 0.0f,
-            6.0f, 0.0f,
-            6.0f, 4.0f,
-            0.0f, 4.0f
+            21.0f, 0.0f,
+            21.0f, 13.6f,
+            0.0f, 13.6f
         };
         static constexpr uint16_t terrainIndices[] = {0, 1, 2, 0, 2, 3};
 
@@ -291,7 +289,7 @@ struct NativeRenderer {
         terrainEntity = engine->getEntityManager().create();
 
         RenderableManager::Builder(1)
-            .boundingBox({{-12.0f, -0.05f, -8.0f}, {12.0f, 0.05f, 8.0f}})
+            .boundingBox({{-52.5f, -0.05f, -34.0f}, {52.5f, 0.05f, 34.0f}})
             .material(0, materialInstance)
             .geometry(0, RenderableManager::PrimitiveType::TRIANGLES,
                       terrainVertexBuffer, terrainIndexBuffer, 0, 6)
@@ -372,8 +370,8 @@ struct NativeRenderer {
 
     bool loadEnvironmentKtx(const uint8_t* bytes, size_t size) {
         if (!engine || !scene || !bytes || size < 16) return false;
-        auto* bundle = new image::Ktx1Bundle(bytes, static_cast<uint32_t>(size));
-        if (!bundle->isCubemap()) { delete bundle; return false; }
+        image::Ktx1Bundle bundle(bytes, static_cast<uint32_t>(size));
+        if (!bundle.isCubemap()) return false;
 
         if (indirectLight) {
             scene->setIndirectLight(nullptr);
@@ -385,7 +383,7 @@ struct NativeRenderer {
             environmentTexture = nullptr;
         }
 
-        environmentTexture = ktxreader::Ktx1Reader::createTexture(engine, bundle, false);
+        environmentTexture = ktxreader::Ktx1Reader::createTexture(engine, &bundle, false);
         if (!environmentTexture) return false;
 
         indirectLight = filament::IndirectLight::Builder()
@@ -405,8 +403,8 @@ struct NativeRenderer {
 
     bool loadSkyboxKtx(const uint8_t* bytes, size_t size) {
         if (!engine || !scene || !bytes || size < 16) return false;
-        auto* bundle = new image::Ktx1Bundle(bytes, static_cast<uint32_t>(size));
-        if (!bundle->isCubemap()) { delete bundle; return false; }
+        image::Ktx1Bundle bundle(bytes, static_cast<uint32_t>(size));
+        if (!bundle.isCubemap()) return false;
 
         if (skybox) {
             scene->setSkybox(nullptr);
@@ -418,7 +416,7 @@ struct NativeRenderer {
             skyboxTexture = nullptr;
         }
 
-        skyboxTexture = ktxreader::Ktx1Reader::createTexture(engine, bundle, false);
+        skyboxTexture = ktxreader::Ktx1Reader::createTexture(engine, &bundle, false);
         if (!skyboxTexture) return false;
 
         skybox = filament::Skybox::Builder()
@@ -535,7 +533,7 @@ struct NativeRenderer {
             assetLoader->destroyAsset(playerAsset);
             playerAsset = nullptr;
             playerInstances.clear();
-            playerAnimator = nullptr;
+            animationControllers.clear();
         }
 
         playerInstances.assign(22, nullptr);
@@ -561,15 +559,20 @@ struct NativeRenderer {
         if (!resourceLoader->loadResources(playerAsset)) {
             assetLoader->destroyAsset(playerAsset);
             playerAsset = nullptr;
-            playerAnimator = nullptr;
+            animationControllers.clear();
             return false;
         }
 
         for (auto* instance : playerInstances) {
             if (instance) scene->addEntities(instance->getEntities(), instance->getEntityCount());
         }
-        playerAnimator = playerAsset->getInstance()->getAnimator();
-        animationController = std::make_unique<Slayer::Animation::AnimationController>(playerAnimator);
+        animationControllers.clear();
+        animationControllers.reserve(playerInstances.size());
+        for (auto* instance : playerInstances) {
+            auto* animator = instance ? instance->getAnimator() : nullptr;
+            animationControllers.emplace_back(std::make_unique<Slayer::Animation::AnimationController>(animator));
+        }
+        havePreviousPlayers = false;
         playerAnimationTime = 0.0f;
         playerAnimationIndex = 0;
         playerBoneCount = 0;
@@ -660,20 +663,24 @@ struct NativeRenderer {
             }
         }
 
-        if (playerAnimator && playerAnimator->getAnimationCount() > 0 && playerCount > 0) {
-            const auto& local = playerLocal;
-            float speed = 0.0f;
-            if (havePreviousLocal && dt > 0.0001f) {
-                const float dx = local.x - previousLocalX;
-                const float dz = local.z - previousLocalZ;
-                speed = std::sqrt(dx * dx + dz * dz) / dt;
+        const uint32_t animCount = std::min<uint32_t>(
+            playerCount, static_cast<uint32_t>(animationControllers.size()));
+        if (animCount > 0 && dt > 0.0001f) {
+            for (uint32_t i = 0; i < animCount && i < MAX_PLAYERS; ++i) {
+                const auto& current = readBuffer.transforms[i];
+                float speed = 0.0f;
+                if (havePreviousPlayers) {
+                    const float dx = current.x - previousPlayerX[i];
+                    const float dz = current.z - previousPlayerZ[i];
+                    speed = std::sqrt(dx * dx + dz * dz) / dt;
+                }
+                previousPlayerX[i] = current.x;
+                previousPlayerZ[i] = current.z;
+                if (animationControllers[i]) {
+                    animationControllers[i]->update(speed, false, false, dt);
+                }
             }
-            previousLocalX = local.x;
-            previousLocalZ = local.z;
-            havePreviousLocal = true;
-            if (animationController) {
-                animationController->update(speed, false, false, dt);
-            }
+            havePreviousPlayers = true;
         }
 
         stats.frame_ms = dt * 1000.0f;
@@ -728,7 +735,7 @@ struct NativeRenderer {
         if (!engine) return;
 
         broadcastCamera.reset();
-        animationController.reset();
+        animationControllers.clear();
 
         if (playerAsset && scene) {
             scene->removeEntities(playerAsset->getEntities(), playerAsset->getEntityCount());
@@ -739,7 +746,7 @@ struct NativeRenderer {
         if (playerAsset && assetLoader) {
             assetLoader->destroyAsset(playerAsset);
             playerAsset = nullptr;
-            playerAnimator = nullptr;
+
         }
         if (stadiumAsset && assetLoader) {
             assetLoader->destroyAsset(stadiumAsset);
@@ -830,15 +837,7 @@ struct NativeRenderer {
         materialInstance = nullptr;
     }
 };
-
-class RuntimeThreads {
-    std::atomic<bool> running{false}; std::thread physics; std::thread gameplay;
-public:
-    void start(){ if(running.exchange(true)) return; physics=std::thread([this]{using namespace std::chrono_literals; while(running){std::this_thread::sleep_for(8ms);}}); gameplay=std::thread([this]{using namespace std::chrono_literals; while(running){std::this_thread::sleep_for(16ms);}}); }
-    void stop(){running=false; if(physics.joinable())physics.join(); if(gameplay.joinable())gameplay.join();}
-};
 NativeRenderer g_renderer;
-RuntimeThreads g_runtime;
 
 } // namespace
 
@@ -910,7 +909,6 @@ Java_com_slayer_filament_MainActivity_nativeCreate(
         g_renderer.shutdown();
         return JNI_FALSE;
     }
-    g_runtime.start();
     return JNI_TRUE;
 }
 
@@ -1018,7 +1016,6 @@ Java_com_slayer_filament_MainActivity_nativeRender(
 extern "C" JNIEXPORT void JNICALL
 Java_com_slayer_filament_MainActivity_nativeDestroy(
         JNIEnv*, jobject) {
-    g_runtime.stop();
     slayer_renderer_destroy();
 }
 

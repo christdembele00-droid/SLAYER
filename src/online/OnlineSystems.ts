@@ -1,4 +1,2 @@
-export interface PlayerIntentPacket{playerId:string;moveX:number;moveZ:number;action:string;power:number;clientTime:number}
-export interface Snapshot{serverTime:number;sequence:number;players:Array<{id:string;x:number;y:number;z:number;vx:number;vz:number}>;ball:{x:number;y:number;z:number;vx:number;vy:number;vz:number}}
-export interface MatchmakingRequest{playerId:string;region:string;platform:string;skillRating:number;connectionQuality:number;gameVersion:string;mode:string}
-export class AuthoritativeSession{private seq=0;private intents=new Map<string,PlayerIntentPacket>();receive(p:PlayerIntentPacket){if(this.validate(p))this.intents.set(p.playerId,p);}validate(p:PlayerIntentPacket){return Math.abs(p.moveX)<=1&&Math.abs(p.moveZ)<=1&&p.power>=0&&p.power<=1;}snapshot(s:Snapshot):Snapshot{return{...s,sequence:++this.seq,serverTime:Date.now()};}}
+export type { PlayerIntentPacket, Snapshot, MatchmakingRequest } from "./NetworkTypes";
+export { AuthoritativeSession } from "./AuthoritativeSession";
