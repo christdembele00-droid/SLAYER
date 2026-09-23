@@ -667,13 +667,22 @@ struct NativeRenderer {
             goalInstances.clear();
         }
 
-        goalInstances.assign(2, nullptr);
-        goalAsset = assetLoader->createInstancedAsset(
-            bytes, static_cast<uint32_t>(size), goalInstances.data(), goalInstances.size());
-        if (!goalAsset) {
+        goalInstances.clear();
+        goalInstances.reserve(2);
+
+        // Use the same compatibility path as player loading: one asset plus
+        // explicit instances instead of batched createInstancedAsset().
+        goalAsset = assetLoader->createAsset(bytes, static_cast<uint32_t>(size));
+        if (!goalAsset) return false;
+        goalInstances.push_back(goalAsset->getInstance());
+        auto* secondGoal = assetLoader->createInstance(goalAsset);
+        if (!secondGoal) {
             goalInstances.clear();
+            assetLoader->destroyAsset(goalAsset);
+            goalAsset = nullptr;
             return false;
         }
+        goalInstances.push_back(secondGoal);
 
         if (!resourceLoader) {
             gltfio::ResourceConfiguration config{};
@@ -722,9 +731,26 @@ struct NativeRenderer {
             animationControllers.clear();
         }
 
-        playerInstances.assign(22, nullptr);
-        playerAsset = assetLoader->createInstancedAsset(bytes, static_cast<uint32_t>(size), playerInstances.data(), playerInstances.size());
-        if (!playerAsset) { playerInstances.clear(); return false; }
+        playerInstances.clear();
+        playerInstances.reserve(22);
+
+        // Avoid the batched createInstancedAsset path on Android. Some GPU/driver
+        // combinations have exhibited native crashes while processing instanced
+        // glTF resources asynchronously. Build one asset, then add instances one
+        // by one; this keeps the same 22-player scene without that fragile path.
+        playerAsset = assetLoader->createAsset(bytes, static_cast<uint32_t>(size));
+        if (!playerAsset) return false;
+        playerInstances.push_back(playerAsset->getInstance());
+        for (size_t i = 1; i < 22; ++i) {
+            auto* instance = assetLoader->createInstance(playerAsset);
+            if (!instance) {
+                playerInstances.clear();
+                assetLoader->destroyAsset(playerAsset);
+                playerAsset = nullptr;
+                return false;
+            }
+            playerInstances.push_back(instance);
+        }
 
         if (!resourceLoader) {
             gltfio::ResourceConfiguration config{};
