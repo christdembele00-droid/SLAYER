@@ -270,7 +270,9 @@ if (!cmgen) {
 }
 
 const iblDir = join(out, "ibl/orlando_stadium");
+const iblDir2 = join(out, "ibl/stadium_01");
 await mkdir(iblDir, { recursive: true });
+await mkdir(iblDir2, { recursive: true });
 await exec(cmgen, ["--quiet", "-f", "ktx", "-x", iblDir, envExr]);
 
 const generated = [
@@ -310,9 +312,9 @@ for (const file of generated) {
   await ensureFile(file, "Generated KTX asset");
 }
 
-const secondIbl = join(iblDir, "stadium_01_1k_ibl.ktx");
-const secondSkybox = join(iblDir, "stadium_01_1k_skybox.ktx");
-await exec(cmgen, ["--quiet", "-f", "ktx", "-x", iblDir, envExr2]);
+const secondIbl = join(iblDir2, "stadium_01_1k_ibl.ktx");
+const secondSkybox = join(iblDir2, "stadium_01_1k_skybox.ktx");
+await exec(cmgen, ["--quiet", "-f", "ktx", "-x", iblDir2, envExr2]);
 const secondIblResolved = await locateKtx(secondIbl, "_ibl");
 const secondSkyboxResolved = await locateKtx(secondSkybox, "_skybox");
 if (secondIblResolved !== secondIbl) await exec("cp", [secondIblResolved, secondIbl]);
@@ -354,8 +356,8 @@ const manifest = {
       roughness: "textures/jersey_roughness_1k.png"
     },
     secondary_stadium_ibl: {
-      ibl: "ibl/orlando_stadium/stadium_01_1k_ibl.ktx",
-      skybox: "ibl/orlando_stadium/stadium_01_1k_skybox.ktx"
+      ibl: "ibl/stadium_01/stadium_01_1k_ibl.ktx",
+      skybox: "ibl/stadium_01/stadium_01_1k_skybox.ktx"
     },
     ibl: { path: "ibl/orlando_stadium/orlando_stadium_1k_ibl.ktx" },
     skybox: { path: "ibl/orlando_stadium/orlando_stadium_1k_skybox.ktx" },
