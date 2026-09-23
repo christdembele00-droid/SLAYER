@@ -1,7 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 import asyncio
-from time import time
+from time import monotonic, time
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Query, WebSocket, WebSocketDisconnect
@@ -46,6 +46,8 @@ mm = Matchmaking()
 match_players: dict[str, dict[str, str]] = {}
 clients: dict[str, dict[str, WebSocket]] = {}
 last_intent_time: dict[tuple[str, str], int] = {}
+last_intent_received: dict[tuple[str, str], float] = {}
+MAX_INTENTS_PER_SECOND = 30
 
 
 class Intent(BaseModel):
@@ -153,8 +155,18 @@ async def ws(
     try:
         while True:
             payload = await websocket.receive_json()
+            if len(str(payload)) > 4096:
+                await websocket.close(code=4400, reason="payload_too_large")
+                return
             if payload.get("type") != "intent":
                 continue
+
+            now = monotonic()
+            intent_key = (match_id, player_id)
+            previous_received = last_intent_received.get(intent_key, 0.0)
+            if now - previous_received < 1.0 / MAX_INTENTS_PER_SECOND:
+                continue
+            last_intent_received[intent_key] = now
 
             intent = Intent(**payload.get("data", {}))
             if intent.playerId != player_id:
@@ -181,6 +193,7 @@ async def ws(
     except WebSocketDisconnect:
         room.pop(player_id, None)
         last_intent_time.pop((match_id, player_id), None)
+        last_intent_received.pop((match_id, player_id), None)
         if not room:
             clients.pop(match_id, None)
             match_players.pop(match_id, None)
