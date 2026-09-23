@@ -6,7 +6,7 @@ material {
         { type : sampler2d, name : roughness },
         { type : float, name : roughnessScale }
     ],
-    requires : [ uv0, tangent ],
+    requires : [ uv0, tangents ],
     shadingModel : lit,
     blending : opaque
 }
