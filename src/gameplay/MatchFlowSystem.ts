@@ -168,12 +168,17 @@ export class MatchFlowSystem {
     position: { x: number; y: number; z: number },
     type: RestartType
   ): void {
-    const candidates = players.all()
-      .filter(p => p.data.teamId === team)
-      .filter(p => type === "GoalKick" || type === "Penalty" ? p.data.position === "GK" || p.data.position !== "GK" : true)
-      .filter(p => type !== "Penalty" || p.data.position !== "GK");
+    const teamPlayers = players.all().filter(p => p.data.teamId === team);
+    const candidates = type === "GoalKick"
+      ? teamPlayers
+      : teamPlayers.filter(p => p.data.position !== "GK");
 
-    const taker = candidates
+    const preferred =
+      type === "GoalKick"
+        ? teamPlayers.find(p => p.data.position === "GK")
+        : undefined;
+
+    const taker = preferred ?? candidates
       .slice()
       .sort((a, b) =>
         Math.hypot(a.state.position.x - position.x, a.state.position.z - position.z) -
