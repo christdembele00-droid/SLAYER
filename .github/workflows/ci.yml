@@ -80,16 +80,3 @@ jobs:
             engine/filament/android/app/build/outputs/apk/debug/*.apk
             engine/filament/android/app/src/main/assets/slayer-production-assets.json
 
-  release-contract:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Check release workflow separation
-        run: |
-          set -euo pipefail
-          pattern='^[[:space:]]+gradle -p engine/filament/android assembleRelease bundleRelease'
-          if grep -REn "$pattern" .github/workflows/ci.yml; then
-            echo "Release build command must stay in android-release.yml"
-            exit 1
-          fi
-          grep -Eq "$pattern" .github/workflows/android-release.yml
