@@ -46,6 +46,7 @@ public final class MainActivity extends Activity {
     private boolean nativeReady = false;
     private FrameLayout gameControls = null;
     private SlayerMenuController menuController;
+    private SlayerOnlineClient onlineClient;
 
     private static native boolean nativeCreate(android.view.Surface surface);
     private static native boolean nativeLoadTerrainMaterial(byte[] data);
@@ -100,6 +101,31 @@ public final class MainActivity extends Activity {
         statsParams.rightMargin = uiPx(18);
         root.addView(statsView, statsParams);
         menuController = new SlayerMenuController(this, root, statsView, this::startMatch);
+
+        onlineClient = new SlayerOnlineClient(new SlayerOnlineClient.Listener() {
+            @Override
+            public void onStatus(String status) {
+                android.util.Log.i("SLAYER_NET", status);
+            }
+
+            @Override
+            public void onMatchFound(String matchId) {
+                android.util.Log.i("SLAYER_NET", "Matched: " + matchId);
+            }
+
+            @Override
+            public void onMessage(String type, org.json.JSONObject data) {
+                android.util.Log.d("SLAYER_NET", "Message: " + type);
+            }
+        });
+        FirebaseAuthBridge.ensureSignedIn((success, user, message) -> {
+            if (success) {
+                android.util.Log.i("SLAYER_AUTH", "Firebase session ready: " + message);
+                onlineClient.start();
+            } else {
+                android.util.Log.e("SLAYER_AUTH", "Firebase authentication unavailable: " + message);
+            }
+        });
 
         surface.getHolder().addCallback(new SurfaceHolder.Callback() {
             @Override
@@ -636,6 +662,10 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (onlineClient != null) {
+            onlineClient.stop();
+            onlineClient = null;
+        }
         if (nativeReady) {
             nativeDestroy();
             nativeReady = false;
