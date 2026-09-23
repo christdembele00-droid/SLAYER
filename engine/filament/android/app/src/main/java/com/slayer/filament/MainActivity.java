@@ -38,14 +38,8 @@ public final class MainActivity extends Activity {
     private Uri testLogUri;
     private int testPhase = 0;
     private FrameLayout root;
-    private FrameLayout menuOverlay;
-    private TextView loadingText;
-    private boolean menuVisible = false;
     private boolean matchStarted = false;
     private boolean nativeReady = false;
-    private View menuBackground;
-    private long menuOpenedAt = 0L;
-    private View activePage = null;
     private FrameLayout gameControls = null;
 
     private static native boolean nativeCreate(android.view.Surface surface);
@@ -100,6 +94,7 @@ public final class MainActivity extends Activity {
         statsParams.topMargin = uiPx(18);
         statsParams.rightMargin = uiPx(18);
         root.addView(statsView, statsParams);
+        menuController = new SlayerMenuController(this, root, statsView, this::startMatch);
 
         surface.getHolder().addCallback(new SurfaceHolder.Callback() {
             @Override
@@ -108,7 +103,7 @@ public final class MainActivity extends Activity {
                 if (testScenario > 0) {
                     startMatch();
                 } else {
-                    showSplashAndLoading();
+                    menuController.showSplashAndLoading();
                 }
             }
 
@@ -124,7 +119,6 @@ public final class MainActivity extends Activity {
                     nativeReady = false;
                 }
                 matchStarted = false;
-                menuVisible = false;
                 removeGameControls();
                 if (statsView != null) statsView.setVisibility(View.GONE);
             }
@@ -133,200 +127,10 @@ public final class MainActivity extends Activity {
         setContentView(root);
     }
 
-    private void showSplashAndLoading() {
-        menuVisible = false;
-
-        final FrameLayout splash = new FrameLayout(this);
-        splash.setBackgroundColor(Color.BLACK);
-
-        TextView logo = menuLabel("SLAYER", 46f, true);
-        logo.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
-        splash.addView(logo, lp);
-
-        TextView sub = menuLabel("FOOTBALL 2026", 14f, false);
-        sub.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(-1, uiPx(50), Gravity.CENTER);
-        sp.topMargin = uiPx(92);
-        splash.addView(sub, sp);
-
-        root.addView(splash, new FrameLayout.LayoutParams(-1, -1));
-        splash.postDelayed(() -> {
-            if (splash.getParent() != null) root.removeView(splash);
-            showLoadingScreen();
-        }, 2000L);
-    }
-
-    private void showLoadingScreen() {
-        final FrameLayout loading = new FrameLayout(this);
-        loading.setBackgroundColor(0xFF06101C);
-
-        TextView title = menuLabel("SLAYER", 30f, true);
-        title.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-1, uiPx(70), Gravity.TOP);
-        tp.topMargin = uiPx(42);
-        loading.addView(title, tp);
-
-        TextView scene = menuLabel("STADE  •  ATLAS FC  ×  LAGOON UNITED", 13f, false);
-        scene.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams sc = new FrameLayout.LayoutParams(-1, uiPx(50), Gravity.CENTER);
-        sc.topMargin = -uiPx(40);
-        loading.addView(scene, sc);
-
-        loadingText = menuLabel("CHARGEMENT\n\n● ● ●", 18f, true);
-        loadingText.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(-1, uiPx(180), Gravity.CENTER);
-        loading.addView(loadingText, cp);
-
-        TextView status = menuLabel("Préparation de l'expérience SLAYER", 12f, false);
-        status.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams st = new FrameLayout.LayoutParams(-1, uiPx(50), Gravity.BOTTOM);
-        st.bottomMargin = uiPx(48);
-        loading.addView(status, st);
-
-        root.addView(loading, new FrameLayout.LayoutParams(-1, -1));
-
-        // No network is required for the menu. The game enters the native renderer
-        // only when the user explicitly launches a match.
-        loading.postDelayed(() -> {
-            if (loading.getParent() != null) root.removeView(loading);
-            showMainMenu();
-        }, 1600L);
-    }
-
-    private void showMainMenu() {
-        if (activePage != null && activePage.getParent() != null) root.removeView(activePage);
-        activePage = null;
-        if (menuOverlay != null) root.removeView(menuOverlay);
-
-        menuVisible = true;
-        matchStarted = false;
-        statsView.setVisibility(View.GONE);
-        menuOpenedAt = System.nanoTime();
-
-        menuOverlay = new FrameLayout(this);
-
-        // Football-style dark navy + electric blue + yellow accent palette,
-        // inspired by modern football game menus without copying branded assets.
-        menuBackground = new MenuBackgroundView(this);
-        menuOverlay.addView(menuBackground, new FrameLayout.LayoutParams(-1, -1));
-
-        View shade = new View(this);
-        shade.setBackgroundColor(0x55000000);
-        menuOverlay.addView(shade, new FrameLayout.LayoutParams(-1, -1));
-
-        TextView brand = menuLabel("SLAYER", 30f, true);
-        FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(uiPx(300), uiPx(64), Gravity.TOP | Gravity.LEFT);
-        bp.leftMargin = uiPx(28); bp.topMargin = uiPx(18);
-        menuOverlay.addView(brand, bp);
-
-        TextView season = menuLabel("FOOTBALL 2026", 12f, false);
-        season.setTextColor(0xFFFFFF66);
-        FrameLayout.LayoutParams sep = new FrameLayout.LayoutParams(uiPx(220), uiPx(40), Gravity.TOP | Gravity.LEFT);
-        sep.leftMargin = uiPx(32); sep.topMargin = uiPx(70);
-        menuOverlay.addView(season, sep);
-
-        Button settings = menuButton("⚙", 22f);
-        FrameLayout.LayoutParams setp = new FrameLayout.LayoutParams(uiPx(70), uiPx(60), Gravity.TOP | Gravity.RIGHT);
-        setp.rightMargin = uiPx(22); setp.topMargin = uiPx(18);
-        menuOverlay.addView(settings, setp);
-        settings.setOnClickListener(v -> showSettingsCard());
-
-        TextView hero = menuLabel("MATCHDAY", 12f, true);
-        hero.setTextColor(0xFFFFFF66);
-        hero.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams hp = new FrameLayout.LayoutParams(-1, 40, Gravity.TOP);
-        hp.topMargin = uiPx(112);
-        menuOverlay.addView(hero, hp);
-
-        TextView teams = menuLabel("ATLAS FC     VS     LAGOON UNITED", 20f, true);
-        teams.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams teamsP = new FrameLayout.LayoutParams(-1, 60, Gravity.TOP);
-        teamsP.topMargin = uiPx(142);
-        menuOverlay.addView(teams, teamsP);
-
-        Button quick = menuButton("▶  MATCH RAPIDE", 18f);
-        quick.setTextColor(Color.BLACK);
-        quick.setBackgroundColor(0xFFFFD400);
-        FrameLayout.LayoutParams qp = new FrameLayout.LayoutParams(uiPx(390), uiPx(70), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        qp.topMargin = uiPx(225);
-        menuOverlay.addView(quick, qp);
-        quick.setOnClickListener(v -> startMatch());
-
-        // Two-column mode grid: no overlapping text and no accidental horizontal stacking.
-        addModeCard("CARRIÈRE", 20, 310, 250, 64, () -> showModeScreen("CARRIÈRE",
-                "CLUB  •  SAISON  •  CHAMPIONNAT  •  TRANSFERTS"));
-        addModeCard("COMPÉTITION", 285, 310, 250, 64, () -> showModeScreen("COMPÉTITION",
-                "LIGUES  •  COUPES  •  TOURNOIS"));
-        addModeCard("ENTRAÎNEMENT", 20, 386, 250, 64, () -> showModeScreen("ENTRAÎNEMENT",
-                "TIR  •  PASSE  •  DRIBBLE  •  DÉFENSE"));
-        addModeCard("ÉQUIPE", 285, 386, 250, 64, () -> showModeScreen("ÉQUIPE",
-                "EFFECTIF  •  TACTIQUES  •  KITS  •  PROGRESSION"));
-
-        Button profile = menuButton("PROFIL", 13f);
-        FrameLayout.LayoutParams pp = new FrameLayout.LayoutParams(uiPx(150), uiPx(48), Gravity.BOTTOM | Gravity.LEFT);
-        pp.leftMargin = uiPx(22); pp.bottomMargin = uiPx(20);
-        menuOverlay.addView(profile, pp);
-        profile.setOnClickListener(v -> showModeScreen("PROFIL", "JOUEUR  •  PROGRESSION  •  STATISTIQUES"));
-
-        Button other = menuButton("AUTRES", 13f);
-        FrameLayout.LayoutParams op = new FrameLayout.LayoutParams(uiPx(150), uiPx(48), Gravity.BOTTOM | Gravity.RIGHT);
-        op.rightMargin = uiPx(22); op.bottomMargin = uiPx(20);
-        menuOverlay.addView(other, op);
-        other.setOnClickListener(v -> showModeScreen("AUTRES", "AIDE  •  INFORMATIONS  •  OPTIONS"));
-
-        root.addView(menuOverlay, new FrameLayout.LayoutParams(-1, -1));
-    }
-
-    private void addModeCard(String text, int left, int top, int width, int height, Runnable action) {
-        Button b = menuButton(text, 14f);
-        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(uiPx(width), uiPx(height), Gravity.TOP | Gravity.LEFT);
-        p.leftMargin = uiPx(left);
-        p.topMargin = uiPx(top);
-        menuOverlay.addView(b, p);
-        b.setOnClickListener(v -> action.run());
-    }
-
-    private void showModeScreen(String title, String details) {
-        final FrameLayout page = new FrameLayout(this);
-        page.setBackgroundColor(0xFF07111E);
-
-        TextView t = menuLabel(title, 30f, true);
-        FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-1, uiPx(70), Gravity.TOP);
-        tp.topMargin = uiPx(42); tp.leftMargin = uiPx(30);
-        page.addView(t, tp);
-
-        TextView d = menuLabel(details, 15f, false);
-        d.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams dp = new FrameLayout.LayoutParams(-1, uiPx(160), Gravity.CENTER);
-        page.addView(d, dp);
-
-        Button back = menuButton("‹  RETOUR", 14f);
-        FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(uiPx(170), uiPx(56), Gravity.BOTTOM | Gravity.LEFT);
-        bp.leftMargin = uiPx(24); bp.bottomMargin = uiPx(24);
-        page.addView(back, bp);
-        back.setOnClickListener(v -> {
-            root.removeView(page);
-            showMainMenu();
-        });
-
-        activePage = page;
-        root.addView(page, new FrameLayout.LayoutParams(-1, -1));
-    }
-
-    private void showSettingsCard() {
-        showModeScreen("PARAMÈTRES", "GRAPHISMES  •  VULKAN  •  COMMANDES  •  AUDIO");
-    }
-
     private void startMatch() {
         if (matchStarted) return;
         matchStarted = true;
-        menuVisible = false;
-
-        if (menuOverlay != null) {
-            root.removeView(menuOverlay);
-            menuOverlay = null;
-        }
+        menuController.hideAll();
 
         statsView.setVisibility(View.VISIBLE);
 
@@ -337,16 +141,14 @@ public final class MainActivity extends Activity {
             android.view.Surface nativeSurface = surface.getHolder().getSurface();
             if (nativeSurface == null || !nativeSurface.isValid()) {
                 matchStarted = false;
-                menuVisible = true;
-                showMainMenu();
+                menuController.showMainMenu();
                 android.widget.Toast.makeText(this, "Surface graphique indisponible. Réessayez.", android.widget.Toast.LENGTH_SHORT).show();
                 return;
             }
             if (!nativeCreate(nativeSurface)) {
                 matchStarted = false;
-                menuVisible = true;
                 statsView.setVisibility(View.GONE);
-                showMainMenu();
+                menuController.showMainMenu();
                 android.widget.Toast.makeText(this, "Vulkan indisponible sur cet appareil.", android.widget.Toast.LENGTH_LONG).show();
                 return;
             }
@@ -673,22 +475,19 @@ public final class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (matchStarted && !menuVisible) {
+        if (matchStarted && !menuController.isMenuVisible()) {
             surface.removeCallbacks(frameRunnable);
             removeGameControls();
             matchStarted = false;
-            menuVisible = true;
+            menuController.showMainMenu();
             statsView.setVisibility(View.GONE);
-            showMainMenu();
             return;
         }
-        if (activePage != null && activePage.getParent() != null) {
-            root.removeView(activePage);
-            activePage = null;
-            showMainMenu();
+        if (menuController.hasActivePage()) {
+            menuController.showMainMenu();
             return;
         }
-        if (menuVisible) {
+        if (menuController.isMenuVisible()) {
             super.onBackPressed();
             return;
         }
