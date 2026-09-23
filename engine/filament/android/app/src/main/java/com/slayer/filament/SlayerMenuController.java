@@ -290,88 +290,114 @@ final class SlayerMenuController {
     private void addModeTile(LinearLayout row, String title, String icon, int color, Runnable action) {
         LinearLayout tile = new LinearLayout(activity);
         tile.setOrientation(LinearLayout.VERTICAL);
-        tile.setGravity(Gravity.CENTER);
-        tile.setPadding(px(5), px(6), px(5), px(6));
+        tile.setGravity(Gravity.LEFT | Gravity.BOTTOM);
 
         android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
         bg.setColor(color);
         bg.setCornerRadius(px(18));
-        bg.setStroke(px(1), 0x55FFFFFF);
+        bg.setStroke(px(1), 0x66FFFFFF);
         tile.setBackground(bg);
-        tile.setElevation(px(5));
+        tile.setClipToOutline(true);
+        tile.setElevation(px(7));
         tile.setOnClickListener(v -> action.run());
 
-        TextView iconView = new TextView(activity);
-        iconView.setText(icon);
-        iconView.setTextSize(22f);
-        iconView.setGravity(Gravity.CENTER);
-        iconView.setTextColor(0xFFF0FCFF);
-        tile.addView(iconView, new LinearLayout.LayoutParams(-1, px(42)));
+        ModeArtView art = new ModeArtView(activity, icon);
+        tile.addView(art, new LinearLayout.LayoutParams(-1, px(58)));
 
-        TextView titleView = label(title, 10f, true);
-        titleView.setGravity(Gravity.CENTER);
+        TextView titleView = label(title, 11.5f, true);
+        titleView.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
         titleView.setSingleLine(true);
         titleView.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        tile.addView(titleView, new LinearLayout.LayoutParams(-1, px(28)));
+        titleView.setPadding(px(12), 0, px(8), 0);
+        tile.addView(titleView, new LinearLayout.LayoutParams(-1, px(25)));
 
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, px(92), 1f);
-        lp.setMargins(px(4), px(5), px(4), px(5));
+        TextView hint = label("OUVRIR  ›", 8.5f, true);
+        hint.setTextColor(0xA6FFFFFF);
+        hint.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
+        hint.setPadding(px(12), 0, 0, 0);
+        tile.addView(hint, new LinearLayout.LayoutParams(-1, px(20)));
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, px(102), 1f);
+        lp.setMargins(px(4), px(4), px(4), px(4));
         row.addView(tile, lp);
     }
 
-    private void addHomeModeCard(GridLayout grid, String title, String subtitle, String icon, int color, Runnable action) {
-        final int screenW = activity.getResources().getDisplayMetrics().widthPixels;
-        final int gap = px(9);
-        final int cardW = Math.max(px(130), (screenW - px(28) - gap) / 2);
-        final int cardH = px(86);
+    private static final class ModeArtView extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final String kind;
+        private final Path path = new Path();
 
-        FrameLayout card = new FrameLayout(activity);
-        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
-        bg.setColor(color);
-        bg.setCornerRadius(px(18));
-        bg.setStroke(px(1.2f), 0x55FFFFFF);
-        card.setBackground(bg);
-        card.setElevation(px(5));
-        card.setOnClickListener(v -> action.run());
+        ModeArtView(android.content.Context context, String kind) {
+            super(context);
+            this.kind = kind;
+        }
 
-        TextView iconView = new TextView(activity);
-        iconView.setText(icon);
-        iconView.setTextColor(0xFFE8FAFF);
-        iconView.setTextSize(23f);
-        iconView.setGravity(Gravity.CENTER);
-        android.graphics.drawable.GradientDrawable iconBg = new android.graphics.drawable.GradientDrawable();
-        iconBg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-        iconBg.setColor(0x22000000);
-        iconBg.setStroke(px(1), 0x66FFFFFF);
-        iconView.setBackground(iconBg);
-        FrameLayout.LayoutParams ip = new FrameLayout.LayoutParams(px(48), px(48), Gravity.CENTER_VERTICAL | Gravity.LEFT);
-        ip.leftMargin = px(12);
-        card.addView(iconView, ip);
+        @Override
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            float w = getWidth(), h = getHeight();
 
-        TextView titleView = label(title, 13.5f, true);
-        titleView.setSingleLine(true);
-        titleView.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-1, px(30), Gravity.TOP | Gravity.LEFT);
-        tp.leftMargin = px(72);
-        tp.rightMargin = px(10);
-        tp.topMargin = px(13);
-        card.addView(titleView, tp);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setShader(new LinearGradient(0, 0, w, h,
+                    new int[]{0x22000000, 0x66000000}, null, Shader.TileMode.CLAMP));
+            canvas.drawRect(0, 0, w, h, paint);
+            paint.setShader(null);
 
-        TextView subView = label(subtitle, 9.5f, false);
-        subView.setTextColor(0xBFE8F6FF);
-        subView.setSingleLine(true);
-        subView.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        FrameLayout.LayoutParams subp = new FrameLayout.LayoutParams(-1, px(26), Gravity.TOP | Gravity.LEFT);
-        subp.leftMargin = px(72);
-        subp.rightMargin = px(10);
-        subp.topMargin = px(41);
-        card.addView(subView, subp);
+            paint.setColor(0x55FFFFFF);
+            paint.setStrokeWidth(Math.max(1.5f, w * .012f));
+            paint.setStyle(Paint.Style.STROKE);
 
-        GridLayout.LayoutParams gp = new GridLayout.LayoutParams();
-        gp.width = cardW;
-        gp.height = cardH;
-        gp.setMargins(gap / 2, px(5), gap / 2, px(5));
-        grid.addView(card, gp);
+            // Mini football-pitch perspective.
+            path.reset();
+            path.moveTo(w*.05f, h*.82f);
+            path.lineTo(w*.95f, h*.55f);
+            path.lineTo(w*.95f, h*.98f);
+            path.lineTo(w*.05f, h*.98f);
+            path.close();
+            canvas.drawPath(path, paint);
+
+            if ("◆".equals(kind)) {
+                // Career: player silhouette + rising progression line.
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(0xD9FFFFFF);
+                canvas.drawCircle(w*.48f, h*.31f, h*.11f, paint);
+                path.reset();
+                path.moveTo(w*.40f,h*.48f); path.lineTo(w*.30f,h*.88f);
+                path.lineTo(w*.44f,h*.88f); path.lineTo(w*.50f,h*.66f);
+                path.lineTo(w*.56f,h*.88f); path.lineTo(w*.70f,h*.88f);
+                path.lineTo(w*.60f,h*.48f); path.close();
+                canvas.drawPath(path, paint);
+
+                paint.setColor(0xFFE0B500);
+                paint.setStrokeWidth(Math.max(2, w*.02f));
+                paint.setStyle(Paint.Style.STROKE);
+                path.reset();
+                path.moveTo(w*.66f,h*.67f); path.lineTo(w*.74f,h*.57f); path.lineTo(w*.82f,h*.61f); path.lineTo(w*.91f,h*.42f);
+                canvas.drawPath(path, paint);
+            } else if ("★".equals(kind)) {
+                // Competition: trophy.
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(0xFFE0B500);
+                canvas.drawOval(new RectF(w*.39f,h*.25f,w*.61f,h*.40f), paint);
+                canvas.drawRect(w*.43f,h*.35f,w*.57f,h*.68f, paint);
+                canvas.drawRect(w*.33f,h*.66f,w*.67f,h*.73f, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(Math.max(2,w*.018f));
+                canvas.drawArc(new RectF(w*.22f,h*.28f,w*.48f,h*.53f), 70, 180, false, paint);
+                canvas.drawArc(new RectF(w*.52f,h*.28f,w*.78f,h*.53f), -70, 180, false, paint);
+            } else {
+                // Team: tactical board with player nodes.
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(Math.max(2,w*.015f));
+                canvas.drawRect(w*.18f,h*.17f,w*.82f,h*.88f,paint);
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(0xFFBFEFFF);
+                float[][] pts={{.50f,.76f},{.30f,.64f},{.70f,.64f},{.23f,.43f},{.50f,.45f},{.77f,.43f},{.38f,.27f},{.62f,.27f}};
+                for(float[] p:pts) canvas.drawCircle(w*p[0],h*p[1],Math.max(3,w*.035f),paint);
+            }
+
+            paint.setStyle(Paint.Style.FILL);
+        }
     }
 
     private void showModeScreen(String title, String details) {
