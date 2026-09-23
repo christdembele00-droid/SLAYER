@@ -69,6 +69,7 @@ private:
     InputState input_{};
     float secondAccumulator_=0;
     float fixedAccumulator_=0;
+    float phaseAccumulator_=0;
     SlayerSettings settings_{};
 };
 
