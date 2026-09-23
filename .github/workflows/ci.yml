@@ -64,7 +64,8 @@ jobs:
           cmgen="$(find /tmp/filament-linux -type f -name cmgen -perm -111 | head -n 1)"
           matc="$(find /tmp/filament-linux -type f -name matc -perm -111 | head -n 1)"
           gltfpack="$(find /tmp/filament-linux -type f -name gltfpack -perm -111 | head -n 1)"
-          test -n "$cmgen" && test -n "$matc" && test -n "$gltfpack"
+          test -n "$cmgen" && test -n "$matc"
+          if [ -n "$gltfpack" ]; then echo "gltfpack available"; else echo "gltfpack not packaged; Blender fallback will be used"; fi
           echo "FILAMENT_DIST_DIR=/tmp/filament-native" >> "$GITHUB_ENV"
           echo "FILAMENT_TOOLS_DIR=$(dirname "$cmgen")" >> "$GITHUB_ENV"
       - run: sudo apt-get update && sudo apt-get install -y blender unzip python3-numpy
