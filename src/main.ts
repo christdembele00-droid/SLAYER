@@ -214,13 +214,35 @@ authButton.style.cursor=firebaseReady ? "pointer" : "not-allowed";
 authPanel.append(authStatus,authButton);
 app.appendChild(authPanel);
 
-async function verifyBackendSession(): Promise<void> {
+async function verifyBackendSession(): Promise<string> {
   const token=await getFirebaseIdToken();
   if(!token) throw new Error("firebase_token_missing");
   const response=await fetch(slayerApiUrl+"/api/profile",{
     headers:{Authorization:"Bearer "+token}
   });
   if(!response.ok) throw new Error("backend_auth_failed_"+response.status);
+  return token;
+}
+
+async function connectAuthenticatedUser(user: NonNullable<Parameters<typeof observeFirebaseUser>[0]> extends (u: infer U)=>void ? U : never): Promise<void> {
+  if(!user) return;
+  try{
+    const token=await verifyBackendSession();
+    online?.close();
+    const wsBase=slayerApiUrl.replace(/^https:/,"wss:").replace(/^http:/,"ws:");
+    online=new WebSocketClient();
+    online.connect(wsBase+"/ws/"+encodeURIComponent(user.uid),token);
+    authButton.dataset.signedIn="1";
+    authButton.textContent="Déconnexion";
+    authStatus.textContent=(user.displayName || user.email || "Joueur")+" connecté";
+  }catch(error){
+    online?.close();
+    online=null;
+    authButton.dataset.signedIn="";
+    authButton.textContent="Connexion Google";
+    authStatus.textContent=error instanceof Error ? error.message : "Échec de connexion backend";
+    console.error("[SLAYER] Backend authentication failed.",error);
+  }
 }
 
 authButton.addEventListener("click",async()=>{
@@ -235,20 +257,15 @@ authButton.addEventListener("click",async()=>{
       online=null;
       return;
     }
-    authStatus.textContent="Connexion...";
-    const user=await loginWithGoogle();
-    await verifyBackendSession();
-    const token=await user.getIdToken();
-    const wsBase=slayerApiUrl.replace(/^https:/,"wss:").replace(/^http:/,"ws:");
-    online=new WebSocketClient();
-    online.connect(wsBase+"/ws/"+encodeURIComponent(user.uid),token);
-    authButton.dataset.signedIn="1";
-    authButton.textContent="Déconnexion";
-    authStatus.textContent=(user.displayName || user.email || "Joueur")+" connecté";
+    authStatus.textContent="Redirection vers Google…";
+    await loginWithGoogle();
   }catch(error){
     console.error("[SLAYER] Firebase authentication failed.",error);
-    if(error && typeof error==="object" && "code" in error && (error as {code?:string}).code==="auth/unauthorized-domain"){ authStatus.textContent="Domaine Firebase non autorisé"; } else { authStatus.textContent=error instanceof Error ? error.message : "Échec de connexion"; }
-  }finally{
+    if(error && typeof error==="object" && "code" in error && (error as {code?:string}).code==="auth/unauthorized-domain"){
+      authStatus.textContent="Domaine Firebase non autorisé";
+    }else{
+      authStatus.textContent=error instanceof Error ? error.message : "Échec de connexion";
+    }
     authButton.disabled=!firebaseReady;
   }
 });
@@ -256,9 +273,13 @@ authButton.addEventListener("click",async()=>{
 if(firebaseReady){
   observeFirebaseUser(user=>{
     if(user){
-      authButton.dataset.signedIn="1";
-      authButton.textContent="Déconnexion";
-      authStatus.textContent=(user.displayName || user.email || "Joueur")+" connecté";
+      void connectAuthenticatedUser(user);
+    }else{
+      online?.close();
+      online=null;
+      authButton.dataset.signedIn="";
+      authButton.textContent="Connexion Google";
+      authStatus.textContent="Firebase prêt";
     }
   });
 }
