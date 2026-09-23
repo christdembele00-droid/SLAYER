@@ -17,3 +17,15 @@ services:
         sync: false
       - key: FIREBASE_SERVICE_ACCOUNT
         sync: false
+
+  - type: web
+    name: slayer-web
+    runtime: static
+    plan: free
+    region: frankfurt
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    autoDeploy: true
+    envVars:
+      - key: SLAYER_FETCH_WEB_ASSETS
+        value: "0"
