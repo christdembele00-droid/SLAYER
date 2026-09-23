@@ -50,6 +50,7 @@ public final class MainActivity extends Activity {
 
     private static native boolean nativeCreate(android.view.Surface surface);
     private static native boolean nativeLoadTerrainMaterial(byte[] data);
+    private static native boolean nativeLoadTerrainTextures(byte[] baseColor, byte[] normal, byte[] roughness);
     private static native boolean nativeLoadEnvironment(byte[] data);
     private static native boolean nativeLoadSkybox(byte[] data);
     private static native boolean nativeLoadPlayer(byte[] data);
@@ -612,9 +613,19 @@ public final class MainActivity extends Activity {
             byte[] buffer = new byte[16 * 1024];
             int read;
             while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
-            if (!nativeLoadTerrainMaterial(output.toByteArray())) android.util.Log.w("SLAYER", "materials/grass.filamat could not be loaded");
+            byte[] material = output.toByteArray();
+            if (!nativeLoadTerrainMaterial(material)) {
+                android.util.Log.e("SLAYER", "materials/grass.filamat could not be loaded");
+                return;
+            }
+            byte[] baseColor = readAssetBytes("textures/grass_basecolor_1k.png");
+            byte[] normal = readAssetBytes("textures/grass_normal_1k.png");
+            byte[] roughness = readAssetBytes("textures/grass_roughness_1k.png");
+            if (!nativeLoadTerrainTextures(baseColor, normal, roughness)) {
+                android.util.Log.e("SLAYER", "Production grass PBR textures could not be bound");
+            }
         } catch (IOException e) {
-            android.util.Log.i("SLAYER", "No compiled grass material yet; keeping default terrain");
+            android.util.Log.e("SLAYER", "Required grass PBR assets are missing", e);
         }
     }
 
