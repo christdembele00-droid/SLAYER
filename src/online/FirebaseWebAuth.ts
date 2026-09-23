@@ -3,7 +3,7 @@ import {
   getAuth,
   GoogleAuthProvider,
   onAuthStateChanged,
-  signInWithPopup,
+  signInWithRedirect,
   signOut,
   type User,
 } from "firebase/auth";
@@ -37,10 +37,9 @@ export function observeFirebaseUser(callback: (user: User | null) => void): () =
   return onAuthStateChanged(auth, callback);
 }
 
-export async function loginWithGoogle(): Promise<User> {
+export async function loginWithGoogle(): Promise<void> {
   if (!auth) throw new Error("firebase_not_configured");
-  const result = await signInWithPopup(auth, googleProvider);
-  return result.user;
+  await signInWithRedirect(auth, googleProvider);
 }
 
 export async function logoutFirebase(): Promise<void> {
