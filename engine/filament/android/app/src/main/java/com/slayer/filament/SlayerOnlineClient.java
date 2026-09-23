@@ -9,6 +9,8 @@ import com.google.firebase.auth.FirebaseUser;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.MediaType;
