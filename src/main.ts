@@ -3,6 +3,7 @@ import "./styles.css";
 import { MatchEngine } from "./core/MatchEngine";
 import { SceneRenderer } from "./render/SceneRenderer";
 import { PlayerSystem } from "./player/PlayerSystem";
+import { PlayerSelectionSystem } from "./player/PlayerSelectionSystem";
 import { PlayerInput } from "./player/PlayerInput";
 import { PlayerMesh } from "./player/PlayerMesh";
 import { FullMatchSetup } from "./match/FullMatchSetup";
@@ -126,7 +127,8 @@ ballMesh.castShadow=true;
 ballMesh.receiveShadow=true;
 renderer.scene.add(ballMesh);
 
-const controlledId="home-11";
+let controlledId="home-11";
+const playerSelection=new PlayerSelectionSystem(controlledId);
 const nextAIActionAt=new Map<string,number>();
 function ensureControlledPlayerPossession(): void {
   const p=players.get(controlledId);
@@ -288,9 +290,11 @@ window.addEventListener("keydown",event=>{
   const key=event.key.toLowerCase();
   if(key in keyboard){keyboard[key as keyof typeof keyboard]=true;updateKeyboardMovement();event.preventDefault();}
   if(event.key==="Shift") input.setSprint(true);
-  if(key==="1") input.setAction("Pass",.55);
-  if(key==="2") input.setAction("Shoot",.85);
-  if(key==="3") input.setAction("Control",.3);
+  const attacking=ball.state.controlledByPlayerId ? players.get(ball.state.controlledByPlayerId)?.data.teamId==="home" : players.get(controlledId)?.data.teamId==="home" && Math.hypot(players.get(controlledId)!.state.position.x-ball.state.position.x,players.get(controlledId)!.state.position.z-ball.state.position.z)<2.2;
+  if(key==="1") input.setAction(attacking?"Pass":"Press",.6);
+  if(key==="2") input.setAction(attacking?"ThroughBall":"StandingTackle",.75);
+  if(key==="3") input.setAction(attacking?"Dribble":"SlideTackle",.8);
+  if(key==="4") input.setAction(attacking?"Shoot":"Intercept",.85);
 });
 window.addEventListener("keyup",event=>{
   const key=event.key.toLowerCase();
@@ -331,14 +335,49 @@ function detectGoal(): void {
   }
 }
 
+function resolveActionDirection(playerId:string,action:PlayerAction,direction:{x:number;y:number;z:number}):{x:number;y:number;z:number}{
+  const actor=players.get(playerId);
+  if(!actor)return direction;
+  const actorPos={x:actor.state.position.x,z:actor.state.position.z};
+  const forward=actor.data.teamId==="home"?1:-1;
+
+  if(action==="Shoot"){
+    return {x:-ball.state.position.x*.10,y:Math.max(.08,direction.y),z:forward*52.5-ball.state.position.z};
+  }
+
+  if(action==="Pass" || action==="ThroughBall" || action==="Cross"){
+    const mates=players.all()
+      .filter(p=>p.data.teamId===actor.data.teamId && p.data.playerId!==playerId)
+      .map(p=>({p,d:Math.hypot(p.state.position.x-actorPos.x,p.state.position.z-actorPos.z)}))
+      .filter(x=>x.d<34)
+      .sort((a,b)=>{
+        const af=forward*(a.p.state.position.z-actorPos.z),bf=forward*(b.p.state.position.z-actorPos.z);
+        return (bf-af)*.7+a.d-b.d;
+      });
+    const target=mates[0]?.p;
+    if(target)return {x:target.state.position.x-actorPos.x,y:action==="Cross"?.18:action==="ThroughBall"?.06:0,z:target.state.position.z-actorPos.z};
+  }
+
+  if(action==="Tackle" || action==="StandingTackle" || action==="SlideTackle" || action==="Press" || action==="Intercept"){
+    const opponents=players.all()
+      .filter(p=>p.data.teamId!==actor.data.teamId)
+      .map(p=>({p,d:Math.hypot(p.state.position.x-actorPos.x,p.state.position.z-actorPos.z)}))
+      .sort((a,b)=>a.d-b.d);
+    const target=opponents[0]?.p;
+    if(target)return {x:target.state.position.x-actorPos.x,y:0,z:target.state.position.z-actorPos.z};
+  }
+
+  return direction;
+}
+
 function executeAction(playerId:string, action:PlayerAction, direction:{x:number;y:number;z:number}, power:number): void {
   const supported:PlayerAction[]=[
     "Control","Dribble","ProtectBall","Shoot","Pass","ThroughBall","Cross","Clearance",
     "Tackle","StandingTackle","SlideTackle","Intercept","Press","Contain"
   ];
-  if(supported.includes(action)){
-    gameplay.execute(players,ball,playerId,action,direction,power);
-  }
+  if(!supported.includes(action))return;
+  const resolved=resolveActionDirection(playerId,action,direction);
+  gameplay.execute(players,ball,playerId,action,resolved,power);
 }
 
 function frame(now:number){
@@ -354,6 +393,13 @@ function frame(now:number){
 
   const perf=performanceMonitor.sample(rawFrameMs,delta);
   const gpu=gpuProfiler.sample(renderer.renderer,rawFrameMs,delta);
+
+  const previousControlledId=controlledId;
+  controlledId=playerSelection.update(players,ball);
+  if(controlledId!==previousControlledId){
+    input.setMovement(0,0);
+    input.setAction("None",0);
+  }
 
   const human=input.snapshot();
   aiAccumulator+=delta;
@@ -388,6 +434,8 @@ function frame(now:number){
 
   interactions.update(players,ball);
   ballSystem.update(delta, players);
+  controlledId=playerSelection.update(players,ball);
+  ensureControlledPlayerPossession();
   transitions.update(players,ball,delta);
   goalkeepers.update(players,ball);
   ensureControlledPlayerPossession();
@@ -424,7 +472,12 @@ function frame(now:number){
 
   if(now-lastUiUpdate>=120){
     const snapshot=match.snapshot();
+    const owner=ball.state.controlledByPlayerId?players.get(ball.state.controlledByPlayerId):undefined;
+    const attacking=owner?.data.teamId==="home" || (!owner && players.get(controlledId)?.state.ballMode==="Control");
+    const active=players.get(controlledId);
+    const label=active?.data.name??"PLAYER";
     ui.updateMatch(snapshot.score.homeGoals,snapshot.score.awayGoals,match.clock.format(),snapshot.phase.toUpperCase());
+    ui.setMatchContext(Boolean(attacking),label);
     ui.updatePerformance(perf.fps || gpu.fps,perf.frameMs || gpu.frameMs,perf.p95Ms || gpu.p95Ms,gpu.drawCalls,gpu.triangles,quality.tier);
     lastUiUpdate=now;
   }
