@@ -3,9 +3,7 @@ package com.slayer.filament;
 import android.app.Activity;
 import android.util.Log;
 
-import com.android.billingclient.api.AcknowledgePurchaseParams;
 import com.android.billingclient.api.BillingClient;
-import com.android.billingclient.api.BillingClient.ProductType;
 import com.android.billingclient.api.BillingClientStateListener;
 import com.android.billingclient.api.BillingFlowParams;
 import com.android.billingclient.api.BillingResult;
@@ -14,10 +12,12 @@ import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.PurchasesUpdatedListener;
 import com.android.billingclient.api.QueryProductDetailsParams;
+import com.android.billingclient.api.QueryProductDetailsResult;
 import com.android.billingclient.api.QueryPurchasesParams;
+import com.android.billingclient.api.UnfetchedProduct;
+import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.android.gms.tasks.Tasks;
 
 import org.json.JSONObject;
 
@@ -29,22 +29,33 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * SLAYER Google Play Billing bridge.
+ * Native SLAYER Google Play Billing bridge.
  *
- * The client never grants tokens locally. It forwards the purchase token to
- * the authenticated SLAYER backend, which verifies the purchase with Google
- * Play before changing the wallet.
+ * All token packs are consumable one-time products. The Google Play price is
+ * displayed from ProductDetails (and can therefore be localized), while the
+ * SLAYER backend determines the token grant for each product ID.
  */
 public final class SLAYERBillingManager implements PurchasesUpdatedListener {
-    public static final String TOKEN_PRODUCT_ID = "slayer_tokens_099";
+    public static final String[] TOKEN_PRODUCT_IDS = {
+        "slayer_tokens_099",
+        "slayer_tokens_499",
+        "slayer_tokens_999",
+        "slayer_tokens_1999",
+        "slayer_tokens_4999",
+        "slayer_tokens_9999",
+        "slayer_tokens_14999",
+        "slayer_tokens_19999"
+    };
 
     public interface Listener {
-        void onStoreReady(ProductDetails tokenProduct);
+        void onStoreReady(List<ProductDetails> products);
         void onWalletUpdated(long balance);
         void onPurchasePending();
         void onStoreError(String message);
@@ -54,8 +65,7 @@ public final class SLAYERBillingManager implements PurchasesUpdatedListener {
     private final Listener listener;
     private final BillingClient billingClient;
     private final ExecutorService networkExecutor = Executors.newSingleThreadExecutor();
-
-    private ProductDetails tokenProduct;
+    private final Map<String, ProductDetails> productsById = new HashMap<>();
 
     public SLAYERBillingManager(Activity activity, Listener listener) {
         this.activity = activity;
@@ -78,62 +88,92 @@ public final class SLAYERBillingManager implements PurchasesUpdatedListener {
                     error("Google Play Billing indisponible: " + result.getDebugMessage());
                     return;
                 }
-                queryTokenProduct();
+                queryProducts();
                 restorePurchases();
+            }
+
+            @Override
+            public void onBillingServiceDisconnected() {
+                // Automatic service reconnection is enabled by Billing Library 8+.
             }
         });
     }
 
-    private void queryTokenProduct() {
+    private void queryProducts() {
         List<QueryProductDetailsParams.Product> products = new ArrayList<>();
-        products.add(
-            QueryProductDetailsParams.Product.newBuilder()
-                .setProductId(TOKEN_PRODUCT_ID)
-                .setProductType(ProductType.INAPP)
-                .build()
-        );
+        for (String productId : TOKEN_PRODUCT_IDS) {
+            products.add(
+                QueryProductDetailsParams.Product.newBuilder()
+                    .setProductId(productId)
+                    .setProductType(BillingClient.ProductType.INAPP)
+                    .build()
+            );
+        }
 
         QueryProductDetailsParams params =
             QueryProductDetailsParams.newBuilder()
                 .setProductList(products)
                 .build();
 
-        billingClient.queryProductDetailsAsync(params, (result, productResult) -> {
-            if (result.getResponseCode() != BillingClient.BillingResponseCode.OK) {
-                error("Impossible de charger la boutique: " + result.getDebugMessage());
-                return;
+        billingClient.queryProductDetailsAsync(
+            params,
+            (BillingResult result, QueryProductDetailsResult productResult) -> {
+                if (result.getResponseCode() != BillingClient.BillingResponseCode.OK) {
+                    error("Impossible de charger la boutique: " + result.getDebugMessage());
+                    return;
+                }
+
+                productsById.clear();
+                for (ProductDetails product : productResult.getProductDetailsList()) {
+                    productsById.put(product.getProductId(), product);
+                }
+
+                for (UnfetchedProduct missing : productResult.getUnfetchedProductList()) {
+                    Log.w("SLAYER_BILLING",
+                        "Produit non récupéré: " + missing.getProductId() +
+                        " code=" + missing.getStatusCode());
+                }
+
+                if (productsById.isEmpty()) {
+                    error("Aucun pack de jetons SLAYER n'est configuré dans Google Play.");
+                    return;
+                }
+
+                listener.onStoreReady(new ArrayList<>(productsById.values()));
             }
-            if (productResult.getProductDetailsList().isEmpty()) {
-                error("Le produit SLAYER Tokens à 0,99 $ n'est pas configuré dans Google Play.");
-                return;
-            }
-            tokenProduct = productResult.getProductDetailsList().get(0);
-            listener.onStoreReady(tokenProduct);
-        });
+        );
     }
 
-    public boolean buyTokenPack() {
-        if (!billingClient.isReady() || tokenProduct == null) {
-            error("Boutique SLAYER non prête.");
+    public ProductDetails getProduct(String productId) {
+        return productsById.get(productId);
+    }
+
+    public boolean buyTokenPack(String productId) {
+        ProductDetails product = productsById.get(productId);
+        if (!billingClient.isReady() || product == null) {
+            error("Pack SLAYER non disponible: " + productId);
             return false;
         }
 
-        ProductDetails.OneTimePurchaseOfferDetails offer =
-            tokenProduct.getOneTimePurchaseOfferDetails();
-
-        BillingFlowParams.ProductDetailsParams.Builder details =
-            BillingFlowParams.ProductDetailsParams.newBuilder()
-                .setProductDetails(tokenProduct);
-
-        if (offer != null && offer.getOfferToken() != null) {
-            details.setOfferToken(offer.getOfferToken());
+        List<ProductDetails.OneTimePurchaseOfferDetails> offers =
+            product.getOneTimePurchaseOfferDetailsList();
+        if (offers == null || offers.isEmpty()) {
+            error("Aucune offre d'achat disponible pour " + productId);
+            return false;
         }
 
+        ProductDetails.OneTimePurchaseOfferDetails offer = offers.get(0);
+        BillingFlowParams.ProductDetailsParams details =
+            BillingFlowParams.ProductDetailsParams.newBuilder()
+                .setProductDetails(product)
+                .setOfferToken(offer.getOfferToken())
+                .build();
+
         BillingFlowParams flowParams = BillingFlowParams.newBuilder()
-            .setProductDetailsParamsList(List.of(details.build()))
+            .setProductDetailsParamsList(List.of(details))
+            .setObfuscatedAccountId(currentUserHash())
             .build();
 
-        BillingUserContext.apply(flowParams, currentUserHash());
         BillingResult launch = billingClient.launchBillingFlow(activity, flowParams);
         if (launch.getResponseCode() != BillingClient.BillingResponseCode.OK) {
             error("Achat impossible: " + launch.getDebugMessage());
@@ -144,9 +184,11 @@ public final class SLAYERBillingManager implements PurchasesUpdatedListener {
 
     public void restorePurchases() {
         if (!billingClient.isReady()) return;
+
         QueryPurchasesParams params = QueryPurchasesParams.newBuilder()
-            .setProductType(ProductType.INAPP)
+            .setProductType(BillingClient.ProductType.INAPP)
             .build();
+
         billingClient.queryPurchasesAsync(params, (result, purchases) -> {
             if (result.getResponseCode() != BillingClient.BillingResponseCode.OK) return;
             for (Purchase purchase : purchases) {
@@ -172,7 +214,11 @@ public final class SLAYERBillingManager implements PurchasesUpdatedListener {
     }
 
     private void processPurchase(Purchase purchase) {
-        if (!purchase.getProducts().contains(TOKEN_PRODUCT_ID)) return;
+        String productId = purchase.getProducts().isEmpty()
+            ? null
+            : purchase.getProducts().get(0);
+
+        if (productId == null || !productsById.containsKey(productId)) return;
 
         if (purchase.getPurchaseState() == Purchase.PurchaseState.PENDING) {
             listener.onPurchasePending();
@@ -199,11 +245,12 @@ public final class SLAYERBillingManager implements PurchasesUpdatedListener {
                 }
 
                 JSONObject body = new JSONObject();
-                body.put("productId", TOKEN_PRODUCT_ID);
+                body.put("productId", productId);
                 body.put("purchaseToken", purchase.getPurchaseToken());
 
                 HttpURLConnection connection =
-                    (HttpURLConnection) URI.create(api + "/api/store/google-play/verify").toURL().openConnection();
+                    (HttpURLConnection) URI.create(api + "/api/store/google-play/verify")
+                        .toURL().openConnection();
                 connection.setRequestMethod("POST");
                 connection.setConnectTimeout(10000);
                 connection.setReadTimeout(15000);
@@ -217,24 +264,23 @@ public final class SLAYERBillingManager implements PurchasesUpdatedListener {
                 }
 
                 int status = connection.getResponseCode();
-                BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(
-                        status >= 400 ? connection.getErrorStream() : connection.getInputStream(),
-                        StandardCharsets.UTF_8));
-                StringBuilder response = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) response.append(line);
+                InputStreamReader source = new InputStreamReader(
+                    status >= 400 ? connection.getErrorStream() : connection.getInputStream(),
+                    StandardCharsets.UTF_8
+                );
+                try (BufferedReader reader = new BufferedReader(source)) {
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) response.append(line);
 
-                if (status < 200 || status >= 300) {
-                    error("Validation serveur refusée (" + status + ").");
-                    return;
+                    if (status < 200 || status >= 300) {
+                        error("Validation serveur refusée (" + status + ").");
+                        return;
+                    }
+
+                    JSONObject verified = new JSONObject(response.toString());
+                    listener.onWalletUpdated(verified.optLong("balance", 0));
                 }
-
-                JSONObject verified = new JSONObject(response.toString());
-                listener.onWalletUpdated(verified.optLong("balance", 0));
-
-                // The secure backend performs Google acknowledgement/consumption.
-                // The client intentionally never grants or consumes the purchase itself.
             } catch (Exception ex) {
                 Log.e("SLAYER_BILLING", "Purchase verification failed", ex);
                 error("Impossible de valider l'achat pour le moment.");
@@ -248,14 +294,15 @@ public final class SLAYERBillingManager implements PurchasesUpdatedListener {
     }
 
     private static String sha256(String input) {
+        if (input == null || input.isBlank()) return null;
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")
                 .digest(input.getBytes(StandardCharsets.UTF_8));
             StringBuilder out = new StringBuilder();
             for (byte b : digest) out.append(String.format("%02x", b));
-            return out.substring(0, Math.min(64, out.length()));
+            return out.toString();
         } catch (Exception e) {
-            return "";
+            return null;
         }
     }
 
@@ -266,18 +313,5 @@ public final class SLAYERBillingManager implements PurchasesUpdatedListener {
     public void stop() {
         networkExecutor.shutdownNow();
         if (billingClient.isReady()) billingClient.endConnection();
-    }
-
-    /**
-     * Android BillingFlowParams is immutable; this helper attaches the
-     * obfuscated account identifier belongs. Build-time integration can attach
-     * the hash directly once the production Billing API surface is enabled.
-     */
-    private static final class BillingUserContext {
-        static void apply(BillingFlowParams.Builder builder, String obfuscatedId) {
-            if (obfuscatedId != null && !obfuscatedId.isBlank()) {
-                builder.setObfuscatedAccountId(obfuscatedId);
-            }
-        }
     }
 }
