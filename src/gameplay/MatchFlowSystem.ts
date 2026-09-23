@@ -88,6 +88,12 @@ export class MatchFlowSystem {
           };
 
       this.restart(match, ball, players, type, restartTeam, position);
+      match.events.emit({
+        name: type === "Corner" ? "Corner" : "GoalKick",
+        matchTime: match.clock.seconds,
+        period: match.period,
+        payload: { team: restartTeam, position }
+      });
       const result: RestartResolution = { type, team: restartTeam, position };
       this.previous = { ...ball.state.position };
       return result;
@@ -104,6 +110,12 @@ export class MatchFlowSystem {
         z: Math.max(-FIELD_HALF_LENGTH, Math.min(FIELD_HALF_LENGTH, current.z))
       };
       this.restart(match, ball, players, "ThrowIn", restartTeam, position);
+      match.events.emit({
+        name: "ThrowIn",
+        matchTime: match.clock.seconds,
+        period: match.period,
+        payload: { team: restartTeam, position }
+      });
       const result: RestartResolution = { type: "ThrowIn", team: restartTeam, position };
       this.previous = { ...ball.state.position };
       return result;
