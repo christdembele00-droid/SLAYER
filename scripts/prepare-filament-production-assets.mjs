@@ -14,9 +14,13 @@ const cloudinary = {
   animation2: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790124661/slayer/players/animations/universal_animation_library_2_standard",
   fieldZip: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790111012/slayer/stadium/models/soccer_field_cc0.zip",
   environment: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790111036/slayer/stadium/ibl/orlando_stadium_1k.exr",
+  environment2: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790125054/slayer/stadium/ibl/stadium_01_1k.exr",
   grassBaseColor: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790124684/slayer/stadium/textures/leafy_grass_diff_1k.png",
   grassNormal: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790124688/slayer/stadium/textures/leafy_grass_nor_gl_1k.png",
   grassRoughness: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790124694/slayer/stadium/textures/leafy_grass_rough_1k.png",
+  jerseyBaseColor: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790125058/slayer/players/textures/kits/cotton_jersey_diff_1k.png",
+  jerseyNormal: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790125063/slayer/players/textures/kits/cotton_jersey_nor_gl_1k.png",
+  jerseyRoughness: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790125067/slayer/players/textures/kits/cotton_jersey_rough_1k.png",
 };
 
 function signedCloudinaryRawUrl(url) {
@@ -117,6 +121,10 @@ const animationFile2 = join(out, "models/animation_library_2_standard");
 const grassBaseColorFile = join(out, "textures/grass_basecolor_1k.png");
 const grassNormalFile = join(out, "textures/grass_normal_1k.png");
 const grassRoughnessFile = join(out, "textures/grass_roughness_1k.png");
+const jerseyBaseColorFile = join(out, "textures/jersey_basecolor_1k.png");
+const jerseyNormalFile = join(out, "textures/jersey_normal_1k.png");
+const jerseyRoughnessFile = join(out, "textures/jersey_roughness_1k.png");
+const envExr2 = join(tmp, "stadium_01_1k.exr");
 const fieldZip = join(tmp, "soccer_field_cc0.zip");
 const envExr = join(tmp, "orlando_stadium_1k.exr");
 
@@ -125,9 +133,13 @@ await download(cloudinary.animation, animationFile);
 await download(cloudinary.animation2, animationFile2);
 await download(cloudinary.fieldZip, fieldZip);
 await download(cloudinary.environment, envExr);
+await download(cloudinary.environment2, envExr2);
 await download(cloudinary.grassBaseColor, grassBaseColorFile);
 await download(cloudinary.grassNormal, grassNormalFile);
 await download(cloudinary.grassRoughness, grassRoughnessFile);
+await download(cloudinary.jerseyBaseColor, jerseyBaseColorFile);
+await download(cloudinary.jerseyNormal, jerseyNormalFile);
+await download(cloudinary.jerseyRoughness, jerseyRoughnessFile);
 
 // Generate geometry LODs from the same source player when the Filament host
 // tool is available. LOD assets are deliberately optional: the runtime uses
@@ -298,6 +310,14 @@ for (const file of generated) {
   await ensureFile(file, "Generated KTX asset");
 }
 
+const secondIbl = join(iblDir, "stadium_01_1k_ibl.ktx");
+const secondSkybox = join(iblDir, "stadium_01_1k_skybox.ktx");
+await exec(cmgen, ["--quiet", "-f", "ktx", "-x", iblDir, envExr2]);
+const secondIblResolved = await locateKtx(secondIbl, "_ibl");
+const secondSkyboxResolved = await locateKtx(secondSkybox, "_skybox");
+if (secondIblResolved !== secondIbl) await exec("cp", [secondIblResolved, secondIbl]);
+if (secondSkyboxResolved !== secondSkybox) await exec("cp", [secondSkyboxResolved, secondSkybox]);
+
 const manifest = {
   generated_at: new Date().toISOString(),
   source: "Cloudinary SLAYER asset catalog",
@@ -327,6 +347,15 @@ const manifest = {
       baseColor: "textures/grass_basecolor_1k.png",
       normal: "textures/grass_normal_1k.png",
       roughness: "textures/grass_roughness_1k.png"
+    },
+    jersey_pbr: {
+      baseColor: "textures/jersey_basecolor_1k.png",
+      normal: "textures/jersey_normal_1k.png",
+      roughness: "textures/jersey_roughness_1k.png"
+    },
+    secondary_stadium_ibl: {
+      ibl: "ibl/orlando_stadium/stadium_01_1k_ibl.ktx",
+      skybox: "ibl/orlando_stadium/stadium_01_1k_skybox.ktx"
     },
     ibl: { path: "ibl/orlando_stadium/orlando_stadium_1k_ibl.ktx" },
     skybox: { path: "ibl/orlando_stadium/orlando_stadium_1k_skybox.ktx" },
