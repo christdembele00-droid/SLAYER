@@ -1,0 +1,10 @@
+{
+  "version":1,
+  "id":"SLAYER_CROWD_V1",
+  "renderer":"filament-vulkan",
+  "source":"procedural-original",
+  "targetInstances":1200,
+  "lods":[{"distanceMeters":35,"mode":"full"},{"distanceMeters":65,"mode":"reduced"},{"distanceMeters":120,"mode":"impostor"}],
+  "reactions":["idle","cheer","goal","disappointed"],
+  "finalReleaseNote":"Procedural foundation only; replace with original/licensed high-detail crowd for final release."
+}
