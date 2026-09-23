@@ -826,9 +826,22 @@ struct NativeRenderer {
                 const Entity root = instance->getRoot();
                 if (!tm.hasComponent(root)) continue;
                 const auto& t = readBuffer.transforms[i];
-                tm.setTransform(tm.getInstance(root),
-                    filament::math::mat4f::translation(
-                        filament::math::float3{t.x, t.y, t.z}));
+                float facingX = 0.0f;
+                float facingZ = 1.0f;
+                if (havePreviousPlayers) {
+                    facingX = t.x - previousPlayerX[i];
+                    facingZ = t.z - previousPlayerZ[i];
+                }
+                if (std::abs(facingX) + std::abs(facingZ) < 0.0001f) {
+                    facingX = 0.0f;
+                    facingZ = 1.0f;
+                }
+                const float facingAngle = std::atan2(facingX, facingZ);
+                const auto rotation = filament::math::mat4f::rotation(
+                    facingAngle, filament::math::float3{0.0f, 1.0f, 0.0f});
+                const auto translation = filament::math::mat4f::translation(
+                    filament::math::float3{t.x, t.y, t.z});
+                tm.setTransform(tm.getInstance(root), translation * rotation);
             }
         }
 
@@ -887,7 +900,13 @@ struct NativeRenderer {
                 if (playerAnimationAccumulator[i] >= interval && animationControllers[i]) {
                     const float animationDt = playerAnimationAccumulator[i];
                     playerAnimationAccumulator[i] = 0.0f;
-                    animationControllers[i]->update(speed, false, false, animationDt);
+                    const uint32_t actionId = current.anim_id;
+                    const bool kick =
+                        actionId == static_cast<uint32_t>(slayer::PlayerAction::Pass) ||
+                        actionId == static_cast<uint32_t>(slayer::PlayerAction::Shoot);
+                    const bool tackle =
+                        actionId == static_cast<uint32_t>(slayer::PlayerAction::Tackle);
+                    animationControllers[i]->update(speed, kick, tackle, animationDt);
                 }
             }
             havePreviousPlayers = true;
