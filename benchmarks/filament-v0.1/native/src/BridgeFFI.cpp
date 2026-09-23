@@ -242,16 +242,16 @@ struct NativeRenderer {
 
         // Stadium-style ground plane for the first PBR lighting milestone.
         static constexpr float terrainVertices[] = {
-            -12.0f, 0.0f, -8.0f,
-             12.0f, 0.0f, -8.0f,
-             12.0f, 0.0f,  8.0f,
-            -12.0f, 0.0f,  8.0f
+            -52.5f, 0.0f, -34.0f,
+             52.5f, 0.0f, -34.0f,
+             52.5f, 0.0f,  34.0f,
+            -52.5f, 0.0f,  34.0f
         };
         static constexpr float terrainUv[] = {
             0.0f, 0.0f,
-            6.0f, 0.0f,
-            6.0f, 4.0f,
-            0.0f, 4.0f
+            21.0f, 0.0f,
+            21.0f, 13.6f,
+            0.0f, 13.6f
         };
         static constexpr uint16_t terrainIndices[] = {0, 1, 2, 0, 2, 3};
 
@@ -289,7 +289,7 @@ struct NativeRenderer {
         terrainEntity = engine->getEntityManager().create();
 
         RenderableManager::Builder(1)
-            .boundingBox({{-12.0f, -0.05f, -8.0f}, {12.0f, 0.05f, 8.0f}})
+            .boundingBox({{-52.5f, -0.05f, -34.0f}, {52.5f, 0.05f, 34.0f}})
             .material(0, materialInstance)
             .geometry(0, RenderableManager::PrimitiveType::TRIANGLES,
                       terrainVertexBuffer, terrainIndexBuffer, 0, 6)
