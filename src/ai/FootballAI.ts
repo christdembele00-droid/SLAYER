@@ -134,11 +134,6 @@ export class FootballAI{
       }
 
       const sameTeam=owner?.data.teamId===p.data.teamId;
-      const nearestHomeOrAway=ps.all()
-        .filter(x=>x.data.teamId!==p.data.teamId)
-        .sort((a,b)=>distance({x:a.state.position.x,z:a.state.position.z},ballPos)-distance({x:b.state.position.x,z:b.state.position.z}))[0];
-      const isBallChaser=!owner && dBall===Math.min(...ps.all().filter(x=>x.data.teamId===p.data.teamId).map(x=>distance({x:x.state.position.x,z:x.state.position.z},ballPos)));
-
       if(!owner){
         if(p.data.playerId===nearestBallPlayer?.data.playerId && dBall<1.5){
           p.state.lastIntent=this.intent(w.ball.x-p.state.position.x,w.ball.z-p.state.position.z,"Control",.35,dBall>.7);
