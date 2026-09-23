@@ -33,7 +33,6 @@ void MatchEngine::reset(){
     state_.phase=MatchPhase::FirstHalf;
     state_.selected=9;
     input_.selectedPlayer=9;
-    state_.selected=9;
     secondAccumulator_=fixedAccumulator_=phaseAccumulator_=0;
 }
 
