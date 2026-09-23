@@ -1,14 +1,18 @@
 #pragma once
+
+#include <algorithm>
+
 #include <filament/Engine.h>
 #include <filament/View.h>
 #include <filament/Renderer.h>
+
 #include "slayer_settings.h"
+#include "SLAYERGraphicsProfile.hpp"
 
 namespace slayer {
 
-// Centralized mobile rendering policy. The renderer remains Vulkan/PBR; this
-// function only changes quality/performance knobs so every scene uses the
-// same policy.
+// Centralized mobile rendering policy. The renderer remains Vulkan/PBR;
+// this function selects a coherent quality profile for every scene.
 inline void applyMobileQuality(
         filament::Engine* engine,
         filament::View* view,
@@ -16,65 +20,68 @@ inline void applyMobileQuality(
         const SlayerSettings& s) {
     if (!engine || !view || !renderer) return;
 
+    const auto q = graphics::profile(s.quality);
+
     filament::View::DynamicResolutionOptions drs{};
     drs.enabled = s.dynamicResolution;
     drs.homogeneousScaling = true;
-
-    switch (s.quality) {
-        case QualityMode::Low:
-            drs.minScale = 0.55f;
-            drs.maxScale = 0.80f;
-            drs.sharpness = 0.55f;
-            drs.quality = filament::QualityLevel::LOW;
-            break;
-        case QualityMode::Medium:
-            drs.minScale = 0.65f;
-            drs.maxScale = 0.90f;
-            drs.sharpness = 0.65f;
-            drs.quality = filament::QualityLevel::LOW;
-            break;
-        case QualityMode::High:
-            drs.minScale = 0.75f;
-            drs.maxScale = 1.00f;
-            drs.sharpness = 0.75f;
-            drs.quality = filament::QualityLevel::MEDIUM;
-            break;
-        case QualityMode::Ultra:
-            drs.minScale = 0.85f;
-            drs.maxScale = 1.00f;
-            drs.sharpness = 0.85f;
-            drs.quality = filament::QualityLevel::HIGH;
-            break;
-    }
+    drs.minScale = q.minResolutionScale;
+    drs.maxScale = q.maxResolutionScale;
+    drs.sharpness = q.sharpness;
+    drs.quality = s.quality == QualityMode::Ultra
+        ? filament::QualityLevel::HIGH
+        : s.quality == QualityMode::High
+            ? filament::QualityLevel::MEDIUM
+            : filament::QualityLevel::LOW;
     view->setDynamicResolutionOptions(drs);
 
     filament::Renderer::FrameRateOptions fps{};
     fps.interval = s.targetFps <= 30 ? 2 : 1;
-    fps.headRoomRatio = s.quality == QualityMode::Low ? 0.12f : 0.05f;
+    fps.headRoomRatio = s.quality == QualityMode::Low ? 0.12f
+                                                       : s.quality == QualityMode::Ultra ? 0.035f : 0.05f;
     fps.scaleRate = 0.125f;
-    fps.history = 15;
+    fps.history = s.quality == QualityMode::Ultra ? 20 : 15;
     renderer->setFrameRateOptions(fps);
 
-    // Temporal AA is valuable for the broadcast camera and thin stadium
-    // geometry. Keep it disabled only on Low to protect frame time.
     filament::View::TemporalAntiAliasingOptions taa{};
     taa.enabled = s.quality != QualityMode::Low;
-    taa.feedback = s.quality == QualityMode::Ultra ? 0.08f : 0.12f;
+    taa.feedback = q.taaFeedback;
     taa.filterWidth = 1.0f;
     view->setTemporalAntiAliasingOptions(taa);
 
-    // PCF is the baseline mobile shadow path. Higher presets can use the
-    // higher quality shadow path exposed by Filament without changing assets.
-    switch (s.quality) {
-        case QualityMode::Low:
-            view->setShadowType(filament::View::ShadowType::PCF);
-            break;
-        case QualityMode::Medium:
-        case QualityMode::High:
-        case QualityMode::Ultra:
-            view->setShadowType(filament::View::ShadowType::PCF);
-            break;
-    }
+    filament::View::AmbientOcclusionOptions ao{};
+    ao.aoType = filament::View::AmbientOcclusionOptions::AmbientOcclusionType::GTAO;
+    ao.radius = q.aoRadius;
+    ao.power = q.aoPower;
+    ao.resolution = q.aoResolution;
+    ao.intensity = s.quality == QualityMode::Low ? 0.65f : 1.0f;
+    ao.quality = s.quality == QualityMode::Ultra
+        ? filament::QualityLevel::MEDIUM
+        : filament::QualityLevel::LOW;
+    ao.lowPassFilter = s.quality == QualityMode::Ultra
+        ? filament::QualityLevel::HIGH
+        : filament::QualityLevel::MEDIUM;
+    ao.upsampling = s.quality == QualityMode::Ultra
+        ? filament::QualityLevel::MEDIUM
+        : filament::QualityLevel::LOW;
+    ao.enabled = s.quality != QualityMode::Low || q.aoPower > 0.0f;
+    view->setAmbientOcclusionOptions(ao);
+
+    filament::View::BloomOptions bloom{};
+    bloom.enabled = q.bloomStrength > 0.0f;
+    bloom.strength = q.bloomStrength;
+    bloom.resolution = q.bloomResolution;
+    bloom.levels = q.bloomLevels;
+    bloom.threshold = true;
+    bloom.quality = s.quality == QualityMode::Ultra
+        ? filament::QualityLevel::MEDIUM
+        : filament::QualityLevel::LOW;
+    bloom.highlight = s.quality == QualityMode::Ultra ? 650.0f : 800.0f;
+    view->setBloomOptions(bloom);
+
+    // PCF is the stable baseline for a wide range of mobile Vulkan GPUs.
+    // The geometry/material/IBL pipeline still scales with the chosen profile.
+    view->setShadowType(filament::View::ShadowType::PCF);
 }
 
 } // namespace slayer
