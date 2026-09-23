@@ -21,6 +21,7 @@ const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
 const distance=(a:{x:number;z:number},b:{x:number;z:number})=>Math.hypot(a.x-b.x,a.z-b.z);
 
 export class FootballAI{
+  private readonly lastPassTime=new Map<string,number>();
   world(ps:PlayerSystem,b:Ball,time:number):WorldModel{
     return{
       time,
@@ -77,6 +78,13 @@ export class FootballAI{
     const w=this.world(ps,b,time);
     const ownerId=b.state.controlledByPlayerId;
     const owner=ownerId?ps.get(ownerId):undefined;
+    const ballTarget={x:w.ball.x,z:w.ball.z};
+    const nearestBallPlayer=ps.all().reduce<Player|undefined>((best,p)=>{
+      if(!best)return p;
+      const d=distance({x:p.state.position.x,z:p.state.position.z},ballTarget);
+      const bd=distance({x:best.state.position.x,z:best.state.position.z},ballTarget);
+      return d<bd?p:best;
+    },undefined);
 
     for(const p of ps.all()){
       const isOwner=p.data.playerId===ownerId;
@@ -91,14 +99,36 @@ export class FootballAI{
         const shootChance=p.data.technical.shooting>=72 && goalDistance<25 && Math.abs(w.ball.x)<22;
 
         if(shootChance){
-          const gx=-w.ball.x*.12;
+          const gx=-w.ball.x*.10;
           const gz=goalZ-w.ball.z;
           p.state.lastIntent=this.intent(gx,gz,"Shoot",.78,true);
         }else{
-          const nextLaneX=p.data.position==="LW"?-18:p.data.position==="RW"?18:0;
-          const dx=nextLaneX-w.ball.x*.28;
-          const dz=forward*24;
-          p.state.lastIntent=this.intent(dx,dz,"None",0,dBall<8 && p.state.stamina>55);
+          const teammates=ps.all()
+            .filter(x=>x.data.teamId===p.data.teamId && x.data.playerId!==p.data.playerId)
+            .map(x=>({
+              p:x,
+              distance:distance({x:x.state.position.x,z:x.state.position.z},{x:p.state.position.x,z:p.state.position.z}),
+              forward:forward*(x.state.position.z-p.state.position.z)
+            }))
+            .filter(x=>x.distance<28 && x.forward>1)
+            .sort((a,b)=>b.forward-a.forward);
+          const pressure=ps.all().some(x=>x.data.teamId!==p.data.teamId &&
+            distance({x:x.state.position.x,z:x.state.position.z},{x:p.state.position.x,z:p.state.position.z})<4.2);
+          const lastPass=this.lastPassTime.get(p.data.playerId)??-99;
+          const target=teammates[0]?.p;
+          if(target && time-lastPass>1.25 && (pressure || goalDistance>28)){
+            this.lastPassTime.set(p.data.playerId,time);
+            p.state.lastIntent=this.intent(
+              target.state.position.x-p.state.position.x,
+              target.state.position.z-p.state.position.z,
+              "Pass",.65,false
+            );
+          }else{
+            const nextLaneX=p.data.position==="LW"?-18:p.data.position==="RW"?18:0;
+            const dx=nextLaneX-w.ball.x*.28;
+            const dz=forward*24;
+            p.state.lastIntent=this.intent(dx,dz,"None",0,dBall<8 && p.state.stamina>55);
+          }
         }
         continue;
       }
@@ -110,10 +140,10 @@ export class FootballAI{
       const isBallChaser=!owner && dBall===Math.min(...ps.all().filter(x=>x.data.teamId===p.data.teamId).map(x=>distance({x:x.state.position.x,z:x.state.position.z},ballPos)));
 
       if(!owner){
-        if(isBallChaser || dBall<2.4){
-          p.state.lastIntent=this.intent(w.ball.x-p.state.position.x,w.ball.z-p.state.position.z,"Control",.35,dBall>5);
+        if(p.data.playerId===nearestBallPlayer?.data.playerId && dBall<1.5){
+          p.state.lastIntent=this.intent(w.ball.x-p.state.position.x,w.ball.z-p.state.position.z,"Control",.35,dBall>.7);
         }else{
-          p.state.lastIntent=this.setFormationIntent(p,w,false);
+          p.state.lastIntent=this.setFormationIntent(p,w,p.data.teamId==="home");
         }
         continue;
       }
