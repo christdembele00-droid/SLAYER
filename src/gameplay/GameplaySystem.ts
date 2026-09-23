@@ -2,6 +2,7 @@ import { PlayerSystem } from "../player/PlayerSystem";
 import { Ball } from "../ball/Ball";
 import { InteractionSystem } from "../interaction/InteractionSystem";
 import { GameplayAction, GameplayResult } from "./GameplayTypes";
+import { foulDecision } from "./MatchRules";
 
 export class GameplaySystem {
   constructor(private readonly interactions: InteractionSystem) {}
@@ -44,6 +45,34 @@ export class GameplaySystem {
       const tackling=Math.max(0,Math.min(100,p.data.technical.tackling));
       const chance=(tackling/100)*(.55+Math.min(1,p.data.physical.agility/100)*.25);
       if(Math.random()>chance)return {success:false,action,quality:chance,reason:"tackle_missed"};
+
+      const relativeSpeed=Math.hypot(
+        p.state.velocity.x-owner.state.velocity.x,
+        p.state.velocity.z-owner.state.velocity.z
+      );
+      const defendingPenaltyArea=p.data.teamId==="home"
+        ? owner.state.position.z <= -36
+        : owner.state.position.z >= 36;
+      const foulChance=(action==="SlideTackle"?.28:action==="StandingTackle"?.12:.08) +
+        Math.min(.12,relativeSpeed*.015);
+      if(Math.random()<foulChance){
+        const decision=foulDecision(Math.max(relativeSpeed,1.6),defendingPenaltyArea);
+        if(decision.severity!=="none"){
+          owner.state.action="ProtectBall";
+          p.state.action=action;
+          ball.state.controlledByPlayerId=undefined;
+          ball.state.state="Free";
+          ball.state.velocity={x:0,y:0,z:0};
+          ball.state.position={...owner.state.position,y:0.11};
+          return {
+            success:false,
+            action,
+            quality:1,
+            reason:decision.type==="penalty"?"penalty_awarded":"foul"
+          };
+        }
+      }
+
       owner.state.ballMode="NoBall";
       owner.state.ballProtection=0;
       p.state.ballProtection=Math.min(100,p.data.technical.ballControl*0.5+p.data.physical.strength*0.5);
