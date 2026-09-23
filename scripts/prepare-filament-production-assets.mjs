@@ -101,21 +101,48 @@ async function prepareModelFromZip(zipFile, destination, label) {
 
   const gltfEntry = entries.find(x => x.toLowerCase().endsWith(".gltf"));
   const objEntry = entries.find(x => x.toLowerCase().endsWith(".obj"));
-  const sourceEntry = gltfEntry || objEntry;
-  const tool = await findExecutable("gltfpack");
-  if (!sourceEntry || !tool) {
-    throw new Error("Unable to convert " + label + ": no GLB and no gltfpack-compatible model.");
-  }
+  const fbxEntry = entries.find(x => x.toLowerCase().endsWith(".fbx"));
+  const sourceEntry = gltfEntry || objEntry || fbxEntry;
+  if (!sourceEntry) throw new Error("Unable to convert " + label + ": archive has no supported 3D source.");
 
   const extractDir = join(tmp, label.replace(/[^a-z0-9_-]/gi, "_"));
   await mkdir(extractDir, { recursive: true });
   await exec("unzip", ["-q", zipFile, "-d", extractDir]);
   const sourcePath = join(extractDir, sourceEntry);
-  await exec(tool, ["-i", sourcePath, "-o", destination, "-noq"], {
-    maxBuffer: 64 * 1024 * 1024,
+
+  const gltfpack = await findExecutable("gltfpack");
+  if (gltfEntry && gltfpack) {
+    await exec(gltfpack, ["-i", sourcePath, "-o", destination, "-noq"], {
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    await ensureFile(destination, label);
+    return { mode: "gltfpack", source: sourceEntry };
+  }
+
+  const blender = await findExecutable("blender");
+  if (!blender) throw new Error("Unable to convert " + label + ": Blender is required when gltfpack is unavailable.");
+
+  const blenderScript = join(extractDir, "export_to_glb.py");
+  await writeFile(
+    blenderScript,
+    [
+      "import bpy, sys",
+      "sep = sys.argv.index('--')",
+      "src = sys.argv[sep + 1]",
+      "dst = sys.argv[sep + 2]",
+      "bpy.ops.wm.read_factory_settings(use_empty=True)",
+      "if src.lower().endswith('.fbx'): bpy.ops.import_scene.fbx(filepath=src, use_custom_normals=True)",
+      "elif src.lower().endswith('.obj'): bpy.ops.wm.obj_import(filepath=src)",
+      "elif src.lower().endswith('.gltf'): bpy.ops.import_scene.gltf(filepath=src)",
+      "else: raise RuntimeError('unsupported source format')",
+      "bpy.ops.export_scene.gltf(filepath=dst, export_format='GLB', export_image_format='AUTO', export_materials='EXPORT', export_cameras=False, export_lights=False)"
+    ].join("\n")
+  );
+  await exec(blender, ["--background", "--python", blenderScript, "--", sourcePath, destination], {
+    maxBuffer: 128 * 1024 * 1024,
   });
   await ensureFile(destination, label);
-  return { mode: "converted", source: sourceEntry };
+  return { mode: "blender", source: sourceEntry };
 }
 
 await mkdir(out, { recursive: true });
