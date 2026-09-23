@@ -20,11 +20,35 @@ def _initialize_firebase() -> None:
                 )
             else:
                 firebase_admin.initialize_app(credentials.Certificate(value))
-        else:
-            firebase_admin.initialize_app()
+            return
+
+        project_id = os.getenv("FIREBASE_PROJECT_ID", "").strip()
+        client_email = os.getenv("FIREBASE_CLIENT_EMAIL", "").strip()
+        private_key = os.getenv("FIREBASE_PRIVATE_KEY", "").strip()
+
+        if project_id and client_email and private_key:
+            info = {
+                "type": "service_account",
+                "project_id": project_id,
+                "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID", "").strip(),
+                "private_key": private_key.replace("\\n", "\n"),
+                "client_email": client_email,
+                "client_id": os.getenv("FIREBASE_CLIENT_ID", "").strip(),
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                "client_x509_cert_url": os.getenv("FIREBASE_CLIENT_X509_CERT_URL", "").strip(),
+                "universe_domain": "googleapis.com",
+            }
+            firebase_admin.initialize_app(credentials.Certificate(info))
+            return
+
+        # Google credentials provided by the runtime environment may be
+        # available on managed platforms. Keep this as a fallback.
+        firebase_admin.initialize_app()
     except Exception:
-        # Production must provide Firebase credentials; auth remains unavailable
-        # when the service account is missing or invalid.
+        # Production must provide usable Firebase credentials.
+        # Auth remains unavailable when credentials are missing or invalid.
         return
 
 
