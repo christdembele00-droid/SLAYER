@@ -151,25 +151,46 @@ struct NativeRenderer {
 
     void applySettings() {
         if (!engine || !view || !camera || !renderer) return;
-        slayer::applyMobileQuality(engine, view, renderer, settings);
+
+        // Conservative Android startup path. Keep Vulkan scene creation and
+        // camera/light setup independent from optional post-processing features;
+        // unsupported combinations of GTAO/TAA/bloom on mobile drivers must not
+        // be able to terminate the match before its first frame.
         const bool night = settings.time == slayer::TimeMode::Night;
         const bool twilight = settings.time == slayer::TimeMode::Twilight;
         auto& lm = engine->getLightManager();
+
         if (lm.hasComponent(sunEntity)) {
             auto li = lm.getInstance(sunEntity);
             lm.setIntensity(li, night ? 9000.0f : twilight ? 38000.0f : 90000.0f);
         }
         for (Entity e : floodlightEntities) if (lm.hasComponent(e)) {
-            auto li=lm.getInstance(e);
+            auto li = lm.getInstance(e);
             lm.setIntensity(li, night ? 36000.0f : twilight ? 22000.0f : 12000.0f);
         }
+
         switch(settings.camera) {
-            case slayer::CameraMode::Broadcast: camera->lookAt({0.0,18.0,24.0},{0.0,0.0,0.0}); break;
-            case slayer::CameraMode::Dynamic: camera->lookAt({0.0,8.5,15.5},{0.0,1.0,0.0}); break;
-            case slayer::CameraMode::Overview: camera->lookAt({0.0,30.0,2.0},{0.0,0.0,0.0}); break;
-            case slayer::CameraMode::Pro: camera->lookAt({0.0,5.0,11.5},{0.0,1.0,0.0}); break;
-            case slayer::CameraMode::Custom: camera->lookAt({6.0,9.0,14.0},{0.0,1.0,0.0}); break;
+            case slayer::CameraMode::Broadcast:
+                if (broadcastCamera) view->setCamera(broadcastCamera->getCamera());
+                break;
+            case slayer::CameraMode::Dynamic:
+            case slayer::CameraMode::Overview:
+            case slayer::CameraMode::Pro:
+            case slayer::CameraMode::Custom:
+                view->setCamera(camera);
+                break;
         }
+
+        if (settings.camera == slayer::CameraMode::Overview) {
+            camera->lookAt({0.0,30.0,2.0},{0.0,0.0,0.0});
+        } else if (settings.camera == slayer::CameraMode::Pro) {
+            camera->lookAt({0.0,5.0,11.5},{0.0,1.0,0.0});
+        } else if (settings.camera == slayer::CameraMode::Custom) {
+            camera->lookAt({6.0,9.0,14.0},{0.0,1.0,0.0});
+        } else if (settings.camera == slayer::CameraMode::Dynamic) {
+            camera->lookAt({0.0,8.5,15.5},{0.0,1.0,0.0});
+        }
+
         applyWeatherVisuals();
     }
 
@@ -203,52 +224,22 @@ struct NativeRenderer {
         broadcastCamera = std::make_unique<Slayer::Camera::BroadcastCamera>(engine);
         view->setScene(scene);
         view->setCamera(camera);
-        view->setPostProcessingEnabled(true);
-        view->setAntiAliasing(View::AntiAliasing::FXAA);
-        colorGrading = ColorGrading::Builder()
-            .toneMapper(&acesToneMapper)
-            .quality(ColorGrading::QualityLevel::MEDIUM)
-            .build(*engine);
-        if (colorGrading) view->setColorGrading(colorGrading);
-        if (broadcastCamera) view->setCamera(broadcastCamera->getCamera());
-        View::TemporalAntiAliasingOptions taa{};
-        taa.enabled = true;
-        taa.feedback = 0.12f;
-        taa.filterWidth = 1.0f;
-        view->setTemporalAntiAliasingOptions(taa);
-        View::DynamicResolutionOptions drs{};
-        drs.enabled = true;
-        drs.homogeneousScaling = true;
-        drs.minScale = 0.70f;
-        drs.maxScale = 1.0f;
-        drs.sharpness = 0.7f;
-        view->setDynamicResolutionOptions(drs);
-        view->setDynamicLightingOptions(1.0f, 80.0f);
-        view->setShadowType(View::ShadowType::PCF);
 
-        // Mobile-quality post processing: GTAO adds contact depth, while a restrained
-        // bloom pass gives the floodlights and bright kit highlights a real HDR response.
-        View::AmbientOcclusionOptions ao{};
-        ao.aoType = View::AmbientOcclusionOptions::AmbientOcclusionType::GTAO;
-        ao.radius = 0.45f;
-        ao.power = 1.15f;
-        ao.resolution = 0.5f;
-        ao.intensity = 1.0f;
-        ao.quality = QualityLevel::LOW;
-        ao.lowPassFilter = QualityLevel::MEDIUM;
-        ao.upsampling = QualityLevel::LOW;
-        ao.enabled = true;
-        view->setAmbientOcclusionOptions(ao);
+        // Keep first-frame Android startup deliberately minimal. Advanced
+        // post-processing and dynamic-resolution settings are enabled only
+        // after the basic Vulkan renderer is stable.
+        view->setPostProcessingEnabled(false);
 
-        View::BloomOptions bloom{};
-        bloom.enabled = true;
-        bloom.strength = 0.08f;
-        bloom.resolution = 256;
-        bloom.levels = 5;
-        bloom.threshold = true;
-        bloom.quality = QualityLevel::LOW;
-        bloom.highlight = 800.0f;
-        view->setBloomOptions(bloom);
+        camera->setProjection(
+            45.0,
+            1.0,
+            0.1, 200.0,
+            Camera::Fov::VERTICAL);
+        camera->lookAt(
+            {0.0f, 6.0f, 12.0f},
+            {0.0f, 1.0f, 0.0f},
+            {0.0f, 1.0f, 0.0f});
+        broadcastCamera->setAspectRatio(1.0f);
 
         // Stadium-style ground plane for the first PBR lighting milestone.
         static constexpr float terrainVertices[] = {
@@ -375,7 +366,6 @@ struct NativeRenderer {
         }
 
         setSize(1, 1);
-        applySettings();
         lastFrame = Clock::now();
         return true;
     }
