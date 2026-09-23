@@ -44,6 +44,8 @@ export class PlayerMesh{
   private activeClip="";
   private static heroPromise:Promise<THREE.Group>|null=null;
   private static animationPromise:Promise<THREE.AnimationClip[]>|null=null;
+  private static productionAssetsEnabled=import.meta.env.VITE_SLAYER_PRODUCTION_ASSETS==="1";
+  private static productionLoadStarted=false;
 
   constructor(player:Player){
     this.object.userData.playerId=player.data.playerId;
@@ -158,7 +160,10 @@ export class PlayerMesh{
     this.numberMesh=number;
     this.object.add(number);
 
-    void this.loadProductionVisual();
+    if(PlayerMesh.productionAssetsEnabled && !PlayerMesh.productionLoadStarted){
+      PlayerMesh.productionLoadStarted=true;
+      void this.loadProductionVisual();
+    }
 
     this.object.traverse(o=>{
       const m=o as THREE.Mesh;
@@ -220,7 +225,7 @@ export class PlayerMesh{
       const idle=this.clips.get("Idle");
       if(idle){idle.play();this.activeClip="Idle";}
     }catch(error){
-      console.warn("[SLAYER] Production player GLB unavailable; procedural player retained.",error);
+      console.warn("[SLAYER assets] Optional player GLB unavailable; procedural player retained.");
     }
   }
 
