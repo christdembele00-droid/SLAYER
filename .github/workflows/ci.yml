@@ -15,11 +15,11 @@ jobs:
   web:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: git diff --check
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
       - run: npm install
       - name: Audit JavaScript dependencies
         run: npm audit --audit-level=moderate
@@ -29,12 +29,14 @@ jobs:
   server:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install -r server/requirements.txt
       - run: python -m compileall server
+      - name: Build server container
+        run: docker build -f server/Dockerfile .
       - run: python -m unittest discover -s server -p "test_*.py"
 
   filament:
@@ -42,7 +44,7 @@ jobs:
     env:
       CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: git diff --check
       - uses: actions/setup-java@v5
         with:
@@ -70,9 +72,11 @@ jobs:
       - name: Prepare Cloudinary assets and Filament IBL
         run: node scripts/prepare-filament-production-assets.mjs
       - name: Build native Filament debug APK
-        run: gradle -p benchmarks/filament-v0.1/android assembleDebug --no-daemon
+        run: gradle -p benchmarks/filament-v0.1/android assembleDebug assembleRelease --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: SLAYER-Native-${{ github.sha }}
           path: |
             benchmarks/filament-v0.1/android/app/build/outputs/apk/debug/*.apk
+            benchmarks/filament-v0.1/android/app/build/outputs/apk/release/*.apk
+            benchmarks/filament-v0.1/android/app/build/outputs/bundle/release/*.aab
