@@ -18,7 +18,7 @@ android {
         minSdk 24
         targetSdk 37
 
-        buildConfigField "String", "SLAYER_API_URL", "\\"" + slayerApiUrl.replace("\\", "\\\\").replace("\"", "\\\"") + "\\""
+        buildConfigField "String", "SLAYER_API_URL", "\"" + slayerApiUrl + "\""
         versionCode slayerVersionCode
         versionName slayerVersionName
 
