@@ -99,11 +99,30 @@ async function prepareModelFromZip(zipFile, destination, label) {
     return { mode: "glb", source: glbEntry };
   }
 
-  const gltfEntry = entries.find(x => x.toLowerCase().endsWith(".gltf"));
-  const objEntry = entries.find(x => x.toLowerCase().endsWith(".obj"));
-  const fbxEntry = entries.find(x => x.toLowerCase().endsWith(".fbx"));
-  const sourceEntry = gltfEntry || objEntry || fbxEntry;
-  if (!sourceEntry) throw new Error("Unable to convert " + label + ": archive has no supported 3D source.");
+  const sourceMatchers = [
+    [".gltf", "gltf"],
+    [".obj", "obj"],
+    [".fbx", "fbx"],
+    [".blend", "blend"],
+    [".dae", "dae"],
+    [".3ds", "3ds"],
+    [".ply", "ply"],
+    [".stl", "stl"],
+    [".x3d", "x3d"],
+  ];
+  const sourceMatch = sourceMatchers
+    .map(([extension, format]) => ({
+      format,
+      entry: entries.find(x => x.toLowerCase().endsWith(extension)),
+    }))
+    .find(x => x.entry);
+  if (!sourceMatch) {
+    throw new Error(
+      "Unable to convert " + label + ": archive has no supported 3D source. Entries:\n" +
+      entries.join("\n")
+    );
+  }
+  const { entry: sourceEntry, format: sourceFormat } = sourceMatch;
 
   const extractDir = join(tmp, label.replace(/[^a-z0-9_-]/gi, "_"));
   await mkdir(extractDir, { recursive: true });
@@ -111,7 +130,7 @@ async function prepareModelFromZip(zipFile, destination, label) {
   const sourcePath = join(extractDir, sourceEntry);
 
   const gltfpack = await findExecutable("gltfpack");
-  if (gltfEntry && gltfpack) {
+  if (sourceFormat === "gltf" && gltfpack) {
     await exec(gltfpack, ["-i", sourcePath, "-o", destination, "-noq"], {
       maxBuffer: 64 * 1024 * 1024,
     });
@@ -120,7 +139,7 @@ async function prepareModelFromZip(zipFile, destination, label) {
   }
 
   const blender = await findExecutable("blender");
-  if (!blender) throw new Error("Unable to convert " + label + ": Blender is required when gltfpack is unavailable.");
+  if (!blender) throw new Error("Unable to convert " + label + ": Blender is required for this source format.");
 
   const blenderScript = join(extractDir, "export_to_glb.py");
   await writeFile(
@@ -131,9 +150,15 @@ async function prepareModelFromZip(zipFile, destination, label) {
       "src = sys.argv[sep + 1]",
       "dst = sys.argv[sep + 2]",
       "bpy.ops.wm.read_factory_settings(use_empty=True)",
-      "if src.lower().endswith('.fbx'): bpy.ops.import_scene.fbx(filepath=src, use_custom_normals=True)",
+      "if src.lower().endswith('.blend'): bpy.ops.wm.open_mainfile(filepath=src, load_ui=False)",
+      "elif src.lower().endswith('.fbx'): bpy.ops.import_scene.fbx(filepath=src, use_custom_normals=True)",
       "elif src.lower().endswith('.obj'): bpy.ops.wm.obj_import(filepath=src)",
       "elif src.lower().endswith('.gltf'): bpy.ops.import_scene.gltf(filepath=src)",
+      "elif src.lower().endswith('.dae'): bpy.ops.wm.collada_import(filepath=src)",
+      "elif src.lower().endswith('.3ds'): bpy.ops.import_scene.autodesk_3ds(filepath=src)",
+      "elif src.lower().endswith('.ply'): bpy.ops.wm.ply_import(filepath=src)",
+      "elif src.lower().endswith('.stl'): bpy.ops.wm.stl_import(filepath=src)",
+      "elif src.lower().endswith('.x3d'): bpy.ops.import_scene.x3d(filepath=src)",
       "else: raise RuntimeError('unsupported source format')",
       "bpy.ops.export_scene.gltf(filepath=dst, export_format='GLB', export_image_format='AUTO', export_materials='EXPORT', export_cameras=False, export_lights=False)"
     ].join("\n")
