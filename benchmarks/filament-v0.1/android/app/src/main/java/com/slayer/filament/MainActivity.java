@@ -54,6 +54,8 @@ public final class MainActivity extends Activity {
     private static native boolean nativeLoadSkybox(byte[] data);
     private static native boolean nativeLoadPlayer(byte[] data);
     private static native boolean nativeLoadStadium(byte[] data);
+    private static native boolean nativeLoadBall(byte[] data);
+    private static native boolean nativeLoadGoal(byte[] data);
     private static native float nativeGetFps();
     private static native float nativeGetFrameMs();
     private static native int nativeGetDrawCalls();
@@ -353,6 +355,7 @@ public final class MainActivity extends Activity {
             loadBundledEnvironment();
             loadBundledTerrainMaterial();
             loadBundledStadium();
+            loadBundledBallAndGoals();
             loadBundledPlayer();
             android.util.Log.i("SLAYER", "Native match renderer initialized");
         } else {
@@ -612,6 +615,22 @@ public final class MainActivity extends Activity {
             if (!nativeLoadTerrainMaterial(output.toByteArray())) android.util.Log.w("SLAYER", "materials/grass.filamat could not be loaded");
         } catch (IOException e) {
             android.util.Log.i("SLAYER", "No compiled grass material yet; keeping default terrain");
+        }
+    }
+
+    private void loadBundledBallAndGoals() {
+        try {
+            byte[] ball = readAssetBytes("models/ball.glb");
+            if (!nativeLoadBall(ball)) android.util.Log.w("SLAYER", "Bundled ball asset could not be loaded");
+        } catch (IOException e) {
+            android.util.Log.i("SLAYER", "No bundled production ball asset");
+        }
+
+        try {
+            byte[] goal = readAssetBytes("models/goal.glb");
+            if (!nativeLoadGoal(goal)) android.util.Log.w("SLAYER", "Bundled goal asset could not be loaded");
+        } catch (IOException e) {
+            android.util.Log.i("SLAYER", "No bundled production goal asset");
         }
     }
 
