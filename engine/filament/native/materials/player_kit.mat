@@ -8,7 +8,7 @@ material {
         { type : float, name : roughnessScale },
         { type : float, name : metallic }
     ],
-    requires : [ uv0, tangent ],
+    requires : [ uv0, tangents ],
     shadingModel : lit,
     blending : opaque
 }
