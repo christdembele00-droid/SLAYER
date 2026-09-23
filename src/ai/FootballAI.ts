@@ -74,13 +74,12 @@ export class FootballAI{
   }
 
   update(ps:PlayerSystem,b:Ball,time:number):void{
-    const w=this.world(ps,b);
+    const w=this.world(ps,b,time);
     const ownerId=b.state.controlledByPlayerId;
     const owner=ownerId?ps.get(ownerId):undefined;
 
     for(const p of ps.all()){
       const isOwner=p.data.playerId===ownerId;
-      const attacking=owner?.data.teamId===p.data.teamId;
       const pPos={x:p.state.position.x,z:p.state.position.z};
       const ballPos={x:w.ball.x,z:w.ball.z};
       const dBall=distance(pPos,ballPos);
@@ -148,8 +147,6 @@ export class FootballAI{
         }
       }
 
-      void nearestHomeOrAway;
-      void opponents;
     }
   }
 }
