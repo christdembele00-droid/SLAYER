@@ -41,6 +41,7 @@ public final class MainActivity extends Activity {
     private boolean matchStarted = false;
     private boolean nativeReady = false;
     private FrameLayout gameControls = null;
+    private SlayerMenuController menuController;
 
     private static native boolean nativeCreate(android.view.Surface surface);
     private static native boolean nativeLoadTerrainMaterial(byte[] data);
