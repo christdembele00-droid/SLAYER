@@ -26,6 +26,7 @@ import { GoalNetCloth } from "./world/GoalNetCloth";
 import { AudioEngine } from "./audio/AudioEngine";
 import { CommentarySystem } from "./audio/CommentarySystem";
 import { WebSocketClient } from "./online/WebSocketClient";
+import { firebaseReady, getFirebaseIdToken, loginWithGoogle, logoutFirebase, observeFirebaseUser } from "./online/FirebaseWebAuth";
 import type { PlayerAction, PlayerIntent } from "./player/PlayerTypes";
 import { SlayerUI, type SlayerSettings } from "./ui/SLAYERUI";
 import { PerformanceMonitor } from "./performance/PerformanceMonitor";
@@ -176,9 +177,86 @@ const ui=new SlayerUI(
   mode => camera.setMode(mode),
   applySlayerSettings
 );
-const config=(window as unknown as {__SLAYER_CONFIG__?:{wsUrl?:string;wsToken?:string}}).__SLAYER_CONFIG__??{};
-const online=(config.wsUrl && config.wsToken) ? new WebSocketClient() : null;
-if(online) online.connect(config.wsUrl!, config.wsToken!);
+const slayerApiUrl=(import.meta.env.VITE_SLAYER_API_URL || "https://slayer-api-8myx.onrender.com").replace(/\/$/,"");
+let online: WebSocketClient | null = null;
+
+const authPanel=document.createElement("div");
+authPanel.style.position="fixed";
+authPanel.style.top="18px";
+authPanel.style.right="18px";
+authPanel.style.zIndex="9999";
+authPanel.style.display="flex";
+authPanel.style.alignItems="center";
+authPanel.style.gap="10px";
+authPanel.style.padding="10px 12px";
+authPanel.style.border="1px solid rgba(255,255,255,.14)";
+authPanel.style.borderRadius="14px";
+authPanel.style.background="rgba(7,10,14,.86)";
+authPanel.style.backdropFilter="blur(14px)";
+authPanel.style.fontFamily="system-ui,sans-serif";
+authPanel.style.color="#fff";
+
+const authStatus=document.createElement("span");
+authStatus.style.fontSize="12px";
+authStatus.textContent=firebaseReady ? "Firebase prêt" : "Firebase non configuré";
+
+const authButton=document.createElement("button");
+authButton.type="button";
+authButton.textContent=firebaseReady ? "Connexion Google" : "Firebase requis";
+authButton.disabled=!firebaseReady;
+authButton.style.border="0";
+authButton.style.borderRadius="10px";
+authButton.style.padding="8px 12px";
+authButton.style.fontWeight="700";
+authButton.style.cursor=firebaseReady ? "pointer" : "not-allowed";
+
+authPanel.append(authStatus,authButton);
+app.appendChild(authPanel);
+
+async function verifyBackendSession(): Promise<void> {
+  const token=await getFirebaseIdToken();
+  if(!token) throw new Error("firebase_token_missing");
+  const response=await fetch(slayerApiUrl+"/api/profile",{
+    headers:{Authorization:"Bearer "+token}
+  });
+  if(!response.ok) throw new Error("backend_auth_failed_"+response.status);
+}
+
+authButton.addEventListener("click",async()=>{
+  authButton.disabled=true;
+  try{
+    if(authButton.dataset.signedIn==="1"){
+      await logoutFirebase();
+      authButton.dataset.signedIn="";
+      authButton.textContent="Connexion Google";
+      authStatus.textContent="Déconnecté";
+      online?.close();
+      online=null;
+      return;
+    }
+    authStatus.textContent="Connexion...";
+    const user=await loginWithGoogle();
+    await verifyBackendSession();
+    authButton.dataset.signedIn="1";
+    authButton.textContent="Déconnexion";
+    authStatus.textContent=(user.displayName || user.email || "Joueur")+" connecté";
+  }catch(error){
+    console.error("[SLAYER] Firebase authentication failed.",error);
+    authStatus.textContent=error instanceof Error ? error.message : "Échec de connexion";
+  }finally{
+    authButton.disabled=!firebaseReady;
+  }
+});
+
+if(firebaseReady){
+  observeFirebaseUser(user=>{
+    if(user){
+      authButton.dataset.signedIn="1";
+      authButton.textContent="Déconnexion";
+      authStatus.textContent=(user.displayName || user.email || "Joueur")+" connecté";
+    }
+  });
+}
 
 window.addEventListener("pointerdown",()=>void audio.resume(),{once:true});
 
