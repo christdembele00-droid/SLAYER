@@ -31,3 +31,26 @@ def init_schema() -> None:
                 "away_score INTEGER NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP)"
             )
         )
+        connection.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS wallets "
+                "(user_id TEXT PRIMARY KEY, balance INTEGER NOT NULL DEFAULT 0, "
+                "updated_at TEXT DEFAULT CURRENT_TIMESTAMP)"
+            )
+        )
+        connection.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS store_purchases "
+                "(purchase_token TEXT PRIMARY KEY, user_id TEXT NOT NULL, "
+                "product_id TEXT NOT NULL, granted_units INTEGER NOT NULL DEFAULT 0, "
+                "status TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, "
+                "consumed_at TEXT)"
+            )
+        )
+        connection.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS store_spends "
+                "(id TEXT PRIMARY KEY, user_id TEXT NOT NULL, item_id TEXT NOT NULL, "
+                "token_cost INTEGER NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP)"
+            )
+        )
