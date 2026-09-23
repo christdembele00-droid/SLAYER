@@ -1,0 +1,55 @@
+{
+  "project": "SLAYER",
+  "purpose": "central Cloudinary graphics and animation catalog",
+  "renderer": "Filament/Vulkan",
+  "policy": "original_or_properly_licensed_assets_only",
+  "cloudinary_existing": [
+    "slayer/players/models/player_base.glb",
+    "slayer/players/roster/slayer_roster.json",
+    "slayer/players/animations/universal_animation_library_mannequin.glb",
+    "slayer/players/animations/animation_library_standard.gltf",
+    "slayer/players/animations/universal_animation_library_2_standard",
+    "slayer/stadium/models/soccer_field_cc0.zip",
+    "slayer/stadium/ibl/orlando_stadium_1k.exr",
+    "slayer/stadium/textures/grass_leafy_preview.png",
+    "slayer/stadium/textures/leafy_grass_diff_1k.png",
+    "slayer/stadium/textures/leafy_grass_nor_gl_1k.png",
+    "slayer/stadium/textures/leafy_grass_rough_1k.png",
+    "slayer/emblems/atlas_fc",
+    "slayer/emblems/lagoon_united"
+  ],
+  "football_animation_required": [
+    "idle","walk","run","sprint","acceleration","deceleration","turn",
+    "strafe","backpedal","dribble","close_control","body_feint","step_over",
+    "ball_roll","short_pass","long_pass","through_ball","cross","chip","shot",
+    "finesse_shot","power_shot","volley","header","first_touch","tackle",
+    "slide_tackle","interception","shield_ball","stumble","fall","celebration",
+    "keeper_idle","keeper_set","keeper_dive","keeper_save","keeper_parry",
+    "keeper_claim","keeper_throw","keeper_kick"
+  ],
+  "graphics_required": {
+    "players":["hero_glb","face_variants","hair_variants","skin_pbr","kits_pbr","boots","keeper_variants","lod0","lod1","lod2"],
+    "pitch":["base_color","normal","roughness","ao","grass_blades","line_markings","wetness_mask","goal_net"],
+    "stadium":["glb","stands","roof","tunnel","benches","boards","scoreboards","floodlights","crowd","crowd_lod"],
+    "lighting":["day_ibl","twilight_ibl","night_ibl","skyboxes"],
+    "ball":["model","base_color","normal","roughness"],
+    "effects":["rain","snow","splash","dust","net_reaction","replay_fx"],
+    "ui":["club_badges","competition_badges","kit_icons","store_art","career_art","trophies"]
+  },
+  "runtime": {
+    "pbr": true,
+    "hdr_ibl": true,
+    "aces": true,
+    "taa": true,
+    "gtao": true,
+    "bloom": true,
+    "dynamic_resolution": true,
+    "animation_lod": true,
+    "vulkan": true,
+    "remote_first_frame_download": false
+  },
+  "licensing": {
+    "cc0_assets_verified_for_current_animation_and_grass_sources": true,
+    "final_original_or_licensed_content_required_for_release": true
+  }
+}
