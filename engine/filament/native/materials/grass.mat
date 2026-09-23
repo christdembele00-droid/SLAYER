@@ -4,7 +4,6 @@ material {
         { type : sampler2d, name : baseColor },
         { type : sampler2d, name : normal },
         { type : sampler2d, name : roughness },
-        { type : sampler2d, name : ao },
         { type : float, name : roughnessScale }
     ],
     requires : [ uv0, tangent ],
@@ -22,6 +21,6 @@ fragment {
             texture(materialParams_roughness, uv).r * materialParams.roughnessScale,
             0.35, 1.0);
         material.metallic = 0.0;
-        material.ambientOcclusion = texture(materialParams_ao, uv).r;
+        material.ambientOcclusion = 1.0;
     }
 }
