@@ -65,6 +65,16 @@ class QueueRequest(BaseModel):
     skill: float = Field(default=1000, ge=0, le=3000)
 
 
+@app.get("/")
+def root():
+    return {
+        "service": "slayer-online",
+        "status": "ok",
+        "health": "/health",
+        "websocket": "/ws/{player_id}",
+    }
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "slayer-online"}
