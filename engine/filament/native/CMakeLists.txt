@@ -65,6 +65,21 @@ target_link_libraries(slayer_native_engine
     android
     log
     vulkan
+    EGL
+    GLESv3
+    jnigraphics
+    dl
+    m
+    z
+    c++_shared
+)
+
+# Filament Android static archives need their Android platform and C++ runtime
+# dependencies resolved explicitly by the final SLAYER shared library.
+target_link_options(slayer_native_engine PRIVATE
+    "-Wl,--gc-sections"
+    "-Wl,-z,max-page-size=16384"
+    "-Wl,--error-limit=0"
 )
 target_compile_definitions(slayer_native_engine PRIVATE
     SLAYER_NATIVE_ENGINE=1
@@ -72,9 +87,9 @@ target_compile_definitions(slayer_native_engine PRIVATE
 )
 
 # -----------------------------------------------------------------------------
-# Optional host-side asset compilation.
-# The first playable build does not require matc/cmgen because the runtime has
-# procedural glTF fallbacks. Production materials/IBL are generated separately.
+# Host-side asset compilation is performed by CI before the Android build.
+# Runtime assets are validated and packaged into the APK; the canonical
+# production path does not depend on first-frame remote downloads.
 # -----------------------------------------------------------------------------
 
 set(SLAYER_ASSET_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/../../../scripts/build_assets.sh")
