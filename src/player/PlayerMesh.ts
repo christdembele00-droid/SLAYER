@@ -59,12 +59,13 @@ export class PlayerMesh{
     const hairMat=new THREE.MeshStandardMaterial({color:0x17110e,roughness:.88});
     const boot=new THREE.MeshStandardMaterial({color:0x080b0e,roughness:.25,metalness:.35});
 
-    this.torso=new THREE.Mesh(new THREE.CapsuleGeometry(.235,.56,8,14),kit);
+    this.torso=new THREE.Mesh(new THREE.CapsuleGeometry(.235,.56,10,18),kit);
+    this.torso.scale.set(1.12,1.0,.76);
     this.torso.position.y=.86;
     this.torso.castShadow=true;
     this.object.add(this.torso);
 
-    this.shoulders=new THREE.Mesh(new THREE.CapsuleGeometry(.31,.14,6,12),kit);
+    this.shoulders=new THREE.Mesh(new THREE.CapsuleGeometry(.31,.14,8,16),kit);
     this.shoulders.rotation.z=Math.PI/2;
     this.shoulders.position.y=1.08;
     this.shoulders.castShadow=true;
@@ -79,8 +80,8 @@ export class PlayerMesh{
     this.neck.position.y=1.25;
     this.object.add(this.neck);
 
-    this.head=new THREE.Mesh(new THREE.SphereGeometry(.158,20,14),skin);
-    this.head.scale.set(1,.98,.96);
+    this.head=new THREE.Mesh(new THREE.SphereGeometry(.158,24,18),skin);
+    this.head.scale.set(1.02,.99,.98);
     this.head.position.y=1.39;
     this.head.castShadow=true;
     this.object.add(this.head);
@@ -90,18 +91,39 @@ export class PlayerMesh{
     this.hair.scale.set(1.02,.8,1.02);
     this.object.add(this.hair);
 
+    const eyeWhite=new THREE.MeshStandardMaterial({color:0xf7f7f3,roughness:.42,metalness:0});
+    const eyeDark=new THREE.MeshStandardMaterial({color:0x111317,roughness:.3,metalness:.02});
+    for(const side of [-1,1]){
+      const eye=new THREE.Mesh(new THREE.SphereGeometry(.022,10,8),eyeWhite);
+      eye.position.set(side*.055,1.414,.145);
+      const pupil=new THREE.Mesh(new THREE.SphereGeometry(.009,8,6),eyeDark);
+      pupil.position.set(side*.055,1.414,.165);
+      this.object.add(eye,pupil);
+    }
+    const nose=new THREE.Mesh(new THREE.ConeGeometry(.018,.06,8),skin);
+    nose.rotation.x=Math.PI/2;
+    nose.position.set(0,1.365,.16);
+    this.object.add(nose);
+
     const collar=new THREE.Mesh(new THREE.TorusGeometry(.09,.018,6,16),accentMat);
     collar.rotation.x=Math.PI/2;
     collar.position.y=1.16;
     this.object.add(collar);
 
-    const armGeo=new THREE.CapsuleGeometry(.055,.38,7,9);
+    const armGeo=new THREE.CapsuleGeometry(.052,.34,8,10);
     this.leftArm=new THREE.Mesh(armGeo,kit);
     this.rightArm=new THREE.Mesh(armGeo,kit);
     this.leftArm.position.set(-.275,.89,0);
     this.rightArm.position.set(.275,.89,0);
     this.leftArm.castShadow=this.rightArm.castShadow=true;
     this.object.add(this.leftArm,this.rightArm);
+    const forearmGeo=new THREE.CapsuleGeometry(.048,.16,7,9);
+    for(const [side,x] of [["l",-.275],["r",.275] as const]){
+      const forearm=new THREE.Mesh(forearmGeo,skin);
+      forearm.position.set(x, .67, 0);
+      forearm.castShadow=true;
+      this.object.add(forearm);
+    }
 
     const legGeo=new THREE.CapsuleGeometry(.075,.40,7,9);
     this.leftLeg=new THREE.Mesh(legGeo,skin);
@@ -117,11 +139,11 @@ export class PlayerMesh{
     this.rightSock.position.set(.105,.19,0);
     this.object.add(this.leftSock,this.rightSock);
 
-    const bootGeo=new THREE.BoxGeometry(.135,.085,.29);
+    const bootGeo=new THREE.BoxGeometry(.14,.09,.31);
     this.leftBoot=new THREE.Mesh(bootGeo,boot);
     this.rightBoot=new THREE.Mesh(bootGeo,boot);
-    this.leftBoot.position.set(-.105,.075,.075);
-    this.rightBoot.position.set(.105,.075,.075);
+    this.leftBoot.position.set(-.105,.075,.09);
+    this.rightBoot.position.set(.105,.075,.09);
     this.leftBoot.castShadow=this.rightBoot.castShadow=true;
     this.object.add(this.leftBoot,this.rightBoot);
 
