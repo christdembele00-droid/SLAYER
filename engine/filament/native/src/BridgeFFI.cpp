@@ -82,6 +82,7 @@ struct NativeRenderer {
     IndexBuffer* indexBuffer = nullptr;
     VertexBuffer* terrainVertexBuffer = nullptr;
     VertexBuffer* terrainUvBuffer = nullptr;
+    VertexBuffer* terrainTangentBuffer = nullptr;
     IndexBuffer* terrainIndexBuffer = nullptr;
     Material* material = nullptr;
     MaterialInstance* materialInstance = nullptr;
@@ -262,18 +263,27 @@ struct NativeRenderer {
             21.0f, 13.6f,
             0.0f, 13.6f
         };
+        static constexpr float terrainTangents[] = {
+            1.0f, 0.0f, 0.0f, 1.0f,
+            1.0f, 0.0f, 0.0f, 1.0f,
+            1.0f, 0.0f, 0.0f, 1.0f,
+            1.0f, 0.0f, 0.0f, 1.0f
+        };
         static constexpr uint16_t terrainIndices[] = {0, 1, 2, 0, 2, 3};
 
         terrainVertexBuffer = VertexBuffer::Builder()
             .vertexCount(4)
-            .bufferCount(2)
+            .bufferCount(3)
             .attribute(VertexAttribute::POSITION, 0,
                        VertexBuffer::AttributeType::FLOAT3)
             .attribute(VertexAttribute::UV0, 1,
                        VertexBuffer::AttributeType::FLOAT2)
+            .attribute(VertexAttribute::TANGENTS, 2,
+                       VertexBuffer::AttributeType::FLOAT4)
             .build(*engine);
 
         terrainUvBuffer = terrainVertexBuffer;
+        terrainTangentBuffer = terrainVertexBuffer;
 
         terrainIndexBuffer = IndexBuffer::Builder()
             .indexCount(6)
@@ -290,23 +300,16 @@ struct NativeRenderer {
             *engine, 1,
             VertexBuffer::BufferDescriptor(
                 terrainUv, sizeof(terrainUv), nullptr));
+        terrainVertexBuffer->setBufferAt(
+            *engine, 2,
+            VertexBuffer::BufferDescriptor(
+                terrainTangents, sizeof(terrainTangents), nullptr));
         terrainIndexBuffer->setBuffer(
             *engine,
             IndexBuffer::BufferDescriptor(
                 terrainIndices, sizeof(terrainIndices), nullptr));
 
         terrainEntity = engine->getEntityManager().create();
-
-        RenderableManager::Builder(1)
-            .boundingBox({{-52.5f, -0.05f, -34.0f}, {52.5f, 0.05f, 34.0f}})
-            .material(0, materialInstance)
-            .geometry(0, RenderableManager::PrimitiveType::TRIANGLES,
-                      terrainVertexBuffer, terrainIndexBuffer, 0, 6)
-            .culling(false)
-            .castShadows(false)
-            .receiveShadows(true)
-            .build(*engine, terrainEntity);
-
         scene->addEntity(terrainEntity);
 
         // Lightweight native weather pass: real line geometry is used instead of a UI placeholder.
@@ -462,6 +465,21 @@ struct NativeRenderer {
         if (rm.hasComponent(terrainEntity)) {
             auto instance = rm.getInstance(terrainEntity);
             rm.setMaterialInstanceAt(instance, 0, nextInstance);
+        } else if (terrainEntity && terrainVertexBuffer && terrainIndexBuffer) {
+            const auto built = RenderableManager::Builder(1)
+                .boundingBox({{-52.5f, -0.05f, -34.0f}, {52.5f, 0.05f, 34.0f}})
+                .material(0, nextInstance)
+                .geometry(0, RenderableManager::PrimitiveType::TRIANGLES,
+                          terrainVertexBuffer, terrainIndexBuffer, 0, 6)
+                .culling(false)
+                .castShadows(false)
+                .receiveShadows(true)
+                .build(*engine, terrainEntity);
+            if (!built) {
+                engine->destroy(nextInstance);
+                engine->destroy(next);
+                return false;
+            }
         }
 
         if (terrainBaseColor) engine->destroy(terrainBaseColor);
@@ -1081,6 +1099,7 @@ struct NativeRenderer {
         indexBuffer = nullptr;
         terrainVertexBuffer = nullptr;
         terrainUvBuffer = nullptr;
+        terrainTangentBuffer = nullptr;
         terrainIndexBuffer = nullptr;
         materialInstance = nullptr;
     }
