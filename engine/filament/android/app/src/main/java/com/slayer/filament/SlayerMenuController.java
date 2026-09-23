@@ -6,9 +6,15 @@ import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Shader;
 import android.graphics.Typeface;
+import android.graphics.Canvas;
+import android.graphics.Path;
+import android.graphics.RectF;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
+import android.widget.GridLayout;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
@@ -110,103 +116,172 @@ final class SlayerMenuController {
         menuVisible = true;
         statsView.setVisibility(View.GONE);
 
+        final android.util.DisplayMetrics dm = activity.getResources().getDisplayMetrics();
+        final int screenW = dm.widthPixels;
+        final int screenH = dm.heightPixels;
+        final int pad = Math.max(px(14), Math.round(screenW * 0.035f));
+
         menuOverlay = new FrameLayout(activity);
-        menuOverlay.addView(new MenuBackgroundView(activity), new FrameLayout.LayoutParams(-1, -1));
+        menuOverlay.setBackgroundColor(0xFF050D17);
 
-        View shade = new View(activity);
-        shade.setBackgroundColor(0x55000000);
-        menuOverlay.addView(shade, new FrameLayout.LayoutParams(-1, -1));
+        ScrollView scroll = new ScrollView(activity);
+        scroll.setFillViewport(true);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
-        TextView brand = label("SLAYER", 30f, true);
-        FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(px(300), px(64), Gravity.TOP | Gravity.LEFT);
-        bp.leftMargin = px(28);
-        bp.topMargin = px(18);
-        menuOverlay.addView(brand, bp);
+        LinearLayout content = new LinearLayout(activity);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(pad, 0, pad, px(18));
 
-        TextView season = label("FOOTBALL 2026", 12f, false);
-        season.setTextColor(0xFFFFFF66);
-        FrameLayout.LayoutParams sep = new FrameLayout.LayoutParams(px(220), px(40), Gravity.TOP | Gravity.LEFT);
-        sep.leftMargin = px(32);
-        sep.topMargin = px(70);
-        menuOverlay.addView(season, sep);
+        // Hero: a real game-like visual instead of a flat color background.
+        final int heroH = Math.max(px(190), Math.min(px(292), Math.round(screenH * 0.46f)));
+        FrameLayout hero = new FrameLayout(activity);
+        hero.setBackgroundColor(0xFF071521);
+        hero.addView(new HomeHeroView(activity), new FrameLayout.LayoutParams(-1, -1));
 
-        Button settings = button("⚙", 22f);
-        FrameLayout.LayoutParams setp = new FrameLayout.LayoutParams(px(70), px(60), Gravity.TOP | Gravity.RIGHT);
-        setp.rightMargin = px(22);
+        View heroShade = new View(activity);
+        android.graphics.drawable.GradientDrawable shadeBg = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0x22000000, 0x30000000, 0xCC050D17});
+        heroShade.setBackground(shadeBg);
+        hero.addView(heroShade, new FrameLayout.LayoutParams(-1, -1));
+
+        TextView heroTitle = label("SLAYER", 31f, true);
+        heroTitle.setLetterSpacing(.18f);
+        FrameLayout.LayoutParams htp = new FrameLayout.LayoutParams(-2, px(50), Gravity.TOP | Gravity.LEFT);
+        htp.leftMargin = pad;
+        htp.topMargin = px(18);
+        hero.addView(heroTitle, htp);
+
+        TextView season = label("FOOTBALL 2026  •  MATCHDAY", 11f, true);
+        season.setTextColor(0xFFBFEFFF);
+        FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(-2, px(36), Gravity.TOP | Gravity.LEFT);
+        sp.leftMargin = pad + px(2);
+        sp.topMargin = px(62);
+        hero.addView(season, sp);
+
+        TextView matchup = label("ATLAS FC   VS   LAGOON UNITED", 18f, true);
+        matchup.setGravity(Gravity.CENTER);
+        matchup.setSingleLine(true);
+        matchup.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        FrameLayout.LayoutParams mp = new FrameLayout.LayoutParams(-1, px(52), Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        mp.leftMargin = pad;
+        mp.rightMargin = pad;
+        mp.bottomMargin = px(72);
+        hero.addView(matchup, mp);
+
+        Button settings = roundMenuButton("⚙", 20f, 0xCC0A1B2B, Color.WHITE);
+        FrameLayout.LayoutParams setp = new FrameLayout.LayoutParams(px(54), px(54), Gravity.TOP | Gravity.RIGHT);
+        setp.rightMargin = pad;
         setp.topMargin = px(18);
-        menuOverlay.addView(settings, setp);
+        hero.addView(settings, setp);
         settings.setOnClickListener(v -> showSettingsCard());
 
-        TextView hero = label("MATCHDAY", 12f, true);
-        hero.setTextColor(0xFFFFFF66);
-        hero.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams hp = new FrameLayout.LayoutParams(-1, px(40), Gravity.TOP);
-        hp.topMargin = px(112);
-        menuOverlay.addView(hero, hp);
+        content.addView(hero, new LinearLayout.LayoutParams(-1, heroH));
 
-        TextView teams = label("ATLAS FC  •  VS  •  LAGOON UNITED", 17f, true);
-        teams.setGravity(Gravity.CENTER);
-        teams.setMaxLines(1);
-        teams.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        FrameLayout.LayoutParams teamsP = new FrameLayout.LayoutParams(-1, px(54), Gravity.TOP);
-        teamsP.leftMargin = px(12);
-        teamsP.rightMargin = px(12);
-        teamsP.topMargin = px(142);
-        menuOverlay.addView(teams, teamsP);
-
-        Button quick = button("▶  MATCH RAPIDE", 17f);
-        quick.setTextColor(Color.BLACK);
-        quick.setBackgroundColor(0xFFFFD400);
-        android.util.DisplayMetrics qdm = activity.getResources().getDisplayMetrics();
-        int qWidth = Math.min(Math.round(qdm.widthPixels * 0.78f), px(390));
-        FrameLayout.LayoutParams qp = new FrameLayout.LayoutParams(Math.max(px(190), qWidth), px(64), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        qp.topMargin = px(225);
-        menuOverlay.addView(quick, qp);
+        // Main action sits directly below the hero, separated from secondary modes.
+        Button quick = homeActionButton("▶  MATCH RAPIDE", 16f, 0xFFE0B500, Color.BLACK);
+        LinearLayout.LayoutParams qlp = new LinearLayout.LayoutParams(-1, px(62));
+        qlp.setMargins(0, px(12), 0, px(16));
+        content.addView(quick, qlp);
         quick.setOnClickListener(v -> onStartMatch.run());
 
-        addModeCard("CARRIÈRE", 20, 310, 250, 64, () -> showModeScreen("CARRIÈRE",
-                "CLUB  •  SAISON  •  CHAMPIONNAT  •  TRANSFERTS"));
-        addModeCard("COMPÉTITION", 285, 310, 250, 64, () -> showModeScreen("COMPÉTITION",
-                "LIGUES  •  COUPES  •  TOURNOIS"));
-        addModeCard("ENTRAÎNEMENT", 20, 386, 250, 64, () -> showModeScreen("ENTRAÎNEMENT",
-                "TIR  •  PASSE  •  DRIBBLE  •  DÉFENSE"));
-        addModeCard("ÉQUIPE", 285, 386, 250, 64, () -> showModeScreen("ÉQUIPE",
-                "EFFECTIF  •  TACTIQUES  •  KITS  •  PROGRESSION"));
+        TextView section = label("MODES DE JEU", 12f, true);
+        section.setTextColor(0xFFBFEFFF);
+        section.setLetterSpacing(.14f);
+        section.setPadding(px(4), 0, 0, 0);
+        content.addView(section, new LinearLayout.LayoutParams(-1, px(30)));
 
-        Button profile = button("PROFIL", 13f);
-        FrameLayout.LayoutParams pp = new FrameLayout.LayoutParams(px(150), px(48), Gravity.BOTTOM | Gravity.LEFT);
-        pp.leftMargin = px(22);
-        pp.bottomMargin = px(20);
-        menuOverlay.addView(profile, pp);
+        GridLayout grid = new GridLayout(activity);
+        grid.setColumnCount(2);
+        grid.setUseDefaultMargins(false);
+        LinearLayout.LayoutParams gridLp = new LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT);
+        gridLp.setMargins(0, 0, 0, px(14));
+        content.addView(grid, gridLp);
+
+        addHomeModeCard(grid, "CARRIÈRE", "SAISON • TRANSFERTS", "◆", 0xFF12344A,
+                () -> showModeScreen("CARRIÈRE", "CLUB  •  SAISON  •  CHAMPIONNAT  •  TRANSFERTS"));
+        addHomeModeCard(grid, "COMPÉTITION", "LIGUES • COUPES", "★", 0xFF123B32,
+                () -> showModeScreen("COMPÉTITION", "LIGUES  •  COUPES  •  TOURNOIS"));
+        addHomeModeCard(grid, "ENTRAÎNEMENT", "TIR • PASSE • DRIBBLE", "◎", 0xFF2D3545,
+                () -> showModeScreen("ENTRAÎNEMENT", "TIR  •  PASSE  •  DRIBBLE  •  DÉFENSE"));
+        addHomeModeCard(grid, "ÉQUIPE", "EFFECTIF • TACTIQUES", "✦", 0xFF2B3C24,
+                () -> showModeScreen("ÉQUIPE", "EFFECTIF  •  TACTIQUES  •  KITS  •  PROGRESSION"));
+
+        LinearLayout footer = new LinearLayout(activity);
+        footer.setOrientation(LinearLayout.HORIZONTAL);
+        footer.setGravity(Gravity.CENTER);
+        content.addView(footer, new LinearLayout.LayoutParams(-1, px(50)));
+
+        Button profile = homeSecondaryButton("PROFIL", 0xAA0A1B2B);
+        Button other = homeSecondaryButton("AUTRES", 0xAA0A1B2B);
+        LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(0, -1, 1f);
+        fp.setMargins(0, 0, px(6), 0);
+        footer.addView(profile, fp);
+        LinearLayout.LayoutParams fo = new LinearLayout.LayoutParams(0, -1, 1f);
+        fo.setMargins(px(6), 0, 0, 0);
+        footer.addView(other, fo);
         profile.setOnClickListener(v -> showModeScreen("PROFIL", "JOUEUR  •  PROGRESSION  •  STATISTIQUES"));
-
-        Button other = button("AUTRES", 13f);
-        FrameLayout.LayoutParams op = new FrameLayout.LayoutParams(px(150), px(48), Gravity.BOTTOM | Gravity.RIGHT);
-        op.rightMargin = px(22);
-        op.bottomMargin = px(20);
-        menuOverlay.addView(other, op);
         other.setOnClickListener(v -> showModeScreen("AUTRES", "AIDE  •  INFORMATIONS  •  OPTIONS"));
 
+        scroll.addView(content, new ScrollView.LayoutParams(-1, -1));
+        menuOverlay.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
         root.addView(menuOverlay, new FrameLayout.LayoutParams(-1, -1));
     }
 
-    private void addModeCard(String text, int left, int top, int width, int height, Runnable action) {
-        Button b = button(text, 14f);
-        android.util.DisplayMetrics dm = activity.getResources().getDisplayMetrics();
-        int screenWidth = Math.max(320, dm.widthPixels);
-        int outer = Math.max(px(14), Math.round(screenWidth * 0.045f));
-        int gap = Math.max(px(8), Math.round(screenWidth * 0.025f));
-        int cardWidth = Math.max(px(120), (screenWidth - (outer * 2) - gap) / 2);
-        int cardHeight = Math.max(px(52), Math.min(px(height), Math.round(cardWidth * 0.26f)));
-        int column = left > 200 ? 1 : 0;
-        int row = top > 350 ? 1 : 0;
-        int x = outer + column * (cardWidth + gap);
-        int y = Math.max(px(300), px(300) + row * (cardHeight + gap));
-        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(cardWidth, cardHeight, Gravity.TOP | Gravity.LEFT);
-        p.leftMargin = x;
-        p.topMargin = y;
-        menuOverlay.addView(b, p);
-        b.setOnClickListener(v -> action.run());
+    private void addHomeModeCard(GridLayout grid, String title, String subtitle, String icon, int color, Runnable action) {
+        final int screenW = activity.getResources().getDisplayMetrics().widthPixels;
+        final int gap = px(9);
+        final int cardW = Math.max(px(130), (screenW - px(28) - gap) / 2);
+        final int cardH = px(86);
+
+        FrameLayout card = new FrameLayout(activity);
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setColor(color);
+        bg.setCornerRadius(px(18));
+        bg.setStroke(px(1.2f), 0x55FFFFFF);
+        card.setBackground(bg);
+        card.setElevation(px(5));
+        card.setOnClickListener(v -> action.run());
+
+        TextView iconView = new TextView(activity);
+        iconView.setText(icon);
+        iconView.setTextColor(0xFFE8FAFF);
+        iconView.setTextSize(23f);
+        iconView.setGravity(Gravity.CENTER);
+        android.graphics.drawable.GradientDrawable iconBg = new android.graphics.drawable.GradientDrawable();
+        iconBg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        iconBg.setColor(0x22000000);
+        iconBg.setStroke(px(1), 0x66FFFFFF);
+        iconView.setBackground(iconBg);
+        FrameLayout.LayoutParams ip = new FrameLayout.LayoutParams(px(48), px(48), Gravity.CENTER_VERTICAL | Gravity.LEFT);
+        ip.leftMargin = px(12);
+        card.addView(iconView, ip);
+
+        TextView titleView = label(title, 13.5f, true);
+        titleView.setSingleLine(true);
+        titleView.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-1, px(30), Gravity.TOP | Gravity.LEFT);
+        tp.leftMargin = px(72);
+        tp.rightMargin = px(10);
+        tp.topMargin = px(13);
+        card.addView(titleView, tp);
+
+        TextView subView = label(subtitle, 9.5f, false);
+        subView.setTextColor(0xBFE8F6FF);
+        subView.setSingleLine(true);
+        subView.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        FrameLayout.LayoutParams subp = new FrameLayout.LayoutParams(-1, px(26), Gravity.TOP | Gravity.LEFT);
+        subp.leftMargin = px(72);
+        subp.rightMargin = px(10);
+        subp.topMargin = px(41);
+        card.addView(subView, subp);
+
+        GridLayout.LayoutParams gp = new GridLayout.LayoutParams();
+        gp.width = cardW;
+        gp.height = cardH;
+        gp.setMargins(gap / 2, px(5), gap / 2, px(5));
+        grid.addView(card, gp);
     }
 
     private void showModeScreen(String title, String details) {
@@ -252,15 +327,52 @@ final class SlayerMenuController {
     }
 
     private Button button(String text, float size) {
+        return homeSecondaryButton(text, 0xB30A1B2B);
+    }
+
+    private Button homeActionButton(String text, float size, int fill, int textColor) {
         Button b = new Button(activity);
         b.setText(text);
-        b.setTextColor(Color.WHITE);
+        b.setTextColor(textColor);
         b.setTextSize(size);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
         b.setAllCaps(false);
         b.setGravity(Gravity.CENTER);
-        b.setBackgroundColor(0xB31B1D22);
+        b.setPadding(0, 0, 0, 0);
+        b.setStateListAnimator(null);
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setColor(fill);
+        bg.setCornerRadius(px(18));
+        bg.setStroke(px(2), 0x88FFFFFF);
+        b.setBackground(bg);
+        b.setElevation(px(6));
         return b;
     }
+
+    private Button homeSecondaryButton(String text, int fill) {
+        return homeActionButton(text, 12f, fill, Color.WHITE);
+    }
+
+    private Button roundMenuButton(String text, float size, int fill, int textColor) {
+        Button b = new Button(activity);
+        b.setText(text);
+        b.setTextSize(size);
+        b.setTextColor(textColor);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setGravity(Gravity.CENTER);
+        b.setPadding(0, 0, 0, 0);
+        b.setMinWidth(0);
+        b.setMinHeight(0);
+        b.setStateListAnimator(null);
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        bg.setColor(fill);
+        bg.setStroke(px(2), 0x66FFFFFF);
+        b.setBackground(bg);
+        b.setElevation(px(5));
+        return b;
+    }
+
 
     private int px(float value) {
         android.util.DisplayMetrics dm = activity.getResources().getDisplayMetrics();
@@ -268,6 +380,74 @@ final class SlayerMenuController {
         float heightScale = dm.heightPixels / 400.0f;
         float scale = Math.max(0.75f, Math.min(1.35f, Math.min(widthScale, heightScale)));
         return Math.max(1, Math.round(value * scale));
+    }
+
+    private static final class HomeHeroView extends View {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path path = new Path();
+
+        HomeHeroView(android.content.Context context) {
+            super(context);
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            final float w = getWidth();
+            final float h = getHeight();
+
+            android.graphics.LinearGradient sky = new android.graphics.LinearGradient(
+                    0, 0, 0, h,
+                    new int[]{0xFF061426, 0xFF123B5A, 0xFF071019},
+                    null, Shader.TileMode.CLAMP);
+            p.setShader(sky);
+            canvas.drawRect(0, 0, w, h, p);
+            p.setShader(null);
+
+            // Stadium lamps.
+            p.setColor(0xD8FFFFFF);
+            for (int i = 0; i < 8; i++) {
+                float x = w * (0.08f + i * 0.12f);
+                canvas.drawCircle(x, h * (0.18f + (i % 2) * 0.025f), Math.max(2.5f, w * 0.006f), p);
+            }
+
+            // Pitch perspective.
+            path.reset();
+            path.moveTo(0, h * .63f);
+            path.lineTo(w, h * .50f);
+            path.lineTo(w, h);
+            path.lineTo(0, h);
+            path.close();
+            p.setColor(0xCC0B6848);
+            canvas.drawPath(path, p);
+
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(Math.max(2, w * .003f));
+            p.setColor(0x88DFFEF0);
+            canvas.drawLine(w * .50f, h * .50f, w * .50f, h, p);
+            canvas.drawOval(new RectF(w * .36f, h * .60f, w * .64f, h * .93f), p);
+            p.setStyle(Paint.Style.FILL);
+
+            // Stylised footballer.
+            p.setColor(0xFF07111F);
+            canvas.drawCircle(w * .50f, h * .33f, w * .045f, p);
+            path.reset();
+            path.moveTo(w*.46f, h*.40f);
+            path.lineTo(w*.40f, h*.64f);
+            path.lineTo(w*.47f, h*.64f);
+            path.lineTo(w*.50f, h*.53f);
+            path.lineTo(w*.53f, h*.64f);
+            path.lineTo(w*.60f, h*.64f);
+            path.lineTo(w*.54f, h*.40f);
+            path.close();
+            canvas.drawPath(path, p);
+
+            // Football.
+            p.setColor(Color.WHITE);
+            canvas.drawCircle(w * .69f, h * .77f, w * .027f, p);
+            p.setColor(0xFF132A3A);
+            canvas.drawCircle(w * .69f, h * .77f, w * .009f, p);
+        }
     }
 
     private static final class MenuBackgroundView extends View {
