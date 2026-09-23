@@ -6,6 +6,7 @@ import android.util.Log;
 import com.android.billingclient.api.AcknowledgePurchaseParams;
 import com.android.billingclient.api.BillingClient;
 import com.android.billingclient.api.BillingClient.ProductType;
+import com.android.billingclient.api.BillingClientStateListener;
 import com.android.billingclient.api.BillingFlowParams;
 import com.android.billingclient.api.BillingResult;
 import com.android.billingclient.api.PendingPurchasesParams;
@@ -70,7 +71,7 @@ public final class SLAYERBillingManager implements PurchasesUpdatedListener {
     }
 
     public void start() {
-        billingClient.startConnection(new BillingClientStateListenerCompat() {
+        billingClient.startConnection(new BillingClientStateListener() {
             @Override
             public void onBillingSetupFinished(BillingResult result) {
                 if (result.getResponseCode() != BillingClient.BillingResponseCode.OK) {
@@ -268,19 +269,7 @@ public final class SLAYERBillingManager implements PurchasesUpdatedListener {
     }
 
     /**
-     * Small compatibility adapter so MainActivity does not depend on a
-     * concrete BillingClient state listener implementation.
-     */
-    private abstract static class BillingClientStateListenerCompat
-        implements BillingClientStateListener {
-    }
-
-    private interface BillingClientStateListener {
-        void onBillingSetupFinished(BillingResult result);
-    }
-
-    /**
-     * Android BillingFlowParams is immutable; this helper documents where the
+     * Android BillingFlowParams is immutable; this helper attaches the
      * obfuscated account identifier belongs. Build-time integration can attach
      * the hash directly once the production Billing API surface is enabled.
      */
