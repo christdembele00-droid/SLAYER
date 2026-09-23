@@ -288,17 +288,9 @@ struct NativeRenderer {
 
         terrainEntity = engine->getEntityManager().create();
 
-        RenderableManager::Builder(1)
-            .boundingBox({{-52.5f, -0.05f, -34.0f}, {52.5f, 0.05f, 34.0f}})
-            .material(0, materialInstance)
-            .geometry(0, RenderableManager::PrimitiveType::TRIANGLES,
-                      terrainVertexBuffer, terrainIndexBuffer, 0, 6)
-            .culling(false)
-            .castShadows(false)
-            .receiveShadows(true)
-            .build(*engine, terrainEntity);
-
-        scene->addEntity(terrainEntity);
+        // The terrain material arrives after JNI nativeCreate(). Do not build a
+        // renderable with a null MaterialInstance; create the component lazily
+        // when the bundled .filamat is available.
 
         // Lightweight native weather pass: real line geometry is used instead of a UI placeholder.
         static constexpr float weatherVertices[] = {
@@ -450,7 +442,23 @@ struct NativeRenderer {
         }
 
         auto& rm = engine->getRenderableManager();
-        if (rm.hasComponent(terrainEntity)) {
+        if (!rm.hasComponent(terrainEntity)) {
+            RenderableManager::Builder(1)
+                .boundingBox({{-52.5f, -0.05f, -34.0f}, {52.5f, 0.05f, 34.0f}})
+                .material(0, nextInstance)
+                .geometry(0, RenderableManager::PrimitiveType::TRIANGLES,
+                          terrainVertexBuffer, terrainIndexBuffer, 0, 6)
+                .culling(false)
+                .castShadows(false)
+                .receiveShadows(true)
+                .build(*engine, terrainEntity);
+            if (!rm.hasComponent(terrainEntity)) {
+                engine->destroy(nextInstance);
+                engine->destroy(next);
+                return false;
+            }
+            scene->addEntity(terrainEntity);
+        } else {
             auto instance = rm.getInstance(terrainEntity);
             rm.setMaterialInstanceAt(instance, 0, nextInstance);
         }
