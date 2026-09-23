@@ -107,13 +107,13 @@ export class FootballAI{
             .filter(x=>x.data.teamId===p.data.teamId && x.data.playerId!==p.data.playerId)
             .map(x=>({
               p:x,
-              distance:distance({x:x.state.position.x,z:x.state.position.z},{x:p.state.position.x,z:p.state.position.z}),
+              distance:Math.hypot(x.state.position.x-p.state.position.x,x.state.position.z-p.state.position.z),
               forward:forward*(x.state.position.z-p.state.position.z)
             }))
             .filter(x=>x.distance<28 && x.forward>1)
             .sort((a,b)=>b.forward-a.forward);
           const pressure=ps.all().some(x=>x.data.teamId!==p.data.teamId &&
-            distance({x:x.state.position.x,z:x.state.position.z},{x:p.state.position.x,z:p.state.position.z})<4.2);
+            Math.hypot(x.state.position.x-p.state.position.x,x.state.position.z-p.state.position.z)<4.2);
           const lastPass=this.lastPassTime.get(p.data.playerId)??-99;
           const target=teammates[0]?.p;
           if(target && time-lastPass>1.25 && (pressure || goalDistance>28)){
