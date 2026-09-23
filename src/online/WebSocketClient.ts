@@ -39,9 +39,15 @@ export class WebSocketClient {
         }
       });
       socket.addEventListener("error", () => this.onState?.("error"));
-      socket.addEventListener("close", () => {
+      socket.addEventListener("close", event => {
         if (this.socket === socket) this.socket = null;
         this.onState?.("closed");
+        // Authentication/permission failures are terminal until the caller
+        // supplies a fresh token; reconnecting the same rejected token loops.
+        if ([4401, 4403, 4503].includes(event.code)) {
+          this.closedByUser = true;
+          return;
+        }
         if (!this.closedByUser) this.scheduleReconnect();
       });
       return socket;
