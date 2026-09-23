@@ -122,10 +122,35 @@ const audio=new AudioEngine();
 const commentary=new CommentarySystem(audio);
 commentary.start(match.events);
 
-const ballMesh=new THREE.Mesh(
-  new THREE.SphereGeometry(.11,24,16),
-  new THREE.MeshStandardMaterial({color:0xffffff,roughness:.42,metalness:.02})
-);
+function createBallTexture():THREE.CanvasTexture{
+  const canvas=document.createElement("canvas");
+  canvas.width=canvas.height=512;
+  const ctx=canvas.getContext("2d");
+  if(!ctx)throw new Error("Canvas 2D unavailable");
+  ctx.fillStyle="#f4f7f8";
+  ctx.fillRect(0,0,512,512);
+  ctx.fillStyle="#11181c";
+  const points=[[256,86],[392,180],[342,350],[170,382],[118,206]];
+  for(const [x,y] of points){
+    ctx.beginPath();
+    for(let i=0;i<5;i++){
+      const a=-Math.PI/2+i*Math.PI*2/5;
+      const px=x+Math.cos(a)*34,py=y+Math.sin(a)*34;
+      i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+    }
+    ctx.closePath();ctx.fill();
+  }
+  ctx.strokeStyle="rgba(30,38,42,.34)";ctx.lineWidth=5;
+  for(const [a,b] of [[points[0],points[1]],[points[1],points[2]],[points[2],points[3]],[points[3],points[4]],[points[4],points[0]]]){
+    ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
+  }
+  const texture=new THREE.CanvasTexture(canvas);
+  texture.colorSpace=THREE.SRGBColorSpace;
+  texture.anisotropy=8;
+  return texture;
+}
+const ballMaterial=new THREE.MeshStandardMaterial({map:createBallTexture(),roughness:.5,metalness:.01});
+const ballMesh=new THREE.Mesh(new THREE.SphereGeometry(.11,32,24),ballMaterial);
 ballMesh.castShadow=true;
 ballMesh.receiveShadow=true;
 renderer.scene.add(ballMesh);
