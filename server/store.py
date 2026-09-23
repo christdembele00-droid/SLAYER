@@ -3,25 +3,30 @@ import json
 import os
 from typing import Any
 
-import requests
 from google.auth.transport.requests import AuthorizedSession
 from google.oauth2 import service_account
 
 PLAY_SCOPE = "https://www.googleapis.com/auth/androidpublisher"
 PACKAGE_NAME = os.getenv("SLAYER_ANDROID_PACKAGE", "com.slayer.filament")
 
-PRODUCTS = {
-    # Google Play product price is configured in Play Console. The app displays
-    # Google's localized price; the server only cares about the product ID.
-    "slayer_tokens_099": {
-        "kind": "consumable_tokens",
-        "units": int(os.getenv("SLAYER_TOKENS_099_AMOUNT", "100")),
-    },
+# Product configuration is authoritative on the server for how many virtual
+# tokens each Google Play consumable grants. Google Play remains authoritative
+# for the actual localized price shown to the user.
+TOKEN_PRODUCTS = {
+    "slayer_tokens_099": {"usd": 0.99, "units": 100},
+    "slayer_tokens_499": {"usd": 4.99, "units": 550},
+    "slayer_tokens_999": {"usd": 9.99, "units": 1200},
+    "slayer_tokens_1999": {"usd": 19.99, "units": 2500},
+    "slayer_tokens_4999": {"usd": 49.99, "units": 7000},
+    "slayer_tokens_9999": {"usd": 99.99, "units": 16000},
+    "slayer_tokens_14999": {"usd": 149.99, "units": 26000},
+    "slayer_tokens_19999": {"usd": 199.99, "units": 40000},
 }
 
 TOKEN_SINKS = {
     "career_points_100": 100,
     "player_unlock": 250,
+    "shirt_pack": 300,
     "team_classic_pack": 1000,
     "team_gold_pack": 1500,
     "team_all_star_pack": 2000,
@@ -35,12 +40,16 @@ class StoreError(RuntimeError):
 
 def catalog() -> dict[str, Any]:
     return {
-        "product": {
-            "id": "slayer_tokens_099",
-            "kind": "consumable",
-            "description": "Pack de jetons SLAYER",
-            "units": PRODUCTS["slayer_tokens_099"]["units"],
-        },
+        "currency": "SLAYER_TOKEN",
+        "products": [
+            {
+                "id": product_id,
+                "kind": "consumable",
+                "basePriceUsd": data["usd"],
+                "tokenUnits": data["units"],
+            }
+            for product_id, data in TOKEN_PRODUCTS.items()
+        ],
         "sinks": [
             {"id": item_id, "tokenCost": cost}
             for item_id, cost in TOKEN_SINKS.items()
@@ -82,7 +91,7 @@ def _purchase_url(product_id: str, purchase_token: str) -> str:
 
 
 def verify_google_play_product(product_id: str, purchase_token: str) -> dict[str, Any]:
-    if product_id not in PRODUCTS:
+    if product_id not in TOKEN_PRODUCTS:
         raise StoreError("product_not_allowed")
     if not purchase_token or len(purchase_token) > 4096:
         raise StoreError("purchase_token_invalid")
@@ -103,11 +112,14 @@ def verify_google_play_product(product_id: str, purchase_token: str) -> dict[str
 
 
 def consume_google_play_product(product_id: str, purchase_token: str) -> None:
-    if product_id not in PRODUCTS:
+    if product_id not in TOKEN_PRODUCTS:
         raise StoreError("product_not_allowed")
 
     session = _play_session()
-    response = session.post(_purchase_url(product_id, purchase_token) + ":consume", timeout=15)
+    response = session.post(
+        _purchase_url(product_id, purchase_token) + ":consume",
+        timeout=15,
+    )
     if response.status_code not in (200, 204):
         raise StoreError(f"google_play_consume_failed:{response.status_code}")
 
