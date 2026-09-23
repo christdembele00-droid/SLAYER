@@ -87,7 +87,7 @@ export class MatchFlowSystem {
             z: endline > 0 ? FIELD_HALF_LENGTH - 6 : -FIELD_HALF_LENGTH + 6
           };
 
-      this.beginRestart(match, ball, players, type, restartTeam, position);
+      this.restart(match, ball, players, type, restartTeam, position);
       const result: RestartResolution = { type, team: restartTeam, position };
       this.previous = { ...ball.state.position };
       return result;
@@ -103,7 +103,7 @@ export class MatchFlowSystem {
         y: 0.11,
         z: Math.max(-FIELD_HALF_LENGTH, Math.min(FIELD_HALF_LENGTH, current.z))
       };
-      this.beginRestart(match, ball, players, "ThrowIn", restartTeam, position);
+      this.restart(match, ball, players, "ThrowIn", restartTeam, position);
       const result: RestartResolution = { type: "ThrowIn", team: restartTeam, position };
       this.previous = { ...ball.state.position };
       return result;
@@ -135,7 +135,7 @@ export class MatchFlowSystem {
     };
   }
 
-  private beginRestart(
+  public restart(
     match: MatchEngine,
     ball: Ball,
     players: PlayerSystem,
@@ -186,7 +186,8 @@ export class MatchFlowSystem {
       taker.state.rotationY = position.z > 0 ? Math.PI : 0;
     } else if (type === "Penalty") {
       const goalZ = team === "home" ? FIELD_HALF_LENGTH : -FIELD_HALF_LENGTH;
-      taker.state.position = { x: 0, y: 0, z: goalZ - (team === "home" ? 12.7 : -12.7) };
+      const fromGoal = team === "home" ? -13.4 : 13.4;
+      taker.state.position = { x: 0, y: 0, z: goalZ + fromGoal };
       taker.state.rotationY = team === "home" ? 0 : Math.PI;
     } else {
       taker.state.position = {
