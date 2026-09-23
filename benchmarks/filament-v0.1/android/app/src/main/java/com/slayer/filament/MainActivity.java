@@ -599,10 +599,15 @@ public final class MainActivity extends Activity {
 
     private void loadBundledStadium() {
         try {
-            byte[] data = readAssetBytes("models/pitch.glb");
+            byte[] data;
+            try {
+                data = readAssetBytes("models/stadium.glb");
+            } catch (IOException missingStadium) {
+                data = readAssetBytes("models/pitch.glb");
+            }
             if (!nativeLoadStadium(data)) android.util.Log.w("SLAYER", "Bundled stadium asset could not be loaded");
         } catch (IOException e) {
-            android.util.Log.i("SLAYER", "No bundled pitch/stadium asset");
+            android.util.Log.i("SLAYER", "No bundled stadium/pitch asset");
         }
     }
 
