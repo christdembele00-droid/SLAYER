@@ -1,7 +1,7 @@
 import "./ui.css";
 
 export type SlayerScreen = "home"|"match"|"team"|"modes"|"shop"|"missions"|"career"|"competitions"|"online"|"settings"|"pause"|"result"|"setpiece";
-export type SlayerMatchAction = "Pass"|"Shoot"|"Control"|"Dribble"|"StandingTackle"|"ThroughBall"|"SlideTackle"|"Press";
+export type SlayerMatchAction = "Pass"|"Shoot"|"Control"|"Dribble"|"StandingTackle"|"ThroughBall"|"SlideTackle"|"Press"|"Intercept";
 export interface SlayerMoveInput { x:number; z:number; }
 export type SlayerSettings=Readonly<Record<string,string|number|boolean>>;
 
@@ -12,6 +12,7 @@ export class SlayerUI {
   private readonly root:HTMLDivElement;
   private screen:SlayerScreen="home";
   private score={home:0,away:0,clock:"00:00",phase:"KICKOFF"};
+  private matchAttacking=true;
   private matchScoreEl:HTMLElement|null=null;
   private matchPhaseEl:HTMLElement|null=null;
   private matchClockEl:HTMLElement|null=null;
@@ -75,6 +76,26 @@ export class SlayerUI {
   updateMatch(home:number,away:number,clock:string,phase:string){
     this.score={home,away,clock,phase};
     if(this.screen==="match"){this.matchScoreEl?.replaceChildren(document.createTextNode(`${home} — ${away}`));this.matchPhaseEl?.replaceChildren(document.createTextNode(phase));this.matchClockEl?.replaceChildren(document.createTextNode(clock));}
+  }
+
+  setMatchContext(attacking:boolean,playerLabel="PLAYER 01"){
+    if(this.screen!=="match") return;
+    this.matchAttacking=attacking;
+    this.root.classList.toggle("defensive-mode",!attacking);
+    const actions=attacking
+      ? [["ThroughBall","↑","PROFONDE"],["Pass","PASS","PASSE"],["Dribble","DRIBBLE","DRIBBLE"],["Shoot","TIR","TIRER"]]
+      : [["Press","PRESS","PRESS"],["StandingTackle","TACLE","TACLE"],["SlideTackle","GLISSÉ","GLISSÉ"],["Intercept","INTERCEPT","COUPER"]];
+    this.root.querySelectorAll<HTMLElement>("[data-action-slot]").forEach((el,index)=>{
+      const config=actions[index];
+      if(!config)return;
+      el.dataset.action=config[0];
+      const label=el.querySelector<HTMLElement>("[data-action-label]");
+      if(label)label.textContent=config[1];
+      const sub=el.querySelector<HTMLElement>("[data-action-sub]");
+      if(sub)sub.textContent=config[2];
+    });
+    const indicator=this.root.querySelector(".player-indicator span");
+    if(indicator)indicator.textContent=playerLabel;
   }
 
   private formation():string{return ["4-3-3","4-4-2","3-5-2","4-2-3-1"][this.formationIndex];}
@@ -160,8 +181,8 @@ export class SlayerUI {
       <div class="perf-overlay" data-performance>PERF MONITOR</div>
       <div class="match-controls"><div class="virtual-joystick layout-control" data-control-id="joystick" style="${this.controlStyle("joystick")}" data-joystick><div class="joystick-knob" data-joystick-knob></div><span class="control-resize">↕</span></div>
       <div class="radar layout-control" data-control-id="radar" style="${this.controlStyle("radar")}" data-radar><i></i><b></b><span class="control-resize">↕</span></div><div class="touch-diamond">
-      <button class="act up yellow layout-control" data-control-id="ThroughBall" style="${this.controlStyle("ThroughBall")}" data-action="ThroughBall">↑<small>PROFONDE</small><span class="control-resize">↕</span></button><button class="act left green layout-control" data-control-id="Pass" style="${this.controlStyle("Pass")}" data-action="Pass">PASS<span class="control-resize">↕</span></button>
-      <button class="act down blue layout-control" data-control-id="Dribble" style="${this.controlStyle("Dribble")}" data-action="Dribble" data-sprint>DRIBBLE<span class="control-resize">↕</span></button><button class="act right red layout-control" data-control-id="Shoot" style="${this.controlStyle("Shoot")}" data-action="Shoot">TIR<span class="control-resize">↕</span></button></div></div>${this.layoutEditMode?'<div class="layout-editor-banner">ÉDITEUR COMMANDES · GLISSER · MOLETTE = TAILLE · SAUVEGARDE AUTO</div>':""}
+      <button class="act up yellow layout-control" data-action-slot data-control-id="ThroughBall" style="${this.controlStyle("ThroughBall")}" data-action="ThroughBall"><span data-action-label>↑</span><small data-action-sub>PROFONDE</small><span class="control-resize">↕</span></button><button class="act left green layout-control" data-action-slot data-control-id="Pass" style="${this.controlStyle("Pass")}" data-action="Pass"><span data-action-label>PASS</span><span class="control-resize">↕</span></button>
+      <button class="act down blue layout-control" data-action-slot data-control-id="Dribble" style="${this.controlStyle("Dribble")}" data-action="Dribble" data-sprint><span data-action-label>DRIBBLE</span><span class="control-resize">↕</span></button><button class="act right red layout-control" data-action-slot data-control-id="Shoot" style="${this.controlStyle("Shoot")}" data-action="Shoot"><span data-action-label>TIR</span><span class="control-resize">↕</span></button></div></div>${this.layoutEditMode?'<div class="layout-editor-banner">ÉDITEUR COMMANDES · GLISSER · MOLETTE = TAILLE · SAUVEGARDE AUTO</div>':""}
       <div class="player-indicator"><span>PLAYER 01</span><i></i><b>STAMINA 92%</b></div></div>`;
   }
 
@@ -208,7 +229,7 @@ export class SlayerUI {
     this.root.querySelector("[data-result]")?.addEventListener("click",()=>this.showResult());
     this.root.querySelector("[data-resume]")?.addEventListener("click",()=>this.setScreen("match"));
     this.root.querySelectorAll<HTMLElement>("[data-start]").forEach(el=>el.addEventListener("click",e=>{e.preventDefault();this.onStartMatch();this.layoutEditMode=false;this.setScreen("match");}));
-    this.root.querySelectorAll<HTMLButtonElement>("[data-action]").forEach(b=>b.addEventListener("pointerdown",e=>{if(this.layoutEditMode){e.preventDefault();return;}e.preventDefault();const a=b.dataset.action as SlayerMatchAction;this.onMatchAction?.(a);if(a==="Dribble")this.onSprint?.(true);}));
+    this.root.querySelectorAll<HTMLButtonElement>("[data-action]").forEach(b=>b.addEventListener("pointerdown",e=>{if(this.layoutEditMode){e.preventDefault();return;}e.preventDefault();b.classList.add("pressed");window.setTimeout(()=>b.classList.remove("pressed"),110);const a=b.dataset.action as SlayerMatchAction;this.onMatchAction?.(a);if(a==="Dribble")this.onSprint?.(true);}));
     this.root.querySelector("[data-camera]")?.addEventListener("click",()=>this.onCameraMode?.("match"));
     this.root.querySelector("[data-layout-edit]")?.addEventListener("click",()=>{this.layoutEditMode=!this.layoutEditMode;this.setScreen("match");});
     this.root.querySelector("[data-layout-reset]")?.addEventListener("click",()=>this.resetControlLayout());
