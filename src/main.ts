@@ -295,10 +295,10 @@ window.addEventListener("keydown",event=>{
   if(key in keyboard){keyboard[key as keyof typeof keyboard]=true;updateKeyboardMovement();event.preventDefault();}
   if(event.key==="Shift") input.setSprint(true);
   const attacking=ball.state.controlledByPlayerId ? players.get(ball.state.controlledByPlayerId)?.data.teamId==="home" : players.get(controlledId)?.data.teamId==="home" && Math.hypot(players.get(controlledId)!.state.position.x-ball.state.position.x,players.get(controlledId)!.state.position.z-ball.state.position.z)<2.2;
-  if(key==="1") input.setAction(attacking?"Pass":"Press",.6);
-  if(key==="2") input.setAction(attacking?"ThroughBall":"StandingTackle",.75);
-  if(key==="3") input.setAction(attacking?"Dribble":"SlideTackle",.8);
-  if(key==="4") input.setAction(attacking?"Shoot":"Intercept",.85);
+  if(key==="1"){input.setAction(attacking?"Pass":"Press",.6);event.preventDefault();}
+  if(key==="2"){input.setAction(attacking?"ThroughBall":"StandingTackle",.75);event.preventDefault();}
+  if(key==="3"){input.setAction(attacking?"Dribble":"SlideTackle",.8);event.preventDefault();}
+  if(key==="4"){input.setAction(attacking?"Shoot":"Intercept",.85);event.preventDefault();}
 });
 window.addEventListener("keyup",event=>{
   const key=event.key.toLowerCase();
@@ -369,15 +369,34 @@ function handleGameplayResult(playerId:string,result:{reason:string}): void {
   const offender=players.get(playerId);
   if(!offender) return;
   const restartTeam=offender.data.teamId==="home" ? "away" : "home";
+  const position={
+    x:Math.max(-33.5,Math.min(33.5,ball.state.position.x)),
+    y:.11,
+    z:Math.max(-51.5,Math.min(51.5,ball.state.position.z))
+  };
   if(result.reason==="penalty_awarded"){
     const penaltyZ=restartTeam==="home" ? 39.1 : -39.1;
-    matchFlow.restart(match,ball,players,"Penalty",restartTeam,{x:0,y:.11,z:penaltyZ});
+    const penaltyPosition={x:0,y:.11,z:penaltyZ};
+    match.events.emit({
+      name:"PenaltyAwarded",
+      matchTime:match.clock.seconds,
+      period:match.period,
+      payload:{team:restartTeam,reason:"Foul in penalty area",position:penaltyPosition}
+    });
+    matchFlow.restart(match,ball,players,"Penalty",restartTeam,penaltyPosition);
   }else{
-    const position={
-      x:Math.max(-33.5,Math.min(33.5,ball.state.position.x)),
-      y:.11,
-      z:Math.max(-51.5,Math.min(51.5,ball.state.position.z))
-    };
+    match.events.emit({
+      name:"Foul",
+      matchTime:match.clock.seconds,
+      period:match.period,
+      payload:{team:restartTeam,playerId,position}
+    });
+    match.events.emit({
+      name:"FreeKick",
+      matchTime:match.clock.seconds,
+      period:match.period,
+      payload:{team:restartTeam,position}
+    });
     matchFlow.restart(match,ball,players,"FreeKick",restartTeam,position);
   }
 }
