@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Literal
 
-from .auth import require_bearer
+from .auth import firebase_configured, require_bearer
 from .db import init_schema
 from .matchmaking import Matchmaking, Ticket
 from .routes import router
@@ -67,7 +67,20 @@ class QueueRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "slayer-online"}
+    db_ok = True
+    try:
+        from .db import health_db
+        health_db()
+    except Exception:
+        db_ok = False
+    firebase_ok = firebase_configured()
+    return {
+        "status": "ok" if db_ok and firebase_ok else "degraded",
+        "service": "slayer-online",
+        "database": "ok" if db_ok else "error",
+        "firebase": "ok" if firebase_ok else "not_configured",
+        "websocket": "/ws/{player_id}",
+    }
 
 
 @app.post("/api/matchmaking/join")
@@ -129,7 +142,12 @@ async def _authenticate_websocket(ws: WebSocket) -> str | None:
         await ws.close(code=4401, reason="invalid_firebase_token")
         return None
 
-    return uid or None
+    if not uid:
+        await ws.close(code=4401, reason="invalid_firebase_token")
+        return None
+
+    await ws.send_json({"type": "auth_ok", "uid": uid})
+    return uid
 
 
 @app.websocket("/ws/{player_id}")
