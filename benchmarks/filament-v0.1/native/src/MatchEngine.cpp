@@ -34,7 +34,7 @@ void MatchEngine::reset(){
     state_.selected=9;
     input_.selectedPlayer=9;
     state_.selected=9;
-    secondAccumulator_=fixedAccumulator_=0;
+    secondAccumulator_=fixedAccumulator_=phaseAccumulator_=0;
 }
 
 void MatchEngine::setInput(const InputState& input){
@@ -49,6 +49,16 @@ void MatchEngine::setInput(const InputState& input){
 void MatchEngine::update(float dt){
     if(state_.paused || state_.phase==MatchPhase::FullTime) return;
     dt=clampf(dt,0.0f,0.05f);
+    if (state_.phase == MatchPhase::HalfTime) {
+        phaseAccumulator_ += dt;
+        if (phaseAccumulator_ >= 2.0f) {
+            state_.phase = MatchPhase::SecondHalf;
+            phaseAccumulator_ = 0.0f;
+            secondAccumulator_ = 0.0f;
+        } else {
+            return;
+        }
+    }
     fixedAccumulator_ += dt;
     constexpr float FIXED_STEP = 1.0f / 60.0f;
     constexpr int MAX_STEPS = 4;
