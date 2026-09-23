@@ -45,7 +45,6 @@ export class PlayerMesh{
   private static heroPromise:Promise<THREE.Group>|null=null;
   private static animationPromise:Promise<THREE.AnimationClip[]>|null=null;
   private static productionAssetsEnabled=import.meta.env.VITE_SLAYER_PRODUCTION_ASSETS==="1";
-  private static productionLoadStarted=false;
 
   constructor(player:Player){
     this.object.userData.playerId=player.data.playerId;
@@ -160,8 +159,7 @@ export class PlayerMesh{
     this.numberMesh=number;
     this.object.add(number);
 
-    if(PlayerMesh.productionAssetsEnabled && !PlayerMesh.productionLoadStarted){
-      PlayerMesh.productionLoadStarted=true;
+    if(PlayerMesh.productionAssetsEnabled){
       void this.loadProductionVisual();
     }
 
