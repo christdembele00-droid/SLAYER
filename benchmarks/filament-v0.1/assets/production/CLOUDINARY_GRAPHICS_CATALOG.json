@@ -186,6 +186,20 @@
     "open_game_art_basic_soccer_pack": "https://opengameart.org/content/basic-soccer-pack",
     "open_game_art_crowd": "https://opengameart.org/content/crowd-shoutingspeaking-ambience"
   },
+  "checked_in_production_foundations": [
+    "assets/production/kits/atlas_home_original.svg",
+    "assets/production/kits/atlas_away_original.svg",
+    "assets/production/kits/lagoon_home_original.svg",
+    "assets/production/kits/lagoon_away_original.svg",
+    "assets/production/cinematics/match_intro_camera_track_v1.json",
+    "assets/production/crowd/crowd_profile_v1.json",
+    "assets/production/players/face_variant_presets_v1.json",
+    "scripts/generate_slayer_foundations.py"
+  ],
+  "generated_runtime_foundations": [
+    "benchmarks/filament-v0.1/android/app/src/main/assets/models/stadium.glb",
+    "benchmarks/filament-v0.1/android/app/src/main/assets/crowd/crowd.glb"
+  ],
   "final_release_rule": "Only original, CC0, or properly licensed assets may ship. Source packs are not automatically treated as final high-end player/stadium content.",
   "status_by_category": {
     "player_body": "source_ready_final_hd_needed",
