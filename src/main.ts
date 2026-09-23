@@ -300,6 +300,7 @@ window.addEventListener("keyup",event=>{
 
 let last=window.performance.now();
 let lastUiUpdate=0;
+let aiAccumulator=0;
 // Goal-net reaction: feed impacts from fast shots into the nearest net.
 let previousBallZ=ball.state.position.z;
 
@@ -348,8 +349,12 @@ function frame(now:number){
   last=now;
 
   const human=input.snapshot();
-  ai.update(players,ball,match.clock.seconds);
-  tactical.update(players,ball);
+  aiAccumulator+=delta;
+  if(aiAccumulator>=.10){
+    aiAccumulator=0;
+    ai.update(players,ball,match.clock.seconds);
+    tactical.update(players,ball);
+  }
 
   const intents=new Map<string, PlayerIntent>();
   for(const p of players.all()) {
@@ -401,7 +406,7 @@ function frame(now:number){
     mesh.sync(p);
     const motion=animation.update(p,delta,ball.state.position);
     mesh.applyAnimation(motion,delta);
-    mesh.applyIK(ik,ball.state.position);
+    if(p.data.playerId===controlledId) mesh.applyIK(ik,ball.state.position);
   }
 
   ballMesh.position.set(ball.state.position.x,ball.state.position.y,ball.state.position.z);
