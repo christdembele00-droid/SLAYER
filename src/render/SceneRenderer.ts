@@ -2,6 +2,9 @@ import * as THREE from "three";
 import { configureShadow } from "./GraphicsQuality";
 import { StadiumEnvironment } from "./StadiumEnvironment";
 import { Sky } from "three/addons/objects/Sky.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 
 export class SceneRenderer{
   readonly scene=new THREE.Scene();
@@ -11,6 +14,8 @@ export class SceneRenderer{
   private readonly sun:THREE.DirectionalLight;
   private readonly stadiumEnvironment:StadiumEnvironment;
   private readonly sky:Sky;
+  private readonly composer:EffectComposer;
+  private readonly bloom:UnrealBloomPass;
   private qualityRatio=1;
 
   constructor(container:HTMLElement){
@@ -24,6 +29,11 @@ export class SceneRenderer{
     this.renderer.info.autoReset=true;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
     this.renderer.setSize(container.clientWidth,container.clientHeight,false);
+
+    this.composer=new EffectComposer(this.renderer);
+    this.composer.addPass(new RenderPass(this.scene,this.camera));
+    this.bloom=new UnrealBloomPass(new THREE.Vector2(container.clientWidth,container.clientHeight),.16,.72,.88);
+    this.composer.addPass(this.bloom);
 
     this.stadiumEnvironment=new StadiumEnvironment(this.renderer,this.scene);
     this.sky=new Sky();
@@ -68,6 +78,7 @@ export class SceneRenderer{
     this.camera.aspect=this.container.clientWidth/Math.max(this.container.clientHeight,1);
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(this.container.clientWidth,this.container.clientHeight,false);
+    this.composer.setSize(this.container.clientWidth,this.container.clientHeight);
   }
 
   setQuality(pixelRatio:number){
@@ -82,7 +93,10 @@ export class SceneRenderer{
       this.sun.shadow.mapSize.set(size,size);
     }
     this.scene.fog=new THREE.FogExp2(0x07100e,this.qualityRatio<.78?.0024:this.qualityRatio<.92?.00195:.00145);
+    this.bloom.strength=this.qualityRatio<.78?.06:this.qualityRatio<.92?.11:this.qualityRatio<1.12?.16:.22;
+    this.bloom.radius=this.qualityRatio>=1.12?.72:.58;
+    this.bloom.threshold=this.qualityRatio<.9?.92:.84;
   }
 
-  render(){this.renderer.render(this.scene,this.camera);}
+  render(){this.composer.render();}
 }
