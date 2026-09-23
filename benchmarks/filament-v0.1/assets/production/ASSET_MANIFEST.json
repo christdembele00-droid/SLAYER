@@ -103,10 +103,10 @@
   },
   "content_contract": {
     "hero_player": "required",
-    "final_face_variants": "planned",
-    "final_kit_library": "planned",
-    "stadium_variants": "planned",
-    "crowd": "planned",
+    "final_face_variants": "preset_foundation_added_final_human_faces_needed",
+    "final_kit_library": "original_foundation_kits_added_final_pbr_library_needed",
+    "stadium_variants": "foundation_generated_final_art_needed",
+    "crowd": "foundation_generated_final_art_needed",
     "replay_fx": "planned",
     "weather_particle_library": "planned"
   }
