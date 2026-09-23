@@ -118,12 +118,15 @@ export class PlayerMesh{
     this.leftArm.castShadow=this.rightArm.castShadow=true;
     this.object.add(this.leftArm,this.rightArm);
     const forearmGeo=new THREE.CapsuleGeometry(.048,.16,7,9);
-    for(const [side,x] of [["l",-.275],["r",.275] as const]){
-      const forearm=new THREE.Mesh(forearmGeo,skin);
-      forearm.position.set(x, .67, 0);
-      forearm.castShadow=true;
-      this.object.add(forearm);
-    }
+    const leftForearm=new THREE.Mesh(forearmGeo,skin);
+    leftForearm.position.set(0,-.20,0);
+    leftForearm.castShadow=true;
+    this.leftArm.add(leftForearm);
+
+    const rightForearm=new THREE.Mesh(forearmGeo,skin);
+    rightForearm.position.set(0,-.20,0);
+    rightForearm.castShadow=true;
+    this.rightArm.add(rightForearm);
 
     const legGeo=new THREE.CapsuleGeometry(.075,.40,7,9);
     this.leftLeg=new THREE.Mesh(legGeo,skin);
