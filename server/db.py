@@ -18,6 +18,22 @@ def health_db() -> None:
 
 def init_schema() -> None:
     with engine.begin() as connection:
+        if DATABASE_URL.startswith("sqlite:///"):
+            connection.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS users "
+                    "(id TEXT PRIMARY KEY, email TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)"
+                )
+            )
+            connection.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS matches "
+                    "(id TEXT PRIMARY KEY, home_score INTEGER NOT NULL, "
+                    "away_score INTEGER NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP)"
+                )
+            )
+            return
+
         connection.execute(text("CREATE SCHEMA IF NOT EXISTS slayer"))
         connection.execute(
             text(
