@@ -1,4 +1,4 @@
 pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
 dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
-rootProject.name = "SLAYER-Filament-V0.1"
+rootProject.name = "SLAYER-Native-Engine"
 include(":app")

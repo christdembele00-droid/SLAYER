@@ -7,6 +7,7 @@ from sqlalchemy import text
 
 from .auth import require_bearer
 from .db import engine, health_db
+from .cloudinary import CloudinaryConfigError, CloudinaryValidationError, sign_upload
 from .store import (
     TOKEN_PRODUCTS,
     TOKEN_SINKS,
@@ -30,6 +31,12 @@ class StoreSpendRequest(BaseModel):
     itemId: str = Field(min_length=1, max_length=64)
 
 
+class AssetSignRequest(BaseModel):
+    folder: str = Field(min_length=1, max_length=160)
+    resourceType: str = Field(default="auto", max_length=16)
+    publicId: str | None = Field(default=None, max_length=180)
+
+
 @router.get("/health")
 def api_health():
     health_db()
@@ -44,6 +51,28 @@ def profile(_=Depends(require_bearer)):
 @router.get("/matches")
 def matches(_=Depends(require_bearer)):
     return {"items": []}
+
+
+@router.post("/assets/sign")
+def sign_cloudinary_upload(request: AssetSignRequest, _=Depends(require_bearer)):
+    try:
+        signed = sign_upload(request.folder, request.resourceType, request.publicId)
+    except CloudinaryValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except CloudinaryConfigError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    result = {
+        "cloudName": signed.cloud_name,
+        "apiKey": signed.api_key,
+        "timestamp": signed.timestamp,
+        "folder": signed.folder,
+        "signature": signed.signature,
+        "uploadUrl": signed.upload_url,
+        "resourceType": signed.resource_type,
+    }
+    if signed.public_id:
+        result["publicId"] = signed.public_id
+    return result
 
 
 @router.get("/store/catalog")

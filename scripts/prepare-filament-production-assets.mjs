@@ -6,26 +6,13 @@ import { promisify } from "node:util";
 
 const exec = promisify(execFile);
 const root = process.cwd();
-const out = join(root, "benchmarks/filament-v0.1/android/app/src/main/assets");
-
-const cloudinary = {
-  player: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790110996/slayer/players/models/player_base.glb",
-  animation: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790111001/slayer/players/animations/universal_animation_library_mannequin.glb",
-  animation2: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790124661/slayer/players/animations/universal_animation_library_2_standard",
-  fieldZip: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790111012/slayer/stadium/models/soccer_field_cc0.zip",
-  environment: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790111036/slayer/stadium/ibl/orlando_stadium_1k.exr",
-  // Cloudinary public_id is extensionless; keep the remote URL exact and\n  // give the local download its EXR extension for cmgen/tooling.\n  environment2: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790125054/slayer/stadium/ibl/stadium_01_1k",
-  grassBaseColor: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790124684/slayer/stadium/textures/leafy_grass_diff_1k.png",
-  grassNormal: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790124688/slayer/stadium/textures/leafy_grass_nor_gl_1k.png",
-  grassRoughness: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790124694/slayer/stadium/textures/leafy_grass_rough_1k.png",
-  jerseyBaseColor: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790125058/slayer/players/textures/kits/cotton_jersey_diff_1k.png",
-  jerseyNormal: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790125063/slayer/players/textures/kits/cotton_jersey_nor_gl_1k.png",
-  jerseyRoughness: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790125067/slayer/players/textures/kits/cotton_jersey_rough_1k.png",
-  ballZip: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790125238/slayer/ball/models/football_balloon_cc0",
-  goalZip: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790125246/slayer/stadium/models/soccer_goal_cc0",
-  particleZip: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790125253/slayer/effects/particles/kenney_particle_pack_cc0",
-  rainZip: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790125258/slayer/effects/weather/rain_drop_cc0",
-};
+const out = join(root, "engine/filament/android/app/src/main/assets");
+const catalogPath = join(root, "engine/filament/assets/production/CLOUDINARY_GRAPHICS_CATALOG.json");
+const catalog = JSON.parse(await readFile(catalogPath, "utf8"));
+const cloudinary = catalog.delivery_urls;
+for (const [key, url] of Object.entries(cloudinary || {})) {
+  try { new URL(url); } catch { throw new Error("Invalid Cloudinary delivery URL for " + key); }
+}
 
 function signedCloudinaryRawUrl(url) {
   const secret = process.env.CLOUDINARY_API_SECRET;
@@ -57,19 +44,12 @@ function signedCloudinaryRawUrl(url) {
 }
 
 async function download(url, file) {
+  if (typeof url !== "string" || !url) throw new Error("Cloudinary delivery URL is undefined");
   await mkdir(dirname(file), { recursive: true });
-
-  let response = await fetch(url);
-  if (response.status === 401 && url.includes("/raw/upload/")) {
-    response = await fetch(signedCloudinaryRawUrl(url));
-  }
-
-  if (!response.ok) {
-    throw new Error(`Cloudinary download failed: ${response.status} ${url}`);
-  }
-
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Cloudinary download failed: " + response.status + " " + url);
   const bytes = Buffer.from(await response.arrayBuffer());
-  if (bytes.length < 128) throw new Error(`Asset too small: ${file}`);
+  if (bytes.length < 128) throw new Error("Asset too small: " + file);
   await writeFile(file, bytes);
   return bytes;
 }
@@ -104,12 +84,9 @@ async function ensureFile(file, label) {
 
 async function extractZipEntry(zipFile, entry, destination) {
   await mkdir(dirname(destination), { recursive: true });
-  await exec("unzip", ["-p", zipFile, entry], {
-    maxBuffer: 128 * 1024 * 1024,
-  }).then(({ stdout }) => {
-    if (!stdout) throw new Error(`unzip returned an empty asset: ${entry}`);
-    return writeFile(destination, stdout);
-  });
+  const { stdout } = await exec("unzip", ["-p", zipFile, entry], { maxBuffer: 256 * 1024 * 1024, encoding: "buffer" });
+  if (!Buffer.isBuffer(stdout) || stdout.length === 0) throw new Error("Empty ZIP entry: " + entry);
+  await writeFile(destination, stdout);
 }
 
 async function prepareModelFromZip(zipFile, destination, label) {
@@ -170,19 +147,19 @@ const envExr = join(tmp, "orlando_stadium_1k.exr");
 await download(cloudinary.player, playerFile);
 await download(cloudinary.animation, animationFile);
 await download(cloudinary.animation2, animationFile2);
-await download(cloudinary.fieldZip, fieldZip);
-await download(cloudinary.environment, envExr);
-await download(cloudinary.environment2, envExr2);
-await download(cloudinary.grassBaseColor, grassBaseColorFile);
-await download(cloudinary.grassNormal, grassNormalFile);
-await download(cloudinary.grassRoughness, grassRoughnessFile);
-await download(cloudinary.jerseyBaseColor, jerseyBaseColorFile);
-await download(cloudinary.jerseyNormal, jerseyNormalFile);
-await download(cloudinary.jerseyRoughness, jerseyRoughnessFile);
-await download(cloudinary.ballZip, ballZip);
-await download(cloudinary.goalZip, goalZip);
-await download(cloudinary.particleZip, particleZip);
-await download(cloudinary.rainZip, rainZip);
+await download(cloudinary.field, fieldZip);
+await download(cloudinary.environment1, envExr);
+await download(cloudinary.environment12, envExr2);
+await download(cloudinary.grass_basecolor, grassBaseColorFile);
+await download(cloudinary.grass_normal, grassNormalFile);
+await download(cloudinary.grass_roughness, grassRoughnessFile);
+await download(cloudinary.jersey_basecolor, jerseyBaseColorFile);
+await download(cloudinary.jersey_normal, jerseyNormalFile);
+await download(cloudinary.jersey_roughness, jerseyRoughnessFile);
+await download(cloudinary.ball, ballZip);
+await download(cloudinary.goal, goalZip);
+await download(cloudinary.particles, particleZip);
+await download(cloudinary.rain, rainZip);
 
 // Generate geometry LODs from the same source player when the Filament host
 // tool is available. LOD assets are deliberately optional: the runtime uses
@@ -308,7 +285,7 @@ if (!matc) {
   throw new Error("matc is required to compile SLAYER PBR material definitions");
 }
 
-const materialSourceDir = join(root, "benchmarks/filament-v0.1/native/materials");
+const materialSourceDir = join(root, "engine/filament/native/materials");
 const materialDefinitions = [
   ["grass.mat", "grass.filamat"],
   ["player_skin.mat", "player_skin.filamat"],
@@ -446,4 +423,4 @@ await writeFile(
   JSON.stringify(manifest, null, 2) + "\n"
 );
 
-console.log(JSON.stringify(manifest, null, 2));
+console.log(JSON.stringify({catalog_path: catalogPath, manifest}, null, 2));

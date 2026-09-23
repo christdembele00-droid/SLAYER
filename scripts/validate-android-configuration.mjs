@@ -1,0 +1,13 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+const root=process.cwd();
+const gradle=await readFile(join(root,"engine/filament/android/app/build.gradle"),"utf8");
+const activity=await readFile(join(root,"engine/filament/android/app/src/main/java/com/slayer/filament/MainActivity.java"),"utf8");
+const google=JSON.parse(await readFile(join(root,"engine/filament/android/app/google-services.json"),"utf8"));
+const app=gradle.match(/applicationId\s+"([^"]+)"/); if(!app)throw new Error("Android applicationId missing");
+const id=app[1];
+const registered=(google.client||[]).map(x=>x.client_info?.android_client_info?.package_name).filter(Boolean);
+if(!registered.includes(id))throw new Error("Firebase package mismatch: "+id);
+if(!activity.includes('System.loadLibrary("slayer_native_engine")'))throw new Error("Native library mismatch");
+if(!gradle.includes("filament-android:1.77.0")||!gradle.includes("gltfio-android:1.77.0"))throw new Error("Filament dependency drift");
+console.log("Android/Firebase configuration: OK");

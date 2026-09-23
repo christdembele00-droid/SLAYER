@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22.1)
-project(slayer_filament_benchmark LANGUAGES CXX)
+project(slayer_native_engine LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -21,7 +21,7 @@ list(GET FILAMENT_ENGINE_HEADERS 0 FILAMENT_ENGINE_HEADER)
 get_filename_component(FILAMENT_INCLUDE_DIR "${FILAMENT_ENGINE_HEADER}" DIRECTORY)
 get_filename_component(FILAMENT_INCLUDE_DIR "${FILAMENT_INCLUDE_DIR}" DIRECTORY)
 
-add_library(slayer_filament_benchmark SHARED
+add_library(slayer_native_engine SHARED
     src/BridgeFFI.cpp
     src/MatchEngine.cpp
     src/GameFFI.cpp
@@ -32,7 +32,7 @@ add_library(slayer_filament_benchmark SHARED
     src/net/NetcodeClient.cpp
 )
 
-target_include_directories(slayer_filament_benchmark PRIVATE
+target_include_directories(slayer_native_engine PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${FILAMENT_INCLUDE_DIR}
 )
@@ -57,7 +57,7 @@ foreach(LIB_PATH IN LISTS FILAMENT_STATIC_LIBS)
     message(STATUS "  ${LIB_PATH}")
 endforeach()
 
-target_link_libraries(slayer_filament_benchmark
+target_link_libraries(slayer_native_engine
     PRIVATE
     "-Wl,--start-group"
     ${FILAMENT_STATIC_LIBS}
@@ -65,11 +65,9 @@ target_link_libraries(slayer_filament_benchmark
     android
     log
     vulkan
-    EGL
-    GLESv3
 )
-target_compile_definitions(slayer_filament_benchmark PRIVATE
-    SLAYER_FILAMENT_BENCHMARK=1
+target_compile_definitions(slayer_native_engine PRIVATE
+    SLAYER_NATIVE_ENGINE=1
     SLAYER_VULKAN_ONLY=1
 )
 
@@ -85,5 +83,5 @@ if(EXISTS "${SLAYER_ASSET_SCRIPT}")
         COMMAND "${CMAKE_COMMAND}" -E echo "SLAYER: runtime fallback assets enabled; production asset build is external"
         VERBATIM
     )
-    add_dependencies(slayer_filament_benchmark CompileSlayerAssets)
+    add_dependencies(slayer_native_engine CompileSlayerAssets)
 endif()

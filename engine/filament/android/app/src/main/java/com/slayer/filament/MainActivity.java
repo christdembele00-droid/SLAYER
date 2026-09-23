@@ -25,7 +25,7 @@ import java.util.Locale;
 
 public final class MainActivity extends Activity {
     static {
-        System.loadLibrary("slayer_filament_benchmark");
+        System.loadLibrary("slayer_native_engine");
     }
 
     private SurfaceView surface;
@@ -599,15 +599,10 @@ public final class MainActivity extends Activity {
 
     private void loadBundledStadium() {
         try {
-            byte[] data;
-            try {
-                data = readAssetBytes("models/stadium.glb");
-            } catch (IOException missingStadium) {
-                data = readAssetBytes("models/pitch.glb");
-            }
-            if (!nativeLoadStadium(data)) android.util.Log.w("SLAYER", "Bundled stadium asset could not be loaded");
+            byte[] data = readAssetBytes("models/stadium.glb");
+            if (!nativeLoadStadium(data)) android.util.Log.e("SLAYER", "Required stadium asset could not be loaded");
         } catch (IOException e) {
-            android.util.Log.i("SLAYER", "No bundled stadium/pitch asset");
+            android.util.Log.e("SLAYER", "Required stadium asset is missing", e);
         }
     }
 
@@ -641,15 +636,10 @@ public final class MainActivity extends Activity {
 
     private void loadBundledPlayer() {
         try {
-            byte[] data;
-            try {
-                data = readAssetBytes("models/player.glb");
-            } catch (IOException missingGlb) {
-                data = readAssetBytes("models/player.gltf");
-            }
-            if (!nativeLoadPlayer(data)) android.util.Log.w("SLAYER", "Bundled player asset could not be loaded");
+            byte[] data = readAssetBytes("models/player.glb");
+            if (!nativeLoadPlayer(data)) android.util.Log.e("SLAYER", "Required player asset could not be loaded");
         } catch (IOException e) {
-            android.util.Log.i("SLAYER", "No bundled player asset");
+            android.util.Log.e("SLAYER", "Required player asset is missing", e);
         }
     }
 
