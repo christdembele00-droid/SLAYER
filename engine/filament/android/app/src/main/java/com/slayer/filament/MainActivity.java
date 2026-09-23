@@ -10,6 +10,8 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.widget.FrameLayout;
 import android.widget.TextView;
@@ -30,6 +32,8 @@ public final class MainActivity extends Activity {
 
     private SurfaceView surface;
     private TextView statsView;
+    private TextView scoreHud;
+    private TextView matchBadge;
     private long lastFrameNanos;
     private float moveX, moveY, sprint, pass, shoot, tackle;
     private int selectedPlayer = 9;
@@ -133,7 +137,7 @@ public final class MainActivity extends Activity {
         matchStarted = true;
         menuController.hideAll();
 
-        statsView.setVisibility(View.VISIBLE);
+        statsView.setVisibility(testScenario > 0 ? View.VISIBLE : View.GONE);
 
         // Initialize the native renderer only now. This isolates the menu from
         // missing/invalid production assets and prevents the app from closing
@@ -241,71 +245,188 @@ public final class MainActivity extends Activity {
     }
 
     private void addGameControls(FrameLayout root) {
-        TextView stick = new TextView(this);
-        stick.setText("◉");
-        stick.setTextSize(38);
-        stick.setTextColor(Color.WHITE);
-        stick.setGravity(Gravity.CENTER);
-        stick.setBackgroundColor(0x55333333);
         if (gameControls != null) root.removeView(gameControls);
         gameControls = new FrameLayout(this);
         root.addView(gameControls, new FrameLayout.LayoutParams(-1, -1));
         FrameLayout controlRoot = gameControls;
-        FrameLayout.LayoutParams sp =
-                new FrameLayout.LayoutParams(uiPx(180), uiPx(180), Gravity.BOTTOM | Gravity.LEFT);
-        sp.leftMargin = uiPx(28);
-        sp.bottomMargin = uiPx(36);
-        controlRoot.addView(stick, sp);
 
-        stick.setOnTouchListener((v, e) -> {
-            if (e.getAction() == MotionEvent.ACTION_UP || e.getAction() == MotionEvent.ACTION_CANCEL || e.getAction() == MotionEvent.ACTION_POINTER_UP) {
+        // Modern match HUD: compact, readable and deliberately separate from debug telemetry.
+        matchBadge = hudBadge(controlRoot, "MATCHDAY  •  01", Gravity.TOP | Gravity.LEFT);
+        FrameLayout.LayoutParams badgeLp = (FrameLayout.LayoutParams) matchBadge.getLayoutParams();
+        badgeLp.leftMargin = uiPx(22);
+        badgeLp.topMargin = uiPx(20);
+        matchBadge.setLayoutParams(badgeLp);
+
+        scoreHud = new TextView(this);
+        scoreHud.setText("ATLAS FC     0  —  0     LAGOON UNITED");
+        scoreHud.setTextColor(Color.WHITE);
+        scoreHud.setTextSize(13f);
+        scoreHud.setTypeface(Typeface.DEFAULT_BOLD);
+        scoreHud.setGravity(Gravity.CENTER);
+        scoreHud.setSingleLine(true);
+        scoreHud.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        GradientDrawable scoreBg = new GradientDrawable();
+        scoreBg.setColor(0xCC081421);
+        scoreBg.setCornerRadius(uiPx(26));
+        scoreBg.setStroke(uiPx(1.2f), 0x66FFFFFF);
+        scoreHud.setBackground(scoreBg);
+        FrameLayout.LayoutParams scoreLp = new FrameLayout.LayoutParams(
+                Math.min(uiPx(430), Math.round(getResources().getDisplayMetrics().widthPixels * 0.58f)),
+                uiPx(52),
+                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        scoreLp.topMargin = uiPx(18);
+        controlRoot.addView(scoreHud, scoreLp);
+
+        // Left virtual stick.
+        FrameLayout stickPad = new FrameLayout(this);
+        FrameLayout.LayoutParams stickLp = new FrameLayout.LayoutParams(
+                uiPx(154), uiPx(154), Gravity.BOTTOM | Gravity.LEFT);
+        stickLp.leftMargin = uiPx(28);
+        stickLp.bottomMargin = uiPx(34);
+        controlRoot.addView(stickPad, stickLp);
+
+        TextView stickRing = new TextView(this);
+        stickRing.setText("MOVE");
+        stickRing.setTextSize(10f);
+        stickRing.setTextColor(0xCCFFFFFF);
+        stickRing.setGravity(Gravity.CENTER);
+        GradientDrawable stickBg = new GradientDrawable();
+        stickBg.setShape(GradientDrawable.OVAL);
+        stickBg.setColor(0x5A081421);
+        stickBg.setStroke(uiPx(2), 0x80FFFFFF);
+        stickRing.setBackground(stickBg);
+        stickPad.addView(stickRing, new FrameLayout.LayoutParams(-1, -1));
+
+        TextView stickCore = new TextView(this);
+        stickCore.setText("●");
+        stickCore.setTextSize(30f);
+        stickCore.setTextColor(Color.WHITE);
+        stickCore.setGravity(Gravity.CENTER);
+        GradientDrawable coreBg = new GradientDrawable();
+        coreBg.setShape(GradientDrawable.OVAL);
+        coreBg.setColor(0xDD17314A);
+        coreBg.setStroke(uiPx(2), 0xA0FFFFFF);
+        stickCore.setBackground(coreBg);
+        FrameLayout.LayoutParams coreLp = new FrameLayout.LayoutParams(uiPx(62), uiPx(62), Gravity.CENTER);
+        stickPad.addView(stickCore, coreLp);
+
+        stickPad.setOnTouchListener((v, e) -> {
+            if (e.getAction() == MotionEvent.ACTION_UP
+                    || e.getAction() == MotionEvent.ACTION_CANCEL
+                    || e.getAction() == MotionEvent.ACTION_POINTER_UP) {
                 moveX = moveY = 0;
+                stickCore.animate().scaleX(1f).scaleY(1f).setDuration(100).start();
             } else {
                 float cx = v.getWidth() * 0.5f, cy = v.getHeight() * 0.5f;
-                float radius = Math.max(1.0f, Math.min(v.getWidth(), v.getHeight()) * 0.39f);
+                float radius = Math.max(1.0f, Math.min(v.getWidth(), v.getHeight()) * 0.34f);
                 moveX = Math.max(-1, Math.min(1, (e.getX() - cx) / radius));
                 moveY = Math.max(-1, Math.min(1, (e.getY() - cy) / radius));
+                stickCore.animate().scaleX(0.90f).scaleY(0.90f).setDuration(70).start();
             }
             nativeSetInput(moveX, moveY, pass, shoot, sprint, tackle, selectedPlayer);
             return true;
         });
 
-        Button passButton = button(controlRoot, "PASS", Gravity.BOTTOM | Gravity.RIGHT, 250, 36);
-        Button shootButton = button(controlRoot, "TIR", Gravity.BOTTOM | Gravity.RIGHT, 125, 130);
-        Button sprintButton = button(controlRoot, "SPRINT", Gravity.BOTTOM | Gravity.RIGHT, 260, 150);
-        Button tackleButton = button(controlRoot, "TACKLE", Gravity.BOTTOM | Gravity.RIGHT, 390, 36);
+        // Right-side action diamond: one dominant shot button plus three supporting actions.
+        Button passButton = roundActionButton(controlRoot, "PASSE", 84, 52, 182, 0xCC12304A);
+        Button shootButton = roundActionButton(controlRoot, "TIR", 108, 32, 42, 0xFFE0B500);
+        Button sprintButton = roundActionButton(controlRoot, "ACCÉL", 84, 158, 52, 0xCC12304A);
+        Button tackleButton = roundActionButton(controlRoot, "TACLE", 84, 250, 160, 0xCC12304A);
 
         passButton.setOnTouchListener((v, e) -> {
-            pass = (e.getAction() == MotionEvent.ACTION_UP || e.getAction() == MotionEvent.ACTION_CANCEL || e.getAction() == MotionEvent.ACTION_POINTER_UP) ? 0 : 1;
+            animateControlState(v, e);
+            pass = actionValue(e);
             nativeSetInput(moveX, moveY, pass, shoot, sprint, tackle, selectedPlayer);
             return true;
         });
         shootButton.setOnTouchListener((v, e) -> {
-            shoot = (e.getAction() == MotionEvent.ACTION_UP || e.getAction() == MotionEvent.ACTION_CANCEL || e.getAction() == MotionEvent.ACTION_POINTER_UP) ? 0 : 1;
+            animateControlState(v, e);
+            shoot = actionValue(e);
             nativeSetInput(moveX, moveY, pass, shoot, sprint, tackle, selectedPlayer);
             return true;
         });
         sprintButton.setOnTouchListener((v, e) -> {
-            sprint = (e.getAction() == MotionEvent.ACTION_UP || e.getAction() == MotionEvent.ACTION_CANCEL || e.getAction() == MotionEvent.ACTION_POINTER_UP) ? 0 : 1;
+            animateControlState(v, e);
+            sprint = actionValue(e);
             nativeSetInput(moveX, moveY, pass, shoot, sprint, tackle, selectedPlayer);
             return true;
         });
         tackleButton.setOnTouchListener((v, e) -> {
-            tackle = (e.getAction() == MotionEvent.ACTION_UP || e.getAction() == MotionEvent.ACTION_CANCEL || e.getAction() == MotionEvent.ACTION_POINTER_UP) ? 0 : 1;
+            animateControlState(v, e);
+            tackle = actionValue(e);
             nativeSetInput(moveX, moveY, pass, shoot, sprint, tackle, selectedPlayer);
             return true;
         });
 
-        Button reset = button(controlRoot, "RESTART", Gravity.TOP | Gravity.LEFT, 24, 130);
+        Button reset = roundActionButton(controlRoot, "↻", 56, 22, 92, 0xAA081421);
+        reset.setTextSize(20f);
         reset.setOnClickListener(v -> nativeResetMatch());
+
+        // Secondary debug panel is available only in automated test scenarios.
+        statsView.setVisibility(testScenario > 0 ? View.VISIBLE : View.GONE);
     }
 
-    private Button button(FrameLayout root,String label,int gravity,int right,int bottom){
-        Button b=new Button(this);
-        b.setText(label); b.setTextSize(12); b.setTextColor(Color.WHITE); b.setBackgroundColor(0x88444444);
-        FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(uiPx(112),uiPx(72),gravity);
-        lp.rightMargin=uiPx(right); lp.bottomMargin=uiPx(bottom);
-        root.addView(b,lp); return b;
+    private TextView hudBadge(FrameLayout root, String text, int gravity) {
+        TextView v = new TextView(this);
+        v.setText(text);
+        v.setTextColor(0xE6FFFFFF);
+        v.setTextSize(10f);
+        v.setTypeface(Typeface.DEFAULT_BOLD);
+        v.setGravity(Gravity.CENTER);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(0x99081421);
+        bg.setCornerRadius(uiPx(18));
+        bg.setStroke(uiPx(1), 0x55FFFFFF);
+        v.setBackground(bg);
+        root.addView(v, new FrameLayout.LayoutParams(uiPx(146), uiPx(36), gravity));
+        return v;
+    }
+
+    private Button roundActionButton(FrameLayout root, String label, int size, int right, int bottom, int fillColor) {
+        Button b = new Button(this);
+        b.setText(label);
+        b.setTextSize(size >= 100 ? 15f : 11f);
+        b.setTextColor(fillColor == 0xFFE0B500 ? Color.BLACK : Color.WHITE);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setAllCaps(false);
+        b.setGravity(Gravity.CENTER);
+        b.setPadding(0, 0, 0, 0);
+        b.setMinWidth(0);
+        b.setMinHeight(0);
+        b.setStateListAnimator(null);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.OVAL);
+        bg.setColor(fillColor);
+        bg.setStroke(uiPx(2), 0x80FFFFFF);
+        b.setBackground(bg);
+        b.setElevation(uiPx(7));
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(uiPx(size), uiPx(size), Gravity.BOTTOM | Gravity.RIGHT);
+        lp.rightMargin = uiPx(right);
+        lp.bottomMargin = uiPx(bottom);
+        root.addView(b, lp);
+        return b;
+    }
+
+    private float actionValue(MotionEvent e) {
+        return (e.getAction() == MotionEvent.ACTION_UP
+                || e.getAction() == MotionEvent.ACTION_CANCEL
+                || e.getAction() == MotionEvent.ACTION_POINTER_UP) ? 0f : 1f;
+    }
+
+    private void animateControlState(View view, MotionEvent e) {
+        if (e.getAction() == MotionEvent.ACTION_DOWN) {
+            view.animate().scaleX(0.90f).scaleY(0.90f).alpha(0.88f).setDuration(70).start();
+        } else if (e.getAction() == MotionEvent.ACTION_UP
+                || e.getAction() == MotionEvent.ACTION_CANCEL
+                || e.getAction() == MotionEvent.ACTION_POINTER_UP) {
+            view.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(110).start();
+        }
+    }
+
+    private void updateScoreHud() {
+        if (scoreHud == null) return;
+        scoreHud.setText(String.format(Locale.US, "ATLAS FC     %d  —  %d     LAGOON UNITED",
+                nativeGetHomeScore(), nativeGetAwayScore()));
     }
 
     private int uiPx(float value) {
@@ -314,13 +435,6 @@ public final class MainActivity extends Activity {
         float heightScale = dm.heightPixels / 400.0f;
         float scale = Math.max(0.75f, Math.min(1.35f, Math.min(widthScale, heightScale)));
         return Math.max(1, Math.round(value * scale));
-    }
-
-    private void removeGameControls() {
-        if (gameControls != null) {
-            root.removeView(gameControls);
-            gameControls = null;
-        }
     }
 
     private void applyGameLoopScenario(long elapsedMs) {
@@ -467,9 +581,14 @@ public final class MainActivity extends Activity {
             float dt = (now - lastFrameNanos) / 1_000_000_000.0f;
             lastFrameNanos = now;
             nativeRender(dt);
-            if (matchStarted) statsView.setText(String.format(Locale.US,
-                    "SLAYER • FILAMENT / VULKAN\\n%.1f FPS • %.2f ms\\nScore %d - %d\\nDraws %d • Players %d",
-                    nativeGetFps(), nativeGetFrameMs(), nativeGetHomeScore(), nativeGetAwayScore(), nativeGetDrawCalls(), nativeGetPlayerCount()));
+            if (matchStarted) {
+                updateScoreHud();
+                if (testScenario > 0) {
+                    statsView.setText(String.format(Locale.US,
+                            "SLAYER • FILAMENT / VULKAN\\n%.1f FPS • %.2f ms\\nDraws %d • Players %d",
+                            nativeGetFps(), nativeGetFrameMs(), nativeGetDrawCalls(), nativeGetPlayerCount()));
+                }
+            }
             applyGameLoopScenario((System.nanoTime() - testStartNanos) / 1_000_000L);
             surface.postOnAnimation(this);
         }
