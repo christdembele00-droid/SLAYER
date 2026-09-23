@@ -117,163 +117,277 @@ final class SlayerMenuController {
         menuVisible = true;
         statsView.setVisibility(View.GONE);
 
-        final android.util.DisplayMetrics dm = activity.getResources().getDisplayMetrics();
-        final int screenW = dm.widthPixels;
-        final int screenH = dm.heightPixels;
-        final int pad = Math.max(px(14), Math.round(screenW * 0.035f));
-
         menuOverlay = new FrameLayout(activity);
-        menuOverlay.setBackgroundColor(0xFF050A12);
+        menuOverlay.setBackgroundColor(0xFF02070D);
 
-        ScrollView scroll = new ScrollView(activity);
-        scroll.setFillViewport(true);
-        scroll.setVerticalScrollBarEnabled(false);
-        scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
-
-        LinearLayout page = new LinearLayout(activity);
-        page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(0, 0, 0, px(14));
-
-        // Header navigation bar.
-        LinearLayout header = new LinearLayout(activity);
-        header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(pad, 0, pad, 0);
-        android.graphics.drawable.GradientDrawable headerBg =
-                new android.graphics.drawable.GradientDrawable();
-        headerBg.setColor(0xCC07111E);
-        header.setBackground(headerBg);
-
-        ImageView logo = new ImageView(activity);
-        logo.setImageResource(com.slayer.filament.R.drawable.ic_slayer);
-        logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        header.addView(logo, new LinearLayout.LayoutParams(px(44), px(56)));
-
-        TextView brand = label("SLAYER", 18f, true);
-        brand.setLetterSpacing(.16f);
-        LinearLayout.LayoutParams brandLp = new LinearLayout.LayoutParams(px(112), -1);
-        brandLp.setMargins(px(4), 0, px(6), 0);
-        header.addView(brand, brandLp);
-
-        LinearLayout nav = new LinearLayout(activity);
-        nav.setGravity(Gravity.CENTER_VERTICAL);
-        nav.setOrientation(LinearLayout.HORIZONTAL);
-        header.addView(nav, new LinearLayout.LayoutParams(0, -1, 1f));
-
-        addNavItem(nav, "SLAYER WORLD", true);
-        addNavItem(nav, "MISSIONS", false);
-        addNavItem(nav, "SHOP", false);
-
-        Button settings = roundMenuButton("⚙", 18f, 0xAA10263A, Color.WHITE);
-        header.addView(settings, new LinearLayout.LayoutParams(px(50), px(50)));
-        settings.setOnClickListener(v -> showSettingsCard());
-
-        page.addView(header, new LinearLayout.LayoutParams(-1, px(64)));
-
-        // Hero / feature area.
-        final int heroH = Math.max(px(275), Math.min(px(390), Math.round(screenH * 0.56f)));
-        FrameLayout hero = new FrameLayout(activity);
-        hero.setBackgroundColor(0xFF071522);
-        hero.addView(new HomeHeroView(activity), new FrameLayout.LayoutParams(-1, -1));
-
-        View heroShade = new View(activity);
-        android.graphics.drawable.GradientDrawable heroGradient =
-                new android.graphics.drawable.GradientDrawable(
-                        android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
-                        new int[]{0x10000000, 0x42000000, 0xEE050A12});
-        heroShade.setBackground(heroGradient);
-        hero.addView(heroShade, new FrameLayout.LayoutParams(-1, -1));
-
-        TextView update = label("SEASON 01  •  FOOTBALL 2026", 10f, true);
-        update.setTextColor(0xFFE0B500);
-        FrameLayout.LayoutParams up = new FrameLayout.LayoutParams(-2, px(30), Gravity.TOP | Gravity.LEFT);
-        up.leftMargin = pad;
-        up.topMargin = px(18);
-        hero.addView(update, up);
-
-        TextView feature = label("MATCHDAY", 36f, true);
-        feature.setLetterSpacing(.08f);
-        FrameLayout.LayoutParams fp = new FrameLayout.LayoutParams(-1, px(56), Gravity.BOTTOM | Gravity.LEFT);
-        fp.leftMargin = pad;
-        fp.rightMargin = pad;
-        fp.bottomMargin = px(108);
-        hero.addView(feature, fp);
-
-        TextView matchup = label("ATLAS FC   0   —   0   LAGOON UNITED", 15f, true);
-        matchup.setSingleLine(true);
-        matchup.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        FrameLayout.LayoutParams mpp = new FrameLayout.LayoutParams(-1, px(40), Gravity.BOTTOM);
-        mpp.leftMargin = pad;
-        mpp.rightMargin = pad;
-        mpp.bottomMargin = px(72);
-        hero.addView(matchup, mpp);
-
-        Button kickOff = homeActionButton("KICK OFF  〉", 15f, 0xFFE0B500, Color.BLACK);
-        FrameLayout.LayoutParams kop = new FrameLayout.LayoutParams(px(190), px(54), Gravity.BOTTOM | Gravity.LEFT);
-        kop.leftMargin = pad;
-        kop.bottomMargin = px(12);
-        hero.addView(kickOff, kop);
-        kickOff.setOnClickListener(v -> onStartMatch.run());
-
-        TextView hint = label("MATCH RAPIDE", 10f, true);
-        hint.setTextColor(0xCCFFFFFF);
-        FrameLayout.LayoutParams hp = new FrameLayout.LayoutParams(px(125), px(32), Gravity.BOTTOM | Gravity.LEFT);
-        hp.leftMargin = px(220);
-        hp.bottomMargin = px(23);
-        hero.addView(hint, hp);
-
-        page.addView(hero, new LinearLayout.LayoutParams(-1, heroH));
-
-        // Competition / mode carousel row.
-        LinearLayout sectionHeader = new LinearLayout(activity);
-        sectionHeader.setGravity(Gravity.CENTER_VERTICAL);
-        sectionHeader.setPadding(pad, px(10), pad, px(4));
-        TextView section = label("MODES DE JEU", 11f, true);
-        section.setTextColor(0xFFE6F7FF);
-        section.setLetterSpacing(.14f);
-        sectionHeader.addView(section, new LinearLayout.LayoutParams(0, px(34), 1f));
-        TextView more = label("VOIR TOUT  ›", 10f, true);
-        more.setTextColor(0xFFBFEFFF);
-        sectionHeader.addView(more, new LinearLayout.LayoutParams(px(96), px(34)));
-        page.addView(sectionHeader, new LinearLayout.LayoutParams(-1, px(48)));
-
-        LinearLayout modeRow = new LinearLayout(activity);
-        modeRow.setOrientation(LinearLayout.HORIZONTAL);
-        modeRow.setPadding(pad, 0, pad, 0);
-        addModeTile(modeRow, "CARRIÈRE", "◆", 0xFF173C55,
-                () -> showModeScreen("CARRIÈRE", "CLUB  •  SAISON  •  CHAMPIONNAT  •  TRANSFERTS"));
-        addModeTile(modeRow, "COMPÉTITION", "★", 0xFF164739,
-                () -> showModeScreen("COMPÉTITION", "LIGUES  •  COUPES  •  TOURNOIS"));
-        addModeTile(modeRow, "ÉQUIPE", "✦", 0xFF3B4524,
-                () -> showModeScreen("ÉQUIPE", "EFFECTIF  •  TACTIQUES  •  KITS  •  PROGRESSION"));
-        page.addView(modeRow, new LinearLayout.LayoutParams(-1, px(102)));
-
-        LinearLayout bottom = new LinearLayout(activity);
-        bottom.setOrientation(LinearLayout.HORIZONTAL);
-        bottom.setGravity(Gravity.CENTER);
-        bottom.setPadding(pad, px(10), pad, 0);
-        Button profile = homeSecondaryButton("PROFIL", 0xAA10263A);
-        Button training = homeSecondaryButton("ENTRAÎNEMENT", 0xAA10263A);
-        Button other = homeSecondaryButton("AUTRES", 0xAA10263A);
-
-        LinearLayout.LayoutParams b1 = new LinearLayout.LayoutParams(0, px(48), 1f);
-        b1.setMargins(0, 0, px(5), 0);
-        bottom.addView(profile, b1);
-        LinearLayout.LayoutParams b2 = new LinearLayout.LayoutParams(0, px(48), 1f);
-        b2.setMargins(px(5), 0, px(5), 0);
-        bottom.addView(training, b2);
-        LinearLayout.LayoutParams b3 = new LinearLayout.LayoutParams(0, px(48), 1f);
-        b3.setMargins(px(5), 0, 0, 0);
-        bottom.addView(other, b3);
-
-        profile.setOnClickListener(v -> showModeScreen("PROFIL", "JOUEUR  •  PROGRESSION  •  STATISTIQUES"));
-        training.setOnClickListener(v -> showModeScreen("ENTRAÎNEMENT", "TIR  •  PASSE  •  DRIBBLE  •  DÉFENSE"));
-        other.setOnClickListener(v -> showModeScreen("AUTRES", "AIDE  •  INFORMATIONS  •  OPTIONS"));
-
-        page.addView(bottom, new LinearLayout.LayoutParams(-1, px(58)));
-
-        scroll.addView(page, new ScrollView.LayoutParams(-1, -1));
-        menuOverlay.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
+        SlayerHomeView home = new SlayerHomeView(
+                activity,
+                () -> onStartMatch.run(),
+                () -> showSettingsCard(),
+                mode -> {
+                    switch (mode) {
+                        case 1:
+                            showModeScreen("CARRIÈRE", "CLUB  •  SAISON  •  CHAMPIONNAT  •  TRANSFERTS");
+                            break;
+                        case 2:
+                            showModeScreen("COMPÉTITION", "LIGUES  •  COUPES  •  TOURNOIS");
+                            break;
+                        case 3:
+                            showModeScreen("ÉQUIPE", "EFFECTIF  •  TACTIQUES  •  KITS  •  PROGRESSION");
+                            break;
+                        case 4:
+                            showModeScreen("ENTRAÎNEMENT", "TIR  •  PASSE  •  DRIBBLE  •  DÉFENSE");
+                            break;
+                        case 5:
+                            showModeScreen("PROFIL", "JOUEUR  •  PROGRESSION  •  STATISTIQUES");
+                            break;
+                        default:
+                            showModeScreen("AUTRES", "AIDE  •  INFORMATIONS  •  OPTIONS");
+                            break;
+                    }
+                });
+        menuOverlay.addView(home, new FrameLayout.LayoutParams(-1, -1));
         root.addView(menuOverlay, new FrameLayout.LayoutParams(-1, -1));
+    }
+
+    private static final class SlayerHomeView extends View {
+        interface Action { void run(); }
+        interface ModeAction { void open(int mode); }
+
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path path = new Path();
+        private final RectF rect = new RectF();
+        private final Action quickMatch;
+        private final Action settings;
+        private final ModeAction modeAction;
+        private float density;
+
+        SlayerHomeView(Activity activity, Action quickMatch, Action settings, ModeAction modeAction) {
+            super(activity);
+            this.quickMatch = quickMatch;
+            this.settings = settings;
+            this.modeAction = modeAction;
+            density = getResources().getDisplayMetrics().density;
+            setClickable(true);
+        }
+
+        private float d(float v) { return v * density; }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            final float w = getWidth();
+            final float h = getHeight();
+            final float top = d(70);
+            final float bottom = d(70);
+
+            // Cinematic blue/green background.
+            p.setShader(new LinearGradient(
+                    0, 0, w, h,
+                    new int[]{0xFF02060C, 0xFF08233A, 0xFF052316},
+                    new float[]{0f, .52f, 1f},
+                    Shader.TileMode.CLAMP));
+            canvas.drawRect(0, 0, w, h, p);
+            p.setShader(null);
+
+            // Stadium lights.
+            p.setColor(0xCCBFEFFF);
+            for (int i = 0; i < 9; i++) {
+                float x = w * (.035f + i * .115f);
+                float y = d(88) + (i % 2) * d(10);
+                canvas.drawCircle(x, y, d(2.1f), p);
+            }
+
+            // Pitch perspective.
+            path.reset();
+            path.moveTo(0, h*.58f);
+            path.lineTo(w, h*.47f);
+            path.lineTo(w, h);
+            path.lineTo(0, h);
+            path.close();
+            p.setShader(new LinearGradient(0, h*.45f, 0, h,
+                    0xFF0B704D, 0xFF03150F, Shader.TileMode.CLAMP));
+            canvas.drawPath(path, p);
+            p.setShader(null);
+
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(d(2));
+            p.setColor(0x79D8FFF0);
+            canvas.drawLine(w*.5f, h*.48f, w*.5f, h);
+            canvas.drawOval(new RectF(w*.28f, h*.57f, w*.72f, h*.93f), p);
+            p.setStyle(Paint.Style.FILL);
+
+            // Header.
+            round(canvas, 0, 0, w, top, 0xDD03101C, d(17), 0x4CBFEFFF);
+            drawLogo(canvas, d(12), d(12), d(44));
+            text(canvas, "SLAYER", d(62), d(31), d(18), true, Color.WHITE);
+            text(canvas, "FOOTBALL 2026", d(62), d(49), d(7.5f), true, 0xFFBFEFFF);
+
+            nav(canvas, "ACCUEIL", w*.22f, d(13), w*.13f, true);
+            nav(canvas, "MISSIONS", w*.36f, d(13), w*.14f, false);
+            nav(canvas, "SHOP", w*.51f, d(13), w*.11f, false);
+
+            // Economy area.
+            round(canvas, w*.65f, d(13), w-d(54), d(57), 0x990A2237, d(17), 0x35BFEFFF);
+            textCenter(canvas, "◎ 12 450    ✦ 125", (w*.65f + w-d(54))/2f, d(39), d(8), true, Color.WHITE);
+
+            // Settings ring.
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(d(2));
+            p.setColor(0xB8E8FAFF);
+            canvas.drawCircle(w-d(26), d(35), d(14), p);
+            canvas.drawCircle(w-d(26), d(35), d(4), p);
+            p.setStyle(Paint.Style.FILL);
+
+            // Hero hierarchy.
+            text(canvas, "SEASON 01", d(20), top+d(44), d(9), true, 0xFFE0B500);
+            text(canvas, "MATCHDAY", d(20), top+d(88), d(33), true, Color.WHITE);
+            text(canvas, "ATLAS FC      VS      LAGOON UNITED", d(20), top+d(116), d(10), true, 0xFFD6F7FF);
+
+            drawPlayer(canvas, w*.64f, top+d(18), Math.min(w,h)*.40f);
+            drawBall(canvas, w*.72f, top+d(235), d(17));
+
+            // Primary CTA.
+            float ctaY = h-d(139);
+            round(canvas, d(20), ctaY, d(218), ctaY+d(56), 0xFFE0B500, d(15), 0xFFFFFFFF);
+            text(canvas, "▶", d(40), ctaY+d(35), d(16), true, Color.BLACK);
+            text(canvas, "KICK OFF", d(68), ctaY+d(29), d(14), true, Color.BLACK);
+            text(canvas, "MATCH RAPIDE", d(68), ctaY+d(44), d(7.5f), true, 0xFF413500);
+
+            // Modes strip.
+            float modeY = h-d(69);
+            text(canvas, "MODES", d(20), modeY-d(14), d(9), true, 0xDDF0FAFF);
+            float gap = d(7);
+            float total = w-d(40);
+            float cw = (total-gap*2)/3f;
+            tile(canvas, d(20), modeY, cw, d(58), 1, "CARRIÈRE", "◆", 0xFF113A53);
+            tile(canvas, d(20)+cw+gap, modeY, cw, d(58), 2, "COMPÉT.", "★", 0xFF155143);
+            tile(canvas, d(20)+(cw+gap)*2, modeY, cw, d(58), 3, "ÉQUIPE", "✦", 0xFF3D4825);
+        }
+
+        private void drawPlayer(Canvas c, float cx, float y, float s) {
+            p.setColor(0xF2070F19);
+            c.drawCircle(cx, y+s*.14f, s*.105f, p);
+
+            path.reset();
+            path.moveTo(cx-s*.10f, y+s*.27f);
+            path.lineTo(cx-s*.22f, y+s*.68f);
+            path.lineTo(cx-s*.07f, y+s*.68f);
+            path.lineTo(cx, y+s*.52f);
+            path.lineTo(cx+s*.06f, y+s*.83f);
+            path.lineTo(cx+s*.22f, y+s*.83f);
+            path.lineTo(cx+s*.09f, y+s*.27f);
+            path.close();
+            c.drawPath(path, p);
+
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(s*.025f);
+            p.setColor(0x82BFEFFF);
+            c.drawLine(cx-s*.09f, y+s*.35f, cx-s*.30f, y+s*.53f, p);
+            c.drawLine(cx+s*.08f, y+s*.35f, cx+s*.27f, y+s*.16f, p);
+            p.setStyle(Paint.Style.FILL);
+
+            // Jersey stripe and luminous rim.
+            p.setColor(0xCC0E7090);
+            c.drawRect(cx-s*.085f, y+s*.30f, cx+s*.075f, y+s*.48f, p);
+        }
+
+        private void drawBall(Canvas c, float cx, float cy, float rad) {
+            p.setColor(Color.WHITE);
+            c.drawCircle(cx, cy, rad, p);
+            p.setColor(0xFF0A2235);
+            c.drawCircle(cx, cy, rad*.34f, p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(d(2));
+            p.setColor(0x99E0B500);
+            c.drawCircle(cx, cy, rad+d(10), p);
+            p.setStyle(Paint.Style.FILL);
+        }
+
+        private void tile(Canvas c,float x,float y,float ww,float hh,int mode,String title,String icon,int fill) {
+            round(c,x,y,x+ww,y+hh,fill,d(14),0x59FFFFFF);
+            p.setColor(0x20000000);
+            c.drawCircle(x+ww*.17f,y+hh*.5f,hh*.28f,p);
+            text(c,icon,x+ww*.11f,y+hh*.60f,hh*.30f,true,0xFFF3FCFF);
+            text(c,title,x+ww*.38f,y+hh*.45f,d(8.5f),true,Color.WHITE);
+            text(c,"OUVRIR  ›",x+ww*.38f,y+hh*.68f,d(6.5f),true,0xA9E8FAFF);
+        }
+
+        private void nav(Canvas c,String label,float x,float y,float ww,boolean active) {
+            round(c,x,y,x+ww,y+d(42),active ? 0x3319A9D8 : 0x00000000,
+                    d(13),active ? 0x48BFEFFF : 0);
+            textCenter(c,label,x+ww/2f,y+d(27),d(8),true,active ? Color.WHITE : 0x8FFFFFFF);
+        }
+
+        private void round(Canvas c,float l,float t,float rr,float b,int fill,float radius,int stroke) {
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(fill);
+            rect.set(l,t,rr,b);
+            c.drawRoundRect(rect,radius,radius,p);
+            if(stroke!=0){
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(d(1.2f));
+                p.setColor(stroke);
+                c.drawRoundRect(rect,radius,radius,p);
+                p.setStyle(Paint.Style.FILL);
+            }
+        }
+
+        private void drawLogo(Canvas c,float x,float y,float size) {
+            android.graphics.drawable.Drawable logo =
+                    getResources().getDrawable(com.slayer.filament.R.drawable.ic_slayer);
+            logo.setBounds((int)x,(int)y,(int)(x+size),(int)(y+size));
+            logo.draw(c);
+        }
+
+        private void text(Canvas c,String s,float x,float y,float size,boolean bold,int color) {
+            p.setStyle(Paint.Style.FILL);
+            p.setShader(null);
+            p.setColor(color);
+            p.setTextSize(size);
+            p.setTypeface(bold ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+            p.setTextAlign(Paint.Align.LEFT);
+            c.drawText(s,x,y,p);
+        }
+
+        private void textCenter(Canvas c,String s,float x,float y,float size,boolean bold,int color) {
+            p.setStyle(Paint.Style.FILL);
+            p.setShader(null);
+            p.setColor(color);
+            p.setTextSize(size);
+            p.setTypeface(bold ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+            p.setTextAlign(Paint.Align.CENTER);
+            c.drawText(s,x,y,p);
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent e) {
+            if(e.getAction()!=MotionEvent.ACTION_UP) return true;
+            float x=e.getX(), y=e.getY(), w=getWidth(), h=getHeight();
+
+            if(x>w-d(60) && y<d(70)){
+                settings.run();
+                return true;
+            }
+            if(x>=d(15) && x<=d(225) && y>h-d(155) && y<h-d(70)){
+                quickMatch.run();
+                return true;
+            }
+
+            float gap=d(7), cw=(w-d(40)-gap*2)/3f, modeY=h-d(69);
+            for(int i=0;i<3;i++){
+                float left=d(20)+(cw+gap)*i;
+                if(x>=left && x<=left+cw && y>=modeY && y<=modeY+d(58)){
+                    modeAction.open(i+1);
+                    return true;
+                }
+            }
+
+            if(y>h-d(60)){
+                modeAction.open(x<w*.33f ? 4 : (x<w*.66f ? 5 : 6));
+            }
+            return true;
+        }
     }
 
     private void addNavItem(LinearLayout nav, String text, boolean active) {
