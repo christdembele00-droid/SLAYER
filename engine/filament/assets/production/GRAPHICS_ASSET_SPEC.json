@@ -1,0 +1,128 @@
+{
+  "version": 2,
+  "target": "mobile_high_fidelity",
+  "renderer": "Filament",
+  "backend": "Vulkan",
+  "asset_policy": {
+    "original_or_licensed_only": true,
+    "do_not_ship_proprietary_game_assets": true,
+    "source_of_truth": "Cloudinary catalog + checked-in technical fallbacks"
+  },
+  "players": {
+    "hero": {
+      "format": "glb",
+      "maps": ["baseColor", "normal", "roughness", "ao"],
+      "target_texture_resolution": "2048_or_4096_per_material",
+      "skin": true,
+      "hair": true,
+      "eyes": true,
+      "boots": true,
+      "cloth_normal_detail": true
+    },
+    "simulation_lod": {
+      "lod0_distance_m": 16,
+      "lod1_distance_m": 38,
+      "lod2_distance_m": 38,
+      "note": "Runtime currently applies animation-rate LOD. Geometry LOD assets are generated when possible but are not swapped until a memory-safe instance strategy is enabled."
+    },
+    "animation_sets": [
+      "idle",
+      "walk",
+      "run",
+      "sprint",
+      "acceleration",
+      "deceleration",
+      "turn",
+      "dribble",
+      "ball_control",
+      "short_pass",
+      "long_pass",
+      "through_ball",
+      "cross",
+      "shot",
+      "volley",
+      "header",
+      "tackle",
+      "slide_tackle",
+      "fall",
+      "celebrate",
+      "keeper_idle",
+      "keeper_dive",
+      "keeper_save",
+      "keeper_claim",
+      "keeper_distribution"
+    ]
+  },
+  "pitch": {
+    "format": "glb_plus_pbr",
+    "maps": ["baseColor", "normal", "roughness", "ao"],
+    "features": [
+      "pitch_lines",
+      "grass_blade_detail",
+      "grass_variation",
+      "wetness_response",
+      "goal_nets",
+      "advertising_boards"
+    ]
+  },
+  "stadium": {
+    "format": "glb",
+    "features": [
+      "stands",
+      "roof",
+      "tunnels",
+      "benches",
+      "billboards",
+      "lights",
+      "scoreboards",
+      "entrances",
+      "stadium_props",
+      "crowd"
+    ]
+  },
+  "lighting": {
+    "day": ["sun", "ibl", "skybox", "contact_shadows"],
+    "twilight": ["sun", "ibl", "floodlights", "bloom"],
+    "night": ["floodlights", "ibl", "bloom", "contact_shadows"],
+    "hdr_pipeline": "EXR -> cmgen -> KTX"
+  },
+  "weather": {
+    "clear": true,
+    "rain": true,
+    "snow": true,
+    "wet_pitch_response": true,
+    "particle_simulation": "native",
+    "note": "Current runtime contains a lightweight weather geometry path; dense particle rendering remains a future content/performance phase."
+  },
+  "camera": [
+    "broadcast",
+    "dynamic",
+    "overview",
+    "pro",
+    "custom"
+  ],
+  "post_processing": [
+    "ACESToneMapping",
+    "TAA",
+    "FXAA",
+    "GTAO",
+    "Bloom",
+    "dynamic_resolution"
+  ],
+  "performance_targets": {
+    "target_fps": 60,
+    "minimum_acceptable_fps": 30,
+    "measurement_required_on_real_device": true,
+    "profiles": ["low", "medium", "high", "ultra"]
+  },
+  "content_gap": [
+    "final_dedicated_player_models",
+    "final_player_face_variants",
+    "final_licensed_or_original_kits",
+    "final_stadium_variants",
+    "final_crowd_assets",
+    "final_weather_particles",
+    "final_ball_and_net_detail",
+    "final_replay_fx"
+  ]
+}

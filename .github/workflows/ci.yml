@@ -1,15 +1,10 @@
 name: SLAYER CI
-
 run-name: SLAYER CI • ${{ github.event_name }} • ${{ github.sha }}
-
 on:
-  push:
-    branches: [main]
+  push: { branches: [main] }
   pull_request:
   workflow_dispatch:
-
-permissions:
-  contents: read
+permissions: { contents: read }
 
 jobs:
   web:
@@ -18,11 +13,9 @@ jobs:
       - uses: actions/checkout@v5
       - run: git diff --check
       - uses: actions/setup-node@v7
-        with:
-          node-version: 24
+        with: { node-version: 24 }
       - run: npm install
-      - name: Audit JavaScript dependencies
-        run: npm audit --audit-level=moderate
+      - run: npm audit --audit-level=moderate
       - run: npm run build
       - run: npm run test -- --run
 
@@ -31,52 +24,59 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+        with: { python-version: "3.12" }
       - run: pip install -r server/requirements.txt
       - run: python -m compileall server
-      - name: Build server container
-        run: docker build -f server/Dockerfile .
-      - run: python -m unittest discover -s server -p "test_*.py"
+      - run: docker build -f server/Dockerfile .
+      - run: python -m unittest discover -s . -p "test_*.py" -t .
 
   filament:
     runs-on: ubuntu-latest
-    env:
-      CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
     steps:
       - uses: actions/checkout@v5
       - run: git diff --check
       - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
+        with: { distribution: temurin, java-version: "21" }
       - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: "9.1.0" }
+      - run: mkdir -p /tmp/slayer-toolchain
+      - uses: actions/cache@v4
         with:
-          gradle-version: "9.1.0"
-      - name: Download Filament 1.77 Android native distribution
+          path: /tmp/slayer-toolchain
+          key: slayer-filament-${{ runner.os }}-1.77.0-v3
+      - name: Download and verify pinned Filament
+        env:
+          FILAMENT_VERSION: "1.77.0"
+          FILAMENT_NATIVE_SHA256: "efe986a27b66ed465e7cfc9e7d485f6d602ba1a1411897bf1653be82da581e63"
+          FILAMENT_LINUX_SHA256: "d109cb177f55968abc52afd8ba338dade935e3506dd8e7efe5721c3208fd468a"
         run: |
-          curl -L --fail --retry 3 -o /tmp/filament-native.tgz https://github.com/google/filament/releases/download/v1.77.0/filament-v1.77.0-android-native.tgz
-          mkdir -p /tmp/filament-native
-          tar -xzf /tmp/filament-native.tgz -C /tmp/filament-native
+          set -euo pipefail
+          native="/tmp/slayer-toolchain/filament-v${FILAMENT_VERSION}-android-native.tgz"
+          linux="/tmp/slayer-toolchain/filament-v${FILAMENT_VERSION}-linux.tgz"
+          test -s "$native" || curl -L --fail --retry 5 --retry-all-errors -o "$native" "https://github.com/google/filament/releases/download/v${FILAMENT_VERSION}/filament-v${FILAMENT_VERSION}-android-native.tgz"
+          test -s "$linux" || curl -L --fail --retry 5 --retry-all-errors -o "$linux" "https://github.com/google/filament/releases/download/v${FILAMENT_VERSION}/filament-v${FILAMENT_VERSION}-linux.tgz"
+          echo "${FILAMENT_NATIVE_SHA256}  ${native}" | sha256sum -c -
+          echo "${FILAMENT_LINUX_SHA256}  ${linux}" | sha256sum -c -
+          rm -rf /tmp/filament-native /tmp/filament-linux
+          mkdir -p /tmp/filament-native /tmp/filament-linux
+          tar -xzf "$native" -C /tmp/filament-native
+          tar -xzf "$linux" -C /tmp/filament-linux
+          cmgen="$(find /tmp/filament-linux -type f -name cmgen -perm -111 | head -n 1)"
+          matc="$(find /tmp/filament-linux -type f -name matc -perm -111 | head -n 1)"
+          gltfpack="$(find /tmp/filament-linux -type f -name gltfpack -perm -111 | head -n 1)"
+          test -n "$cmgen" && test -n "$matc"
+          if [ -n "$gltfpack" ]; then echo "gltfpack available"; else echo "gltfpack not packaged; Blender fallback will be used"; fi
           echo "FILAMENT_DIST_DIR=/tmp/filament-native" >> "$GITHUB_ENV"
-      - name: Install Blender and host tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y blender python3-numpy unzip
-          curl -L --fail --retry 3 -o /tmp/filament-linux.tgz https://github.com/google/filament/releases/download/v1.77.0/filament-v1.77.0-linux.tgz
-          mkdir -p /tmp/filament-linux
-          tar -xzf /tmp/filament-linux.tgz -C /tmp/filament-linux
-          CMGEN=$(find /tmp/filament-linux -type f -name cmgen -perm -111 | head -n 1)
-          test -n "$CMGEN"
-          echo "FILAMENT_TOOLS_DIR=$(dirname "$CMGEN")" >> "$GITHUB_ENV"
-      - name: Prepare Cloudinary assets and Filament IBL
-        run: node scripts/prepare-filament-production-assets.mjs
-      - name: Build native Filament debug APK
-        run: gradle -p benchmarks/filament-v0.1/android assembleDebug assembleRelease --no-daemon
+          echo "FILAMENT_TOOLS_DIR=$(dirname "$cmgen")" >> "$GITHUB_ENV"
+      - run: sudo apt-get update && sudo apt-get install -y blender unzip python3-numpy
+      - run: node scripts/validate-android-configuration.mjs
+      - run: node scripts/prepare-filament-production-assets.mjs
+      - run: node scripts/validate-filament-production-assets.mjs
+      - run: gradle -p engine/filament/android assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
-          name: SLAYER-Native-${{ github.sha }}
+          name: SLAYER-Native-Debug-${{ github.sha }}
           path: |
-            benchmarks/filament-v0.1/android/app/build/outputs/apk/debug/*.apk
-            benchmarks/filament-v0.1/android/app/build/outputs/apk/release/*.apk
-            benchmarks/filament-v0.1/android/app/build/outputs/bundle/release/*.aab
+            engine/filament/android/app/build/outputs/apk/debug/*.apk
+            engine/filament/android/app/src/main/assets/slayer-production-assets.json
+

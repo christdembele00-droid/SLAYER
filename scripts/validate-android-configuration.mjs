@@ -1,0 +1,17 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+const root=process.cwd();
+const gradle=await readFile(join(root,"engine/filament/android/app/build.gradle"),"utf8");
+const activity=await readFile(join(root,"engine/filament/android/app/src/main/java/com/slayer/filament/MainActivity.java"),"utf8");
+const cmake=await readFile(join(root,"engine/filament/native/CMakeLists.txt"),"utf8");
+const google=JSON.parse(await readFile(join(root,"engine/filament/android/app/google-services.json"),"utf8"));
+const app=gradle.match(/applicationId\s+"([^"]+)"/); if(!app)throw new Error("Android applicationId missing");
+const id=app[1];
+const registered=(google.client||[]).map(x=>x.client_info?.android_client_info?.package_name).filter(Boolean);
+if(!registered.includes(id))throw new Error("Firebase package mismatch: "+id);
+if(!activity.includes('System.loadLibrary("slayer_native_engine")'))throw new Error("Native library mismatch");
+if(!cmake.includes("FILAMENT_DIST_DIR")||!cmake.includes("FILAMENT_STATIC_LIBS"))throw new Error("Filament native distribution linkage missing");
+if(!gradle.includes('com.android.billingclient:billing:9.1.0'))throw new Error("Billing dependency drift");
+if(!gradle.includes("firebase-bom")||!gradle.includes("firebase-auth"))throw new Error("Firebase dependency drift");
+if(!gradle.includes('-DANDROID_STL=c++_shared'))throw new Error("Android C++ runtime configuration missing");
+console.log("Android/Firebase configuration: OK");

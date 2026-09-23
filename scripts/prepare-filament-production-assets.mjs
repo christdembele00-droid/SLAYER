@@ -6,14 +6,13 @@ import { promisify } from "node:util";
 
 const exec = promisify(execFile);
 const root = process.cwd();
-const out = join(root, "benchmarks/filament-v0.1/android/app/src/main/assets");
-
-const cloudinary = {
-  player: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790110996/slayer/players/models/player_base.glb",
-  animation: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790111001/slayer/players/animations/universal_animation_library_mannequin.glb",
-  fieldZip: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790111012/slayer/stadium/models/soccer_field_cc0.zip",
-  environment: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790111036/slayer/stadium/ibl/orlando_stadium_1k.exr",
-};
+const out = join(root, "engine/filament/android/app/src/main/assets");
+const catalogPath = join(root, "engine/filament/assets/production/CLOUDINARY_GRAPHICS_CATALOG.json");
+const catalog = JSON.parse(await readFile(catalogPath, "utf8"));
+const cloudinary = catalog.delivery_urls;
+for (const [key, url] of Object.entries(cloudinary || {})) {
+  try { new URL(url); } catch { throw new Error("Invalid Cloudinary delivery URL for " + key); }
+}
 
 function signedCloudinaryRawUrl(url) {
   const secret = process.env.CLOUDINARY_API_SECRET;
@@ -45,19 +44,12 @@ function signedCloudinaryRawUrl(url) {
 }
 
 async function download(url, file) {
+  if (typeof url !== "string" || !url) throw new Error("Cloudinary delivery URL is undefined");
   await mkdir(dirname(file), { recursive: true });
-
-  let response = await fetch(url);
-  if (response.status === 401 && url.includes("/raw/upload/")) {
-    response = await fetch(signedCloudinaryRawUrl(url));
-  }
-
-  if (!response.ok) {
-    throw new Error(`Cloudinary download failed: ${response.status} ${url}`);
-  }
-
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Cloudinary download failed: " + response.status + " " + url);
   const bytes = Buffer.from(await response.arrayBuffer());
-  if (bytes.length < 128) throw new Error(`Asset too small: ${file}`);
+  if (bytes.length < 128) throw new Error("Asset too small: " + file);
   await writeFile(file, bytes);
   return bytes;
 }
@@ -92,12 +84,90 @@ async function ensureFile(file, label) {
 
 async function extractZipEntry(zipFile, entry, destination) {
   await mkdir(dirname(destination), { recursive: true });
-  await exec("unzip", ["-p", zipFile, entry], {
+  const { stdout } = await exec("unzip", ["-p", zipFile, entry], { maxBuffer: 256 * 1024 * 1024, encoding: "buffer" });
+  if (!Buffer.isBuffer(stdout) || stdout.length === 0) throw new Error("Empty ZIP entry: " + entry);
+  await writeFile(destination, stdout);
+}
+
+async function prepareModelFromZip(zipFile, destination, label) {
+  const entries = (await exec("unzip", ["-Z1", zipFile])).stdout
+    .split("\n").map(x => x.trim()).filter(Boolean).filter(x => !x.endsWith("/"));
+  const glbEntry = entries.find(x => x.toLowerCase().endsWith(".glb"));
+  if (glbEntry) {
+    await extractZipEntry(zipFile, glbEntry, destination);
+    await ensureFile(destination, label);
+    return { mode: "glb", source: glbEntry };
+  }
+
+  const sourceMatchers = [
+    [".gltf", "gltf"],
+    [".obj", "obj"],
+    [".fbx", "fbx"],
+    [".blend", "blend"],
+    [".dae", "dae"],
+    [".3ds", "3ds"],
+    [".ply", "ply"],
+    [".stl", "stl"],
+    [".x3d", "x3d"],
+  ];
+  const sourceMatch = sourceMatchers
+    .map(([extension, format]) => ({
+      format,
+      entry: entries.find(x => x.toLowerCase().endsWith(extension)),
+    }))
+    .find(x => x.entry);
+  if (!sourceMatch) {
+    throw new Error(
+      "Unable to convert " + label + ": archive has no supported 3D source. Entries:\n" +
+      entries.join("\n")
+    );
+  }
+  const { entry: sourceEntry, format: sourceFormat } = sourceMatch;
+
+  const extractDir = join(tmp, label.replace(/[^a-z0-9_-]/gi, "_"));
+  await mkdir(extractDir, { recursive: true });
+  await exec("unzip", ["-q", zipFile, "-d", extractDir]);
+  const sourcePath = join(extractDir, sourceEntry);
+
+  const gltfpack = await findExecutable("gltfpack");
+  if (sourceFormat === "gltf" && gltfpack) {
+    await exec(gltfpack, ["-i", sourcePath, "-o", destination, "-noq"], {
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    await ensureFile(destination, label);
+    return { mode: "gltfpack", source: sourceEntry };
+  }
+
+  const blender = await findExecutable("blender");
+  if (!blender) throw new Error("Unable to convert " + label + ": Blender is required for this source format.");
+
+  const blenderScript = join(extractDir, "export_to_glb.py");
+  await writeFile(
+    blenderScript,
+    [
+      "import bpy, sys",
+      "sep = sys.argv.index('--')",
+      "src = sys.argv[sep + 1]",
+      "dst = sys.argv[sep + 2]",
+      "bpy.ops.wm.read_factory_settings(use_empty=True)",
+      "if src.lower().endswith('.blend'): bpy.ops.wm.open_mainfile(filepath=src, load_ui=False)",
+      "elif src.lower().endswith('.fbx'): bpy.ops.import_scene.fbx(filepath=src, use_custom_normals=True)",
+      "elif src.lower().endswith('.obj'): bpy.ops.wm.obj_import(filepath=src)",
+      "elif src.lower().endswith('.gltf'): bpy.ops.import_scene.gltf(filepath=src)",
+      "elif src.lower().endswith('.dae'): bpy.ops.wm.collada_import(filepath=src)",
+      "elif src.lower().endswith('.3ds'): bpy.ops.import_scene.autodesk_3ds(filepath=src)",
+      "elif src.lower().endswith('.ply'): bpy.ops.wm.ply_import(filepath=src)",
+      "elif src.lower().endswith('.stl'): bpy.ops.wm.stl_import(filepath=src)",
+      "elif src.lower().endswith('.x3d'): bpy.ops.import_scene.x3d(filepath=src)",
+      "else: raise RuntimeError('unsupported source format')",
+      "bpy.ops.export_scene.gltf(filepath=dst, export_format='GLB', export_image_format='AUTO', export_materials='EXPORT', export_cameras=False, export_lights=False)"
+    ].join("\n")
+  );
+  await exec(blender, ["--background", "--python", blenderScript, "--", sourcePath, destination], {
     maxBuffer: 128 * 1024 * 1024,
-  }).then(({ stdout }) => {
-    if (!stdout) throw new Error(`unzip returned an empty asset: ${entry}`);
-    return writeFile(destination, stdout);
   });
+  await ensureFile(destination, label);
+  return { mode: "blender", source: sourceEntry };
 }
 
 await mkdir(out, { recursive: true });
@@ -106,14 +176,70 @@ const fieldSourceDir = join(tmp, "soccer_field_source");
 await mkdir(fieldSourceDir, { recursive: true });
 
 const playerFile = join(out, "models/player.glb");
+const playerLod1File = join(out, "models/player_lod1.glb");
+const playerLod2File = join(out, "models/player_lod2.glb");
 const animationFile = join(out, "models/animation_library.glb");
+const animationFile2 = join(out, "models/animation_library_2_standard");
+const grassBaseColorFile = join(out, "textures/grass_basecolor_1k.png");
+const grassNormalFile = join(out, "textures/grass_normal_1k.png");
+const grassRoughnessFile = join(out, "textures/grass_roughness_1k.png");
+const jerseyBaseColorFile = join(out, "textures/jersey_basecolor_1k.png");
+const jerseyNormalFile = join(out, "textures/jersey_normal_1k.png");
+const jerseyRoughnessFile = join(out, "textures/jersey_roughness_1k.png");
+const ballZip = join(tmp, "football_balloon_cc0.zip");
+const goalZip = join(tmp, "soccer_goal_cc0.zip");
+const particleZip = join(out, "effects/particle_pack_cc0.zip");
+const rainZip = join(out, "effects/rain_drop_cc0.zip");
+const ballModel = join(out, "models/ball.glb");
+const goalModel = join(out, "models/goal.glb");
+const envExr2 = join(tmp, "stadium_01_1k.exr");
 const fieldZip = join(tmp, "soccer_field_cc0.zip");
 const envExr = join(tmp, "orlando_stadium_1k.exr");
 
 await download(cloudinary.player, playerFile);
 await download(cloudinary.animation, animationFile);
-await download(cloudinary.fieldZip, fieldZip);
-await download(cloudinary.environment, envExr);
+await download(cloudinary.animation2, animationFile2);
+await download(cloudinary.field, fieldZip);
+await download(cloudinary.environment1, envExr);
+await download(cloudinary.environment2, envExr2);
+await download(cloudinary.grass_basecolor, grassBaseColorFile);
+await download(cloudinary.grass_normal, grassNormalFile);
+await download(cloudinary.grass_roughness, grassRoughnessFile);
+await download(cloudinary.jersey_basecolor, jerseyBaseColorFile);
+await download(cloudinary.jersey_normal, jerseyNormalFile);
+await download(cloudinary.jersey_roughness, jerseyRoughnessFile);
+await download(cloudinary.ball, ballZip);
+await download(cloudinary.goal, goalZip);
+await download(cloudinary.particles, particleZip);
+await download(cloudinary.rain, rainZip);
+
+// Generate geometry LODs from the same source player when the Filament host
+// tool is available. LOD assets are deliberately optional: the runtime uses
+// animation-rate LOD today, avoiding a 3x instance-memory multiplier.
+const gltfpack = await findExecutable("gltfpack");
+if (gltfpack) {
+  try {
+    await exec(gltfpack, ["-i", playerFile, "-o", playerLod1File, "-km", "-si", "0.55"], {
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    await exec(gltfpack, ["-i", playerFile, "-o", playerLod2File, "-km", "-si", "0.30"], {
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    await ensureFile(playerLod1File, "Player LOD1 GLB");
+    await ensureFile(playerLod2File, "Player LOD2 GLB");
+    console.log("Generated player geometry LODs with gltfpack.");
+  } catch (error) {
+    console.log("gltfpack LOD generation skipped:", error.message);
+  }
+} else {
+  console.log("gltfpack not available; keeping runtime animation-rate LOD only.");
+}
+
+await mkdir(join(out, "effects"), { recursive: true });
+const ballInfo = await prepareModelFromZip(ballZip, ballModel, "Ball GLB");
+const goalInfo = await prepareModelFromZip(goalZip, goalModel, "Goal GLB");
+console.log("Prepared ball:", JSON.stringify(ballInfo));
+console.log("Prepared goal:", JSON.stringify(goalInfo));
 
 const zipList = (await exec("unzip", ["-Z1", fieldZip])).stdout
   .split("\n")
@@ -184,9 +310,53 @@ if (glb) {
 }
 
 await ensureFile(extractedPitch, "Pitch GLB");
+
+const blenderFoundation = await findExecutable("blender");
+if (!blenderFoundation) throw new Error("Blender is required for SLAYER procedural stadium/crowd foundations");
+const foundationStadium = join(out, "models/stadium.glb");
+const foundationCrowd = join(out, "crowd/crowd.glb");
+await mkdir(dirname(foundationStadium), { recursive: true });
+await mkdir(dirname(foundationCrowd), { recursive: true });
+await exec(blenderFoundation, [
+  "--background",
+  "--python",
+  join(root, "scripts/generate_slayer_foundations.py"),
+  "--",
+  foundationStadium,
+  foundationCrowd,
+], { maxBuffer: 64 * 1024 * 1024 });
+await ensureFile(foundationStadium, "Procedural stadium GLB");
+await ensureFile(foundationCrowd, "Procedural crowd GLB");
 const pitchData = await readFile(extractedPitch);
 if (pitchData.subarray(0, 4).toString() !== "glTF") {
   throw new Error("Generated pitch asset is not a valid GLB");
+}
+
+const matc = await findExecutable("matc");
+if (!matc) {
+  throw new Error("matc is required to compile SLAYER PBR material definitions");
+}
+
+const materialSourceDir = join(root, "engine/filament/native/materials");
+const materialDefinitions = [
+  ["grass.mat", "grass.filamat"],
+  ["player_skin.mat", "player_skin.filamat"],
+  ["player_kit.mat", "player_kit.filamat"],
+];
+const materialOutDir = join(out, "materials");
+await mkdir(materialOutDir, { recursive: true });
+for (const [sourceName, outputName] of materialDefinitions) {
+  const sourcePath = join(materialSourceDir, sourceName);
+  const outputPath = join(materialOutDir, outputName);
+  await ensureFile(sourcePath, sourceName);
+  await exec(matc, [
+    "-p", "mobile",
+    "-a", "vulkan",
+    "-o", outputPath,
+    sourcePath,
+  ], { maxBuffer: 16 * 1024 * 1024 });
+  await ensureFile(outputPath, outputName);
+  console.log("Compiled PBR material:", outputName);
 }
 
 const cmgen = await findExecutable("cmgen");
@@ -195,7 +365,9 @@ if (!cmgen) {
 }
 
 const iblDir = join(out, "ibl/orlando_stadium");
+const iblDir2 = join(out, "ibl/stadium_01");
 await mkdir(iblDir, { recursive: true });
+await mkdir(iblDir2, { recursive: true });
 await exec(cmgen, ["--quiet", "-f", "ktx", "-x", iblDir, envExr]);
 
 const generated = [
@@ -211,13 +383,13 @@ try {
   console.log(error.stdout || error.message);
 }
 
-async function locateKtx(expected, suffix) {
+async function locateKtx(directory, expected, suffix) {
   try {
     await ensureFile(expected, "Generated KTX asset");
     return expected;
   } catch {}
 
-  const { stdout } = await exec("find", [iblDir, "-type", "f", "-name", "*" + suffix + ".ktx"]);
+  const { stdout } = await exec("find", [directory, "-type", "f", "-name", "*" + suffix + ".ktx"]);
   const candidates = stdout.split("\n").map(x => x.trim()).filter(Boolean);
   if (candidates.length !== 1) {
     throw new Error("cmgen did not produce a unique " + suffix + ".ktx file. Found: " + (candidates.join(", ") || "none"));
@@ -225,8 +397,8 @@ async function locateKtx(expected, suffix) {
   return candidates[0];
 }
 
-const resolvedIbl = await locateKtx(generated[0], "_ibl");
-const resolvedSkybox = await locateKtx(generated[1], "_skybox");
+const resolvedIbl = await locateKtx(iblDir, generated[0], "_ibl");
+const resolvedSkybox = await locateKtx(iblDir, generated[1], "_skybox");
 
 if (resolvedIbl !== generated[0]) await exec("cp", [resolvedIbl, generated[0]]);
 if (resolvedSkybox !== generated[1]) await exec("cp", [resolvedSkybox, generated[1]]);
@@ -235,19 +407,66 @@ for (const file of generated) {
   await ensureFile(file, "Generated KTX asset");
 }
 
+const secondIbl = join(iblDir2, "stadium_01_1k_ibl.ktx");
+const secondSkybox = join(iblDir2, "stadium_01_1k_skybox.ktx");
+await exec(cmgen, ["--quiet", "-f", "ktx", "-x", iblDir2, envExr2]);
+const secondIblResolved = await locateKtx(iblDir2, secondIbl, "_ibl");
+const secondSkyboxResolved = await locateKtx(iblDir2, secondSkybox, "_skybox");
+if (secondIblResolved !== secondIbl) await exec("cp", [secondIblResolved, secondIbl]);
+if (secondSkyboxResolved !== secondSkybox) await exec("cp", [secondSkyboxResolved, secondSkybox]);
+
 const manifest = {
   generated_at: new Date().toISOString(),
   source: "Cloudinary SLAYER asset catalog",
-  renderer: "Filament Vulkan",
+  renderer: "filament-vulkan",
   assets: {
     player: { path: "models/player.glb", sha256: await sha256(playerFile) },
+    player_lod1: {
+      path: "models/player_lod1.glb",
+      generated: Boolean(await stat(playerLod1File).catch(() => null)),
+      ...(await stat(playerLod1File).catch(() => null) ? { sha256: await sha256(playerLod1File) } : {}),
+    },
+    player_lod2: {
+      path: "models/player_lod2.glb",
+      generated: Boolean(await stat(playerLod2File).catch(() => null)),
+      ...(await stat(playerLod2File).catch(() => null) ? { sha256: await sha256(playerLod2File) } : {}),
+    },
     pitch: { path: "models/pitch.glb", sha256: await sha256(extractedPitch) },
     animation_library: {
       path: "models/animation_library.glb",
       sha256: await sha256(animationFile),
     },
+    animation_library_2_standard: {
+      path: "models/animation_library_2_standard",
+      sha256: await sha256(animationFile2),
+    },
+    grass_pbr: {
+      baseColor: "textures/grass_basecolor_1k.png",
+      normal: "textures/grass_normal_1k.png",
+      roughness: "textures/grass_roughness_1k.png"
+    },
+    jersey_pbr: {
+      baseColor: "textures/jersey_basecolor_1k.png",
+      normal: "textures/jersey_normal_1k.png",
+      roughness: "textures/jersey_roughness_1k.png"
+    },
+    secondary_stadium_ibl: {
+      ibl: "ibl/stadium_01/stadium_01_1k_ibl.ktx",
+      skybox: "ibl/stadium_01/stadium_01_1k_skybox.ktx"
+    },
+    stadium_foundation: { path: "models/stadium.glb", source: "procedural-original" },
+    crowd_foundation: { path: "crowd/crowd.glb", source: "procedural-original" },
+    ball: { path: "models/ball.glb", source: ballInfo.source, mode: ballInfo.mode, sha256: await sha256(ballModel) },
+    goal: { path: "models/goal.glb", source: goalInfo.source, mode: goalInfo.mode, sha256: await sha256(goalModel) },
+    particle_pack: { path: "effects/particle_pack_cc0.zip", sha256: await sha256(particleZip) },
+    rain_particle: { path: "effects/rain_drop_cc0.zip", sha256: await sha256(rainZip) },
     ibl: { path: "ibl/orlando_stadium/orlando_stadium_1k_ibl.ktx" },
     skybox: { path: "ibl/orlando_stadium/orlando_stadium_1k_skybox.ktx" },
+  },
+  materials: {
+    grass: { path: "materials/grass.filamat" },
+    player_skin: { path: "materials/player_skin.filamat" },
+    player_kit: { path: "materials/player_kit.filamat" },
   },
 };
 
@@ -256,4 +475,4 @@ await writeFile(
   JSON.stringify(manifest, null, 2) + "\n"
 );
 
-console.log(JSON.stringify(manifest, null, 2));
+console.log(JSON.stringify({catalog_path: catalogPath, manifest}, null, 2));

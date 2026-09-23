@@ -1,0 +1,13 @@
+{
+  "version":1,
+  "id":"SLAYER_FACE_VARIANTS_V1",
+  "source":"procedural-original-presets",
+  "variants":[
+    {"id":"face_01","jaw":0.10,"cheek":-0.05,"brow":0.08,"nose":0.00},
+    {"id":"face_02","jaw":-0.08,"cheek":0.06,"brow":-0.04,"nose":0.08},
+    {"id":"face_03","jaw":0.02,"cheek":-0.08,"brow":0.10,"nose":-0.06},
+    {"id":"face_04","jaw":0.12,"cheek":0.02,"brow":-0.08,"nose":0.04}
+  ],
+  "status":"preset-foundation",
+  "finalReleaseNote":"These are parameter presets, not final human face scans."
+}

@@ -157,3 +157,8 @@ The dedicated Android release workflow builds the **native Filament/Vulkan AAB**
 Three.js/WebGL remains a web preview only. It is not the canonical Android renderer.
 
 CI validation trigger: 2026-09-22T21:50:01.238Z
+
+
+## Canonical native graphics engine
+
+The production Android renderer is under `engine/filament`. The former benchmark directory is no longer the canonical engine path.

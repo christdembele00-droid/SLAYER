@@ -1,0 +1,27 @@
+material {
+    name : "SLAYER Player Skin PBR",
+    parameters : [
+        { type : sampler2d, name : baseColor },
+        { type : sampler2d, name : normal },
+        { type : sampler2d, name : roughness },
+        { type : sampler2d, name : ao },
+        { type : float, name : roughnessScale }
+    ],
+    requires : [ uv0, tangents ],
+    shadingModel : lit,
+    blending : opaque
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        vec2 uv = getUV0();
+        material.baseColor = texture(materialParams_baseColor, uv);
+        material.normal = texture(materialParams_normal, uv).xyz * 2.0 - 1.0;
+        material.roughness = clamp(
+            texture(materialParams_roughness, uv).r * materialParams.roughnessScale,
+            0.28, 0.92);
+        material.metallic = 0.0;
+        material.ambientOcclusion = texture(materialParams_ao, uv).r;
+    }
+}

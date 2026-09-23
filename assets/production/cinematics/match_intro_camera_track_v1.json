@@ -1,0 +1,15 @@
+{
+  "version":1,
+  "id":"SLAYER_MATCH_INTRO_V1",
+  "type":"camera_track",
+  "durationSeconds":10,
+  "fps":60,
+  "shots":[
+    {"id":"establish","start":0,"end":3,"camera":"broadcast","target":"center_pitch"},
+    {"id":"stadium","start":3,"end":6,"camera":"overview","target":"north_stand"},
+    {"id":"teams","start":6,"end":8,"camera":"dynamic","target":"center_circle"},
+    {"id":"kickoff","start":8,"end":10,"camera":"pro","target":"ball"}
+  ],
+  "transitions":"ease_in_out",
+  "audioCues":["stadium_rise","team_reveal","kickoff"]
+}

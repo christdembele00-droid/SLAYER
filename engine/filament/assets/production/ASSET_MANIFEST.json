@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "target": "mobile_high_fidelity",
+  "renderer": "filament-vulkan",
+  "required_assets": [
+    "models/player.glb",
+    "models/pitch.glb",
+    "models/stadium.glb",
+    "models/ball.glb",
+    "models/goal.glb",
+    "models/animation_library.glb",
+    "dual_ibl_ktx",
+    "compiled_pbr_materials",
+    "pbr_texture_maps"
+  ],
+  "optional_generated_assets": [
+    "models/player_lod1.glb",
+    "models/player_lod2.glb",
+    "crowd/crowd.glb"
+  ],
+  "release_rule": "Only original, CC0 or properly licensed content may ship."
+}
