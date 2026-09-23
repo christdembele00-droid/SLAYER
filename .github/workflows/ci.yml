@@ -87,8 +87,8 @@ jobs:
       - name: Check release workflow separation
         run: |
           set -euo pipefail
-          if grep -R --line-number --fixed-strings "assembleRelease" .github/workflows/ci.yml; then
-            echo "assembleRelease must stay out of CI debug workflow"
+          if grep -R --line-number --fixed-strings "assembleRelease bundleRelease" .github/workflows/ci.yml; then
+            echo "Release build command must stay in android-release.yml"
             exit 1
           fi
-          grep -R --line-number --fixed-strings "bundleRelease" .github/workflows/android-release.yml
+          grep -R --line-number --fixed-strings "assembleRelease bundleRelease" .github/workflows/android-release.yml
