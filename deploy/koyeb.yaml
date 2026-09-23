@@ -1,0 +1,9 @@
+service:
+  name: slayer-api
+  type: web
+  builder: docker
+  workdir: .
+  dockerfile: server/Dockerfile
+  port: 8080
+  healthcheck:
+    path: /health
