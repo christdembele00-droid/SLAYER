@@ -122,15 +122,19 @@ await download(cloudinary.environment, envExr);
 // animation-rate LOD today, avoiding a 3x instance-memory multiplier.
 const gltfpack = await findExecutable("gltfpack");
 if (gltfpack) {
-  await exec(gltfpack, ["-i", playerFile, "-o", playerLod1File, "-km", "-si", "0.55"], {
-    maxBuffer: 64 * 1024 * 1024,
-  });
-  await exec(gltfpack, ["-i", playerFile, "-o", playerLod2File, "-km", "-si", "0.30"], {
-    maxBuffer: 64 * 1024 * 1024,
-  });
-  await ensureFile(playerLod1File, "Player LOD1 GLB");
-  await ensureFile(playerLod2File, "Player LOD2 GLB");
-  console.log("Generated player geometry LODs with gltfpack.");
+  try {
+    await exec(gltfpack, ["-i", playerFile, "-o", playerLod1File, "-km", "-si", "0.55"], {
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    await exec(gltfpack, ["-i", playerFile, "-o", playerLod2File, "-km", "-si", "0.30"], {
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    await ensureFile(playerLod1File, "Player LOD1 GLB");
+    await ensureFile(playerLod2File, "Player LOD2 GLB");
+    console.log("Generated player geometry LODs with gltfpack.");
+  } catch (error) {
+    console.log("gltfpack LOD generation skipped:", error.message);
+  }
 } else {
   console.log("gltfpack not available; keeping runtime animation-rate LOD only.");
 }
@@ -209,6 +213,33 @@ if (pitchData.subarray(0, 4).toString() !== "glTF") {
   throw new Error("Generated pitch asset is not a valid GLB");
 }
 
+const matc = await findExecutable("matc");
+if (!matc) {
+  throw new Error("matc is required to compile SLAYER PBR material definitions");
+}
+
+const materialSourceDir = join(root, "benchmarks/filament-v0.1/native/materials");
+const materialDefinitions = [
+  ["grass.mat", "grass.filamat"],
+  ["player_skin.mat", "player_skin.filamat"],
+  ["player_kit.mat", "player_kit.filamat"],
+];
+const materialOutDir = join(out, "materials");
+await mkdir(materialOutDir, { recursive: true });
+for (const [sourceName, outputName] of materialDefinitions) {
+  const sourcePath = join(materialSourceDir, sourceName);
+  const outputPath = join(materialOutDir, outputName);
+  await ensureFile(sourcePath, sourceName);
+  await exec(matc, [
+    "-p", "mobile",
+    "-a", "vulkan",
+    "-o", outputPath,
+    sourcePath,
+  ], { maxBuffer: 16 * 1024 * 1024 });
+  await ensureFile(outputPath, outputName);
+  console.log("Compiled PBR material:", outputName);
+}
+
 const cmgen = await findExecutable("cmgen");
 if (!cmgen) {
   throw new Error("cmgen is required to generate the Android KTX IBL/Skybox");
@@ -278,6 +309,11 @@ const manifest = {
     },
     ibl: { path: "ibl/orlando_stadium/orlando_stadium_1k_ibl.ktx" },
     skybox: { path: "ibl/orlando_stadium/orlando_stadium_1k_skybox.ktx" },
+  },
+  materials: {
+    grass: { path: "materials/grass.filamat" },
+    player_skin: { path: "materials/player_skin.filamat" },
+    player_kit: { path: "materials/player_kit.filamat" },
   },
 };
 
