@@ -178,11 +178,28 @@ const ui=new SlayerUI(
 );
 const config=(window as unknown as {__SLAYER_CONFIG__?:{wsUrl?:string;wsToken?:string}}).__SLAYER_CONFIG__??{};
 const online=(config.wsUrl && config.wsToken) ? new WebSocketClient() : null;
-if(online) online.connect(config.wsUrl!, config.wsToken!);
+const remoteIntents=new Map<string,PlayerIntent>();
+if(online){
+  online.onIntent=packet=>{
+    if(packet.playerId===controlledId) return;
+    remoteIntents.set(packet.playerId,{
+      moveDirection:{x:packet.moveX,y:0,z:packet.moveZ},
+      moveMagnitude:Math.min(1,Math.hypot(packet.moveX,packet.moveZ)),
+      sprintPressed:false,
+      action:packet.action as PlayerAction,
+      targetDirection:{x:packet.moveX,y:0,z:packet.moveZ},
+      power:Math.max(0,Math.min(1,packet.power)),
+      timestamp:packet.clientTime
+    });
+  };
+  online.connect(config.wsUrl!, config.wsToken!);
+}
 
 window.addEventListener("pointerdown",()=>void audio.resume(),{once:true});
 
 let matchStarted = false;
+let periodPauseUntil=0;
+let lastNetworkSendAt=0;
 function startMatch(): void {
   if (matchStarted) return;
   camera.setMode("match");
@@ -269,12 +286,16 @@ function frame(now:number){
   last=now;
 
   const human=input.snapshot();
+  if(match.phase==="Finished" || match.phase==="Aborted") return;
   ai.update(players,ball,match.clock.seconds);
   tactical.update(players,ball);
 
   const intents=new Map<string, PlayerIntent>();
   for(const p of players.all()) {
-    if(p.data.playerId!==controlledId && p.state.lastIntent) intents.set(p.data.playerId,p.state.lastIntent);
+    if(p.data.playerId===controlledId) continue;
+    const remote=remoteIntents.get(p.data.playerId);
+    if(remote) intents.set(p.data.playerId,remote);
+    else if(p.state.lastIntent) intents.set(p.data.playerId,p.state.lastIntent);
   }
   intents.set(controlledId,human);
   players.updateIntents(intents,delta);
@@ -308,6 +329,21 @@ function frame(now:number){
   previousBallZ=ball.state.position.z;
   detectGoal();
   match.update(delta);
+  if(match.phase==="HalfTime"){
+    if(periodPauseUntil===0) periodPauseUntil=now+2200;
+    if(now>=periodPauseUntil){
+      match.resumeSecondHalf();
+      periodPauseUntil=0;
+    }
+  }else if(match.period==="ExtraTimeHalfTime"){
+    if(periodPauseUntil===0) periodPauseUntil=now+2200;
+    if(now>=periodPauseUntil){
+      match.resumeExtraTimeSecondHalf();
+      periodPauseUntil=0;
+    }
+  }else if(match.phase!=="Preparing"){
+    periodPauseUntil=0;
+  }
   world.update(delta);
   ball.setSurface(world.weather==="Rain" ? "GrassWet" : "GrassDry",world.pitch.wetness);
   pitch.setWetness(world.pitch.wetness);
@@ -334,7 +370,17 @@ function frame(now:number){
   const snapshot=match.snapshot();
   ui.updateMatch(snapshot.score.homeGoals,snapshot.score.awayGoals,match.clock.format(),snapshot.phase.toUpperCase());
   ui.updatePerformance(perf.fps || gpu.fps,perf.frameMs || gpu.frameMs,perf.p95Ms || gpu.p95Ms,gpu.drawCalls,gpu.triangles,quality.tier);
-  if(online && human.action!=="None"){ online.send({type:"intent",data:{playerId:controlledId,moveX:human.moveDirection.x,moveZ:human.moveDirection.z,action:human.action,power:human.power,clientTime:Date.now()}}); }
+  if(online && now-lastNetworkSendAt>=50){
+    online.send({type:"intent",data:{
+      playerId:controlledId,
+      moveX:Math.max(-1,Math.min(1,human.moveDirection.x)),
+      moveZ:Math.max(-1,Math.min(1,human.moveDirection.z)),
+      action:human.action,
+      power:Math.max(0,Math.min(1,human.power)),
+      clientTime:Date.now()
+    }});
+    lastNetworkSendAt=now;
+  }
 
   renderer.render();
   requestAnimationFrame(frame);
