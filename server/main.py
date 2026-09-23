@@ -45,6 +45,7 @@ app.include_router(router)
 mm = Matchmaking()
 match_players: dict[str, dict[str, str]] = {}
 clients: dict[str, dict[str, WebSocket]] = {}
+player_matches: dict[str, tuple[str, str]] = {}
 last_intent_time: dict[tuple[str, str], int] = {}
 last_intent_received: dict[tuple[str, str], float] = {}
 MAX_INTENTS_PER_SECOND = 30
@@ -90,6 +91,8 @@ def join(r: QueueRequest, user=Depends(require_bearer)):
         pair[1].player_id: pair[1].owner_id or "",
     }
     clients[match_id] = {}
+    player_matches[pair[0].player_id] = (match_id, pair[0].owner_id or "")
+    player_matches[pair[1].player_id] = (match_id, pair[1].owner_id or "")
     return {
         "status": "matched",
         "players": [pair[0].player_id, pair[1].player_id],
@@ -132,6 +135,16 @@ async def _authenticate_websocket(ws: WebSocket) -> str | None:
         return None
 
     return uid or None
+
+
+@app.get("/api/matchmaking/status")
+def matchmaking_status(playerId: str = Query(min_length=1, max_length=64), user=Depends(require_bearer)):
+    owner_id = str(user.get("uid", ""))
+    entry = player_matches.get(playerId)
+    if entry and entry[1] == owner_id:
+        return {"status": "matched", "matchId": entry[0], "players": list(match_players.get(entry[0], {}).keys())}
+    queued = any(t.player_id == playerId and t.owner_id == owner_id for t in mm.queue)
+    return {"status": "queued" if queued else "idle", "matchId": None, "players": []}
 
 
 @app.websocket("/ws/{player_id}")
@@ -196,4 +209,7 @@ async def ws(
         last_intent_received.pop((match_id, player_id), None)
         if not room:
             clients.pop(match_id, None)
-            match_players.pop(match_id, None)
+            owners_for_match = match_players.pop(match_id, {})
+            for player, owner in owners_for_match.items():
+                if player_matches.get(player) == (match_id, owner):
+                    player_matches.pop(player, None)
