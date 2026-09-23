@@ -123,119 +123,200 @@ final class SlayerMenuController {
         final int pad = Math.max(px(14), Math.round(screenW * 0.035f));
 
         menuOverlay = new FrameLayout(activity);
-        menuOverlay.setBackgroundColor(0xFF050D17);
+        menuOverlay.setBackgroundColor(0xFF050A12);
 
         ScrollView scroll = new ScrollView(activity);
         scroll.setFillViewport(true);
         scroll.setVerticalScrollBarEnabled(false);
         scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
-        LinearLayout content = new LinearLayout(activity);
-        content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(pad, 0, pad, px(18));
+        LinearLayout page = new LinearLayout(activity);
+        page.setOrientation(LinearLayout.VERTICAL);
+        page.setPadding(0, 0, 0, px(14));
 
-        // Hero: a real game-like visual instead of a flat color background.
-        final int heroH = Math.max(px(190), Math.min(px(292), Math.round(screenH * 0.46f)));
+        // Header navigation bar.
+        LinearLayout header = new LinearLayout(activity);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(pad, 0, pad, 0);
+        android.graphics.drawable.GradientDrawable headerBg =
+                new android.graphics.drawable.GradientDrawable();
+        headerBg.setColor(0xCC07111E);
+        header.setBackground(headerBg);
+
+        ImageView logo = new ImageView(activity);
+        logo.setImageResource(com.slayer.filament.R.drawable.ic_slayer);
+        logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        header.addView(logo, new LinearLayout.LayoutParams(px(44), px(56)));
+
+        TextView brand = label("SLAYER", 18f, true);
+        brand.setLetterSpacing(.16f);
+        LinearLayout.LayoutParams brandLp = new LinearLayout.LayoutParams(px(112), -1);
+        brandLp.setMargins(px(4), 0, px(6), 0);
+        header.addView(brand, brandLp);
+
+        LinearLayout nav = new LinearLayout(activity);
+        nav.setGravity(Gravity.CENTER_VERTICAL);
+        nav.setOrientation(LinearLayout.HORIZONTAL);
+        header.addView(nav, new LinearLayout.LayoutParams(0, -1, 1f));
+
+        addNavItem(nav, "SLAYER WORLD", true);
+        addNavItem(nav, "MISSIONS", false);
+        addNavItem(nav, "SHOP", false);
+
+        Button settings = roundMenuButton("⚙", 18f, 0xAA10263A, Color.WHITE);
+        header.addView(settings, new LinearLayout.LayoutParams(px(50), px(50)));
+        settings.setOnClickListener(v -> showSettingsCard());
+
+        page.addView(header, new LinearLayout.LayoutParams(-1, px(64)));
+
+        // Hero / feature area.
+        final int heroH = Math.max(px(275), Math.min(px(390), Math.round(screenH * 0.56f)));
         FrameLayout hero = new FrameLayout(activity);
-        hero.setBackgroundColor(0xFF071521);
+        hero.setBackgroundColor(0xFF071522);
         hero.addView(new HomeHeroView(activity), new FrameLayout.LayoutParams(-1, -1));
 
         View heroShade = new View(activity);
-        android.graphics.drawable.GradientDrawable shadeBg = new android.graphics.drawable.GradientDrawable(
-                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0x22000000, 0x30000000, 0xCC050D17});
-        heroShade.setBackground(shadeBg);
+        android.graphics.drawable.GradientDrawable heroGradient =
+                new android.graphics.drawable.GradientDrawable(
+                        android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                        new int[]{0x10000000, 0x42000000, 0xEE050A12});
+        heroShade.setBackground(heroGradient);
         hero.addView(heroShade, new FrameLayout.LayoutParams(-1, -1));
 
-        ImageView logoIcon = new ImageView(activity);
-        logoIcon.setImageResource(com.slayer.filament.R.drawable.ic_slayer);
-        logoIcon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        FrameLayout.LayoutParams logoLp = new FrameLayout.LayoutParams(px(44), px(44), Gravity.TOP | Gravity.LEFT);
-        logoLp.leftMargin = pad;
-        logoLp.topMargin = px(16);
-        hero.addView(logoIcon, logoLp);
+        TextView update = label("SEASON 01  •  FOOTBALL 2026", 10f, true);
+        update.setTextColor(0xFFE0B500);
+        FrameLayout.LayoutParams up = new FrameLayout.LayoutParams(-2, px(30), Gravity.TOP | Gravity.LEFT);
+        up.leftMargin = pad;
+        up.topMargin = px(18);
+        hero.addView(update, up);
 
-        TextView heroTitle = label("SLAYER", 31f, true);
-        heroTitle.setLetterSpacing(.18f);
-        FrameLayout.LayoutParams htp = new FrameLayout.LayoutParams(-2, px(50), Gravity.TOP | Gravity.LEFT);
-        htp.leftMargin = pad + px(52);
-        htp.topMargin = px(18);
-        hero.addView(heroTitle, htp);
+        TextView feature = label("MATCHDAY", 36f, true);
+        feature.setLetterSpacing(.08f);
+        FrameLayout.LayoutParams fp = new FrameLayout.LayoutParams(-1, px(56), Gravity.BOTTOM | Gravity.LEFT);
+        fp.leftMargin = pad;
+        fp.rightMargin = pad;
+        fp.bottomMargin = px(108);
+        hero.addView(feature, fp);
 
-        TextView season = label("FOOTBALL 2026  •  MATCHDAY", 11f, true);
-        season.setTextColor(0xFFBFEFFF);
-        FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(-2, px(36), Gravity.TOP | Gravity.LEFT);
-        sp.leftMargin = pad + px(54);
-        sp.topMargin = px(62);
-        hero.addView(season, sp);
-
-        TextView matchup = label("ATLAS FC   VS   LAGOON UNITED", 18f, true);
-        matchup.setGravity(Gravity.CENTER);
+        TextView matchup = label("ATLAS FC   0   —   0   LAGOON UNITED", 15f, true);
         matchup.setSingleLine(true);
         matchup.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        FrameLayout.LayoutParams mp = new FrameLayout.LayoutParams(-1, px(52), Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        mp.leftMargin = pad;
-        mp.rightMargin = pad;
-        mp.bottomMargin = px(72);
-        hero.addView(matchup, mp);
+        FrameLayout.LayoutParams mpp = new FrameLayout.LayoutParams(-1, px(40), Gravity.BOTTOM);
+        mpp.leftMargin = pad;
+        mpp.rightMargin = pad;
+        mpp.bottomMargin = px(72);
+        hero.addView(matchup, mpp);
 
-        Button settings = roundMenuButton("⚙", 20f, 0xCC0A1B2B, Color.WHITE);
-        FrameLayout.LayoutParams setp = new FrameLayout.LayoutParams(px(54), px(54), Gravity.TOP | Gravity.RIGHT);
-        setp.rightMargin = pad;
-        setp.topMargin = px(18);
-        hero.addView(settings, setp);
-        settings.setOnClickListener(v -> showSettingsCard());
+        Button kickOff = homeActionButton("KICK OFF  〉", 15f, 0xFFE0B500, Color.BLACK);
+        FrameLayout.LayoutParams kop = new FrameLayout.LayoutParams(px(190), px(54), Gravity.BOTTOM | Gravity.LEFT);
+        kop.leftMargin = pad;
+        kop.bottomMargin = px(12);
+        hero.addView(kickOff, kop);
+        kickOff.setOnClickListener(v -> onStartMatch.run());
 
-        content.addView(hero, new LinearLayout.LayoutParams(-1, heroH));
+        TextView hint = label("MATCH RAPIDE", 10f, true);
+        hint.setTextColor(0xCCFFFFFF);
+        FrameLayout.LayoutParams hp = new FrameLayout.LayoutParams(px(125), px(32), Gravity.BOTTOM | Gravity.LEFT);
+        hp.leftMargin = px(220);
+        hp.bottomMargin = px(23);
+        hero.addView(hint, hp);
 
-        // Main action sits directly below the hero, separated from secondary modes.
-        Button quick = homeActionButton("▶  MATCH RAPIDE", 16f, 0xFFE0B500, Color.BLACK);
-        LinearLayout.LayoutParams qlp = new LinearLayout.LayoutParams(-1, px(62));
-        qlp.setMargins(0, px(12), 0, px(16));
-        content.addView(quick, qlp);
-        quick.setOnClickListener(v -> onStartMatch.run());
+        page.addView(hero, new LinearLayout.LayoutParams(-1, heroH));
 
-        TextView section = label("MODES DE JEU", 12f, true);
-        section.setTextColor(0xFFBFEFFF);
+        // Competition / mode carousel row.
+        LinearLayout sectionHeader = new LinearLayout(activity);
+        sectionHeader.setGravity(Gravity.CENTER_VERTICAL);
+        sectionHeader.setPadding(pad, px(10), pad, px(4));
+        TextView section = label("MODES DE JEU", 11f, true);
+        section.setTextColor(0xFFE6F7FF);
         section.setLetterSpacing(.14f);
-        section.setPadding(px(4), 0, 0, 0);
-        content.addView(section, new LinearLayout.LayoutParams(-1, px(30)));
+        sectionHeader.addView(section, new LinearLayout.LayoutParams(0, px(34), 1f));
+        TextView more = label("VOIR TOUT  ›", 10f, true);
+        more.setTextColor(0xFFBFEFFF);
+        sectionHeader.addView(more, new LinearLayout.LayoutParams(px(96), px(34)));
+        page.addView(sectionHeader, new LinearLayout.LayoutParams(-1, px(48)));
 
-        GridLayout grid = new GridLayout(activity);
-        grid.setColumnCount(2);
-        grid.setUseDefaultMargins(false);
-        LinearLayout.LayoutParams gridLp = new LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT);
-        gridLp.setMargins(0, 0, 0, px(14));
-        content.addView(grid, gridLp);
-
-        addHomeModeCard(grid, "CARRIÈRE", "SAISON • TRANSFERTS", "◆", 0xFF12344A,
+        LinearLayout modeRow = new LinearLayout(activity);
+        modeRow.setOrientation(LinearLayout.HORIZONTAL);
+        modeRow.setPadding(pad, 0, pad, 0);
+        addModeTile(modeRow, "CARRIÈRE", "◆", 0xFF173C55,
                 () -> showModeScreen("CARRIÈRE", "CLUB  •  SAISON  •  CHAMPIONNAT  •  TRANSFERTS"));
-        addHomeModeCard(grid, "COMPÉTITION", "LIGUES • COUPES", "★", 0xFF123B32,
+        addModeTile(modeRow, "COMPÉTITION", "★", 0xFF164739,
                 () -> showModeScreen("COMPÉTITION", "LIGUES  •  COUPES  •  TOURNOIS"));
-        addHomeModeCard(grid, "ENTRAÎNEMENT", "TIR • PASSE • DRIBBLE", "◎", 0xFF2D3545,
-                () -> showModeScreen("ENTRAÎNEMENT", "TIR  •  PASSE  •  DRIBBLE  •  DÉFENSE"));
-        addHomeModeCard(grid, "ÉQUIPE", "EFFECTIF • TACTIQUES", "✦", 0xFF2B3C24,
+        addModeTile(modeRow, "ÉQUIPE", "✦", 0xFF3B4524,
                 () -> showModeScreen("ÉQUIPE", "EFFECTIF  •  TACTIQUES  •  KITS  •  PROGRESSION"));
+        page.addView(modeRow, new LinearLayout.LayoutParams(-1, px(102)));
 
-        LinearLayout footer = new LinearLayout(activity);
-        footer.setOrientation(LinearLayout.HORIZONTAL);
-        footer.setGravity(Gravity.CENTER);
-        content.addView(footer, new LinearLayout.LayoutParams(-1, px(50)));
+        LinearLayout bottom = new LinearLayout(activity);
+        bottom.setOrientation(LinearLayout.HORIZONTAL);
+        bottom.setGravity(Gravity.CENTER);
+        bottom.setPadding(pad, px(10), pad, 0);
+        Button profile = homeSecondaryButton("PROFIL", 0xAA10263A);
+        Button training = homeSecondaryButton("ENTRAÎNEMENT", 0xAA10263A);
+        Button other = homeSecondaryButton("AUTRES", 0xAA10263A);
 
-        Button profile = homeSecondaryButton("PROFIL", 0xAA0A1B2B);
-        Button other = homeSecondaryButton("AUTRES", 0xAA0A1B2B);
-        LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(0, -1, 1f);
-        fp.setMargins(0, 0, px(6), 0);
-        footer.addView(profile, fp);
-        LinearLayout.LayoutParams fo = new LinearLayout.LayoutParams(0, -1, 1f);
-        fo.setMargins(px(6), 0, 0, 0);
-        footer.addView(other, fo);
+        LinearLayout.LayoutParams b1 = new LinearLayout.LayoutParams(0, px(48), 1f);
+        b1.setMargins(0, 0, px(5), 0);
+        bottom.addView(profile, b1);
+        LinearLayout.LayoutParams b2 = new LinearLayout.LayoutParams(0, px(48), 1f);
+        b2.setMargins(px(5), 0, px(5), 0);
+        bottom.addView(training, b2);
+        LinearLayout.LayoutParams b3 = new LinearLayout.LayoutParams(0, px(48), 1f);
+        b3.setMargins(px(5), 0, 0, 0);
+        bottom.addView(other, b3);
+
         profile.setOnClickListener(v -> showModeScreen("PROFIL", "JOUEUR  •  PROGRESSION  •  STATISTIQUES"));
+        training.setOnClickListener(v -> showModeScreen("ENTRAÎNEMENT", "TIR  •  PASSE  •  DRIBBLE  •  DÉFENSE"));
         other.setOnClickListener(v -> showModeScreen("AUTRES", "AIDE  •  INFORMATIONS  •  OPTIONS"));
 
-        scroll.addView(content, new ScrollView.LayoutParams(-1, -1));
+        page.addView(bottom, new LinearLayout.LayoutParams(-1, px(58)));
+
+        scroll.addView(page, new ScrollView.LayoutParams(-1, -1));
         menuOverlay.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
         root.addView(menuOverlay, new FrameLayout.LayoutParams(-1, -1));
+    }
+
+    private void addNavItem(LinearLayout nav, String text, boolean active) {
+        TextView item = label(text, active ? 9.5f : 8.8f, active);
+        item.setGravity(Gravity.CENTER);
+        item.setSingleLine(true);
+        item.setTextColor(active ? Color.WHITE : 0x99FFFFFF);
+        if (active) item.setBackgroundColor(0x2219A9D8);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, px(40), 1f);
+        lp.setMargins(px(2), 0, px(2), 0);
+        nav.addView(item, lp);
+    }
+
+    private void addModeTile(LinearLayout row, String title, String icon, int color, Runnable action) {
+        LinearLayout tile = new LinearLayout(activity);
+        tile.setOrientation(LinearLayout.VERTICAL);
+        tile.setGravity(Gravity.CENTER);
+        tile.setPadding(px(5), px(6), px(5), px(6));
+
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setColor(color);
+        bg.setCornerRadius(px(18));
+        bg.setStroke(px(1), 0x55FFFFFF);
+        tile.setBackground(bg);
+        tile.setElevation(px(5));
+        tile.setOnClickListener(v -> action.run());
+
+        TextView iconView = new TextView(activity);
+        iconView.setText(icon);
+        iconView.setTextSize(22f);
+        iconView.setGravity(Gravity.CENTER);
+        iconView.setTextColor(0xFFF0FCFF);
+        tile.addView(iconView, new LinearLayout.LayoutParams(-1, px(42)));
+
+        TextView titleView = label(title, 10f, true);
+        titleView.setGravity(Gravity.CENTER);
+        titleView.setSingleLine(true);
+        titleView.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        tile.addView(titleView, new LinearLayout.LayoutParams(-1, px(28)));
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, px(92), 1f);
+        lp.setMargins(px(4), px(5), px(4), px(5));
+        row.addView(tile, lp);
     }
 
     private void addHomeModeCard(GridLayout grid, String title, String subtitle, String icon, int color, Runnable action) {
