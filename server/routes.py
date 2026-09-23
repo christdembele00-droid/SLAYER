@@ -94,9 +94,7 @@ def verify_google_play_purchase(
         if not purchase_matches_user(purchase, uid):
             raise StoreError("purchase_user_mismatch")
     except StoreError as exc:
-        detail = str(exc)
-        status = 409 if detail in {"purchase_pending", "purchase_already_processed"} else 400
-        raise HTTPException(status_code=status, detail=detail) from exc
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     granted_units = int(product["units"])
 
@@ -109,33 +107,24 @@ def verify_google_play_purchase(
             {"token": request.purchaseToken},
         ).first()
 
-        if existing:
-            if existing[0] != uid:
-                raise HTTPException(status_code=403, detail="purchase_user_mismatch")
+        if existing and existing[0] != uid:
+            raise HTTPException(status_code=403, detail="purchase_user_mismatch")
 
-            row = connection.execute(
-                text("SELECT balance FROM wallets WHERE user_id = :uid"),
-                {"uid": uid},
-            ).first()
-            return {
-                "status": existing[2],
-                "grantedUnits": int(existing[1]),
-                "balance": int(row[0] if row else 0),
-            }
+        if not existing:
+            connection.execute(
+                text(
+                    "INSERT INTO store_purchases "
+                    "(purchase_token, user_id, product_id, granted_units, status) "
+                    "VALUES (:token, :uid, :product, 0, 'pending_consume') "
+                    "ON CONFLICT(purchase_token) DO NOTHING"
+                ),
+                {
+                    "token": request.purchaseToken,
+                    "uid": uid,
+                    "product": request.productId,
+                },
+            )
 
-        connection.execute(
-            text(
-                "INSERT INTO store_purchases "
-                "(purchase_token, user_id, product_id, granted_units, status) "
-                "VALUES (:token, :uid, :product, 0, 'pending_consume') "
-                "ON CONFLICT(purchase_token) DO NOTHING"
-            ),
-            {
-                "token": request.purchaseToken,
-                "uid": uid,
-                "product": request.productId,
-            },
-        )
         connection.execute(
             text(
                 "INSERT INTO wallets (user_id, balance) VALUES (:uid, 0) "
@@ -144,29 +133,46 @@ def verify_google_play_purchase(
             {"uid": uid},
         )
 
-    # External Google Play consumption is intentionally outside the DB
-    # transaction. The purchase row stays pending until consumption succeeds.
-    try:
-        consume_google_play_product(request.productId, request.purchaseToken)
-    except StoreError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=str(exc),
-        ) from exc
-
-    with engine.begin() as connection:
-        connection.execute(
+        current = connection.execute(
             text(
-                "UPDATE wallets SET balance = balance + :units, "
-                "updated_at = CURRENT_TIMESTAMP WHERE user_id = :uid"
+                "SELECT granted_units, status FROM store_purchases "
+                "WHERE purchase_token = :token"
             ),
-            {"units": granted_units, "uid": uid},
-        )
-        connection.execute(
+            {"token": request.purchaseToken},
+        ).first()
+
+        if not current:
+            raise HTTPException(status_code=500, detail="purchase_record_missing")
+
+        if current[1] == "granted":
+            wallet = connection.execute(
+                text("SELECT balance FROM wallets WHERE user_id = :uid"),
+                {"uid": uid},
+            ).first()
+            return {
+                "status": "granted",
+                "grantedUnits": int(current[0]),
+                "balance": int(wallet[0] if wallet else 0),
+            }
+
+    # Google Play may report a consumable already consumed. In that case the
+    # server can safely finalize a pending ledger record without consuming twice.
+    try:
+        consumption_state = purchase.get("consumptionState")
+        if consumption_state != 1:
+            consume_google_play_product(request.productId, request.purchaseToken)
+    except StoreError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    # Atomic idempotency gate: exactly one request can move this purchase from
+    # pending_consume -> granted and therefore receive the token credit.
+    with engine.begin() as connection:
+        granted = connection.execute(
             text(
                 "UPDATE store_purchases SET granted_units = :units, status = 'granted', "
-                "consumed_at = CURRENT_TIMESTAMP WHERE purchase_token = :token "
-                "AND user_id = :uid AND status = 'pending_consume'"
+                "consumed_at = CURRENT_TIMESTAMP "
+                "WHERE purchase_token = :token AND user_id = :uid "
+                "AND status = 'pending_consume'"
             ),
             {
                 "units": granted_units,
@@ -174,15 +180,28 @@ def verify_google_play_purchase(
                 "uid": uid,
             },
         )
+        if granted.rowcount == 1:
+            connection.execute(
+                text(
+                    "UPDATE wallets SET balance = balance + :units, "
+                    "updated_at = CURRENT_TIMESTAMP WHERE user_id = :uid"
+                ),
+                {"units": granted_units, "uid": uid},
+            )
+
         row = connection.execute(
             text("SELECT balance FROM wallets WHERE user_id = :uid"),
             {"uid": uid},
         ).first()
+        purchase_row = connection.execute(
+            text("SELECT granted_units, status FROM store_purchases WHERE purchase_token = :token"),
+            {"token": request.purchaseToken},
+        ).first()
 
     return {
-        "status": "granted",
+        "status": str(purchase_row[1]) if purchase_row else "pending_consume",
         "productId": request.productId,
-        "grantedUnits": granted_units,
+        "grantedUnits": int(purchase_row[0]) if purchase_row else 0,
         "balance": int(row[0] if row else 0),
     }
 
