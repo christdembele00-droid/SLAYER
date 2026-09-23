@@ -11,7 +11,7 @@ const registered=(google.client||[]).map(x=>x.client_info?.android_client_info?.
 if(!registered.includes(id))throw new Error("Firebase package mismatch: "+id);
 if(!activity.includes('System.loadLibrary("slayer_native_engine")'))throw new Error("Native library mismatch");
 if(!cmake.includes("FILAMENT_DIST_DIR")||!cmake.includes("FILAMENT_STATIC_LIBS"))throw new Error("Filament native distribution linkage missing");
-if(!gradle.includes('com.google.android.billingclient:billing:9.1.0'))throw new Error("Billing dependency drift");
+if(!gradle.includes('com.android.billingclient:billing:9.1.0'))throw new Error("Billing dependency drift");
 if(!gradle.includes("firebase-bom")||!gradle.includes("firebase-auth"))throw new Error("Firebase dependency drift");
 if(!gradle.includes('-DANDROID_STL=c++_shared'))throw new Error("Android C++ runtime configuration missing");
 console.log("Android/Firebase configuration: OK");
