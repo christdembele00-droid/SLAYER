@@ -670,19 +670,10 @@ struct NativeRenderer {
         goalInstances.clear();
         goalInstances.reserve(2);
 
-        // Use the same compatibility path as player loading: one asset plus
-        // explicit instances instead of batched createInstancedAsset().
+        // Build and load the source asset before creating the second goal
+        // instance, matching gltfio's resource lifecycle.
         goalAsset = assetLoader->createAsset(bytes, static_cast<uint32_t>(size));
         if (!goalAsset) return false;
-        goalInstances.push_back(goalAsset->getInstance());
-        auto* secondGoal = assetLoader->createInstance(goalAsset);
-        if (!secondGoal) {
-            goalInstances.clear();
-            assetLoader->destroyAsset(goalAsset);
-            goalAsset = nullptr;
-            return false;
-        }
-        goalInstances.push_back(secondGoal);
 
         if (!resourceLoader) {
             gltfio::ResourceConfiguration config{};
@@ -703,6 +694,16 @@ struct NativeRenderer {
             goalInstances.clear();
             return false;
         }
+
+        goalInstances.push_back(goalAsset->getInstance());
+        auto* secondGoal = assetLoader->createInstance(goalAsset);
+        if (!secondGoal) {
+            goalInstances.clear();
+            assetLoader->destroyAsset(goalAsset);
+            goalAsset = nullptr;
+            return false;
+        }
+        goalInstances.push_back(secondGoal);
 
         for (auto* instance : goalInstances) {
             if (instance) scene->addEntities(instance->getEntities(), instance->getEntityCount());
@@ -734,23 +735,11 @@ struct NativeRenderer {
         playerInstances.clear();
         playerInstances.reserve(22);
 
-        // Avoid the batched createInstancedAsset path on Android. Some GPU/driver
-        // combinations have exhibited native crashes while processing instanced
-        // glTF resources asynchronously. Build one asset, then add instances one
-        // by one; this keeps the same 22-player scene without that fragile path.
+        // Build and fully load the source asset before creating additional
+        // instances. gltfio expects resources to be finalized before instances
+        // are used by the renderer.
         playerAsset = assetLoader->createAsset(bytes, static_cast<uint32_t>(size));
         if (!playerAsset) return false;
-        playerInstances.push_back(playerAsset->getInstance());
-        for (size_t i = 1; i < 22; ++i) {
-            auto* instance = assetLoader->createInstance(playerAsset);
-            if (!instance) {
-                playerInstances.clear();
-                assetLoader->destroyAsset(playerAsset);
-                playerAsset = nullptr;
-                return false;
-            }
-            playerInstances.push_back(instance);
-        }
 
         if (!resourceLoader) {
             gltfio::ResourceConfiguration config{};
@@ -773,6 +762,19 @@ struct NativeRenderer {
             playerAsset = nullptr;
             animationControllers.clear();
             return false;
+        }
+
+        playerInstances.push_back(playerAsset->getInstance());
+        for (size_t i = 1; i < 22; ++i) {
+            auto* instance = assetLoader->createInstance(playerAsset);
+            if (!instance) {
+                playerInstances.clear();
+                assetLoader->destroyAsset(playerAsset);
+                playerAsset = nullptr;
+                animationControllers.clear();
+                return false;
+            }
+            playerInstances.push_back(instance);
         }
 
         for (auto* instance : playerInstances) {
