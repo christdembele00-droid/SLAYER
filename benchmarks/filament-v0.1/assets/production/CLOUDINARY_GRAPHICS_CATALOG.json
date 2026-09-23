@@ -175,9 +175,16 @@
     "slayer/emblems/atlas_fc",
     "slayer/emblems/lagoon_united",
     "slayer/ui/basic_soccer_pack_cc0",
-    "slayer/audio/crowd/crowd_shouting_cc0"
+    "slayer/audio/crowd/crowd_shouting_cc0",
+    "slayer/kits/atlas_home_original",
+    "slayer/kits/atlas_away_original",
+    "slayer/kits/lagoon_home_original",
+    "slayer/kits/lagoon_away_original",
+    "slayer/cinematics/match_intro_camera_track_v1.json",
+    "slayer/crowd/crowd_profile_v1.json",
+    "slayer/players/models/face_variant_presets_v1.json"
   ],
-  "count": 35,
+  "count": 42,
   "source_references": {
     "poly_haven_cc0": "https://polyhaven.com/license",
     "stadium_01": "https://polyhaven.com/a/stadium_01",
