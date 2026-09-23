@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import "./styles.css";
 import { MatchEngine } from "./core/MatchEngine";
 import { SceneRenderer } from "./render/SceneRenderer";
@@ -43,48 +42,20 @@ const stadium=new AAAStadium();
 const presentation=new MatchPresentation();
 renderer.scene.add(presentation.group);
 renderer.scene.add(stadium.group);
-void (async()=>{
-  try{
-    const gltf=await new GLTFLoader().loadAsync("/assets/3d/stadium/stadium.glb");
-    gltf.scene.traverse(object=>{
-      const mesh=object as THREE.Mesh;
-      if(!mesh.isMesh) return;
-      mesh.castShadow=true;mesh.receiveShadow=true;mesh.frustumCulled=true;
-      const materials=Array.isArray(mesh.material)?mesh.material:[mesh.material];
-      for(const raw of materials){
-        const material=raw as THREE.MeshStandardMaterial;
-        if(material.isMeshStandardMaterial && material.map) material.map.colorSpace=THREE.SRGBColorSpace;
-      }
-    });
-    renderer.scene.add(gltf.scene);
-    stadium.group.visible=false;
-  }catch(error){
-    console.warn("[SLAYER] Production stadium GLB unavailable; procedural stadium retained.",error);
-  }
-})();
+const productionAssetsEnabled=import.meta.env.VITE_SLAYER_PRODUCTION_ASSETS==="1";
+if(productionAssetsEnabled){
+  console.info("[SLAYER assets] Production GLB assets enabled.");
+}
+
 const pitch=new AdvancedPitch();
 renderer.scene.add(pitch.group);
-const crowd=new CrowdSystem();
+const crowd=new CrowdSystem(1200);
 renderer.scene.add(crowd.group);
 
 const heroAnchor=new THREE.Object3D();
 heroAnchor.position.set(7,0,0);
 renderer.scene.add(heroAnchor);
-void (async()=>{
-  try{
-    const hero=await new GLTFLoader().loadAsync("/assets/3d/players/player-hero.glb");
-    hero.scene.scale.setScalar(2.35);
-    hero.scene.traverse(object=>{
-      const mesh=object as THREE.Mesh;
-      if(!mesh.isMesh) return;
-      mesh.castShadow=true; mesh.receiveShadow=true; mesh.frustumCulled=true;
-    });
-    heroAnchor.add(hero.scene);
-    camera.setHeroTarget({x:7,y:2.8,z:0});
-  }catch(error){
-    console.warn("[SLAYER] Hero player GLB unavailable; procedural fallback retained.",error);
-  }
-})();
+
 const nets=[new GoalNetCloth(),new GoalNetCloth()];
 nets[0].mesh.position.z=-52.5;
 nets[1].mesh.position.z=52.5;
@@ -324,6 +295,7 @@ window.addEventListener("keyup",event=>{
 });
 
 let last=window.performance.now();
+let lastUiUpdate=0;
 // Goal-net reaction: feed impacts from fast shots into the nearest net.
 let previousBallZ=ball.state.position.z;
 
@@ -434,9 +406,12 @@ function frame(now:number){
   ballMesh.rotation.z-=ballVelocity.x*delta/.11;
   camera.update(renderer.camera,ball.state.position);
 
-  const snapshot=match.snapshot();
-  ui.updateMatch(snapshot.score.homeGoals,snapshot.score.awayGoals,match.clock.format(),snapshot.phase.toUpperCase());
-  ui.updatePerformance(perf.fps || gpu.fps,perf.frameMs || gpu.frameMs,perf.p95Ms || gpu.p95Ms,gpu.drawCalls,gpu.triangles,quality.tier);
+  if(now-lastUiUpdate>=120){
+    const snapshot=match.snapshot();
+    ui.updateMatch(snapshot.score.homeGoals,snapshot.score.awayGoals,match.clock.format(),snapshot.phase.toUpperCase());
+    ui.updatePerformance(perf.fps || gpu.fps,perf.frameMs || gpu.frameMs,perf.p95Ms || gpu.p95Ms,gpu.drawCalls,gpu.triangles,quality.tier);
+    lastUiUpdate=now;
+  }
   if(online && human.action!=="None"){ online.send({type:"intent",data:{playerId:controlledId,moveX:human.moveDirection.x,moveZ:human.moveDirection.z,action:human.action,power:human.power,clientTime:Date.now()}}); }
 
   renderer.render();
