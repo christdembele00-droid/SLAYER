@@ -134,7 +134,7 @@ function ensureControlledPlayerPossession(): void {
   const p=players.get(controlledId);
   if(!p || !["FirstHalf","SecondHalf","ExtraTimeFirstHalf","ExtraTimeSecondHalf"].includes(match.snapshot().phase) || ball.state.controlledByPlayerId) return;
   const d=Math.hypot(p.state.position.x-ball.state.position.x,p.state.position.z-ball.state.position.z);
-  if(d<2.2) {
+  if(d<1.35) {
     p.state.ballMode="Control";
     ball.state.state="Controlled";
     ball.state.controlledByPlayerId=controlledId;
