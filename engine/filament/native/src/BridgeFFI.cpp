@@ -44,6 +44,7 @@
 #include <filament/View.h>
 #include <filament/Viewport.h>
 #include <filament/TransformManager.h>
+#include <filament/TextureSampler.h>
 #include <math/mat4.h>
 #include <filament/LightManager.h>
 #include <utils/EntityManager.h>
@@ -86,6 +87,9 @@ struct NativeRenderer {
     MaterialInstance* materialInstance = nullptr;
     Material* terrainMaterial = nullptr;
     MaterialInstance* terrainMaterialInstance = nullptr;
+    Texture* terrainBaseColor = nullptr;
+    Texture* terrainNormal = nullptr;
+    Texture* terrainRoughness = nullptr;
     Entity weatherEntity{};
     VertexBuffer* weatherVertexBuffer = nullptr;
     IndexBuffer* weatherIndexBuffer = nullptr;
@@ -460,11 +464,83 @@ struct NativeRenderer {
             rm.setMaterialInstanceAt(instance, 0, nextInstance);
         }
 
+        if (terrainBaseColor) engine->destroy(terrainBaseColor);
+        if (terrainNormal) engine->destroy(terrainNormal);
+        if (terrainRoughness) engine->destroy(terrainRoughness);
+        terrainBaseColor = nullptr;
+        terrainNormal = nullptr;
+        terrainRoughness = nullptr;
         if (terrainMaterialInstance) engine->destroy(terrainMaterialInstance);
         if (terrainMaterial) engine->destroy(terrainMaterial);
 
         terrainMaterial = next;
         terrainMaterialInstance = nextInstance;
+        return true;
+    }
+
+    Texture* decodePngTexture(const uint8_t* bytes, size_t size, bool srgb) {
+        if (!engine || !bytes || size == 0) return nullptr;
+        if (!stbDecoder) {
+            stbDecoder = gltfio::createStbProvider(engine);
+            if (!stbDecoder) return nullptr;
+        }
+
+        // Flush any completed textures left by an earlier asynchronous decode.
+        stbDecoder->updateQueue();
+        while (stbDecoder->popTexture() != nullptr) {}
+
+        const auto flags = srgb
+            ? gltfio::TextureProvider::TextureFlags::sRGB
+            : gltfio::TextureProvider::TextureFlags::NONE;
+        Texture* texture = stbDecoder->pushTexture(
+            bytes, size, "image/png", flags);
+        if (!texture) return nullptr;
+
+        stbDecoder->waitForCompletion();
+        stbDecoder->updateQueue();
+
+        Texture* completed = nullptr;
+        while ((completed = stbDecoder->popTexture()) != nullptr) {
+            if (completed == texture) return texture;
+        }
+
+        engine->destroy(texture);
+        return nullptr;
+    }
+
+    bool loadTerrainTextures(
+            const uint8_t* baseColor, size_t baseColorSize,
+            const uint8_t* normal, size_t normalSize,
+            const uint8_t* roughness, size_t roughnessSize) {
+        if (!engine || !terrainMaterialInstance) return false;
+
+        Texture* nextBaseColor = decodePngTexture(baseColor, baseColorSize, true);
+        Texture* nextNormal = decodePngTexture(normal, normalSize, false);
+        Texture* nextRoughness = decodePngTexture(roughness, roughnessSize, false);
+        if (!nextBaseColor || !nextNormal || !nextRoughness) {
+            if (nextBaseColor) engine->destroy(nextBaseColor);
+            if (nextNormal) engine->destroy(nextNormal);
+            if (nextRoughness) engine->destroy(nextRoughness);
+            return false;
+        }
+
+        TextureSampler sampler(
+            TextureSampler::MinFilter::LINEAR_MIPMAP_LINEAR,
+            TextureSampler::MagFilter::LINEAR,
+            TextureSampler::WrapMode::REPEAT);
+        sampler.setAnisotropy(8.0f);
+
+        terrainMaterialInstance->setParameter("baseColor", nextBaseColor, sampler);
+        terrainMaterialInstance->setParameter("normal", nextNormal, sampler);
+        terrainMaterialInstance->setParameter("roughness", nextRoughness, sampler);
+        terrainMaterialInstance->setParameter("roughnessScale", 1.0f);
+
+        if (terrainBaseColor) engine->destroy(terrainBaseColor);
+        if (terrainNormal) engine->destroy(terrainNormal);
+        if (terrainRoughness) engine->destroy(terrainRoughness);
+        terrainBaseColor = nextBaseColor;
+        terrainNormal = nextNormal;
+        terrainRoughness = nextRoughness;
         return true;
     }
 
@@ -1103,6 +1179,37 @@ Java_com_slayer_filament_MainActivity_nativeLoadTerrainMaterial(
     const bool ok = g_renderer.loadTerrainMaterial(
         reinterpret_cast<const uint8_t*>(raw), static_cast<size_t>(size));
     env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_slayer_filament_MainActivity_nativeLoadTerrainTextures(
+        JNIEnv* env, jobject, jbyteArray baseColor, jbyteArray normal, jbyteArray roughness) {
+    if (!env || !baseColor || !normal || !roughness) return JNI_FALSE;
+
+    const jsize baseSize = env->GetArrayLength(baseColor);
+    const jsize normalSize = env->GetArrayLength(normal);
+    const jsize roughnessSize = env->GetArrayLength(roughness);
+    if (baseSize <= 0 || normalSize <= 0 || roughnessSize <= 0) return JNI_FALSE;
+
+    jbyte* baseRaw = env->GetByteArrayElements(baseColor, nullptr);
+    jbyte* normalRaw = env->GetByteArrayElements(normal, nullptr);
+    jbyte* roughRaw = env->GetByteArrayElements(roughness, nullptr);
+    if (!baseRaw || !normalRaw || !roughRaw) {
+        if (baseRaw) env->ReleaseByteArrayElements(baseColor, baseRaw, JNI_ABORT);
+        if (normalRaw) env->ReleaseByteArrayElements(normal, normalRaw, JNI_ABORT);
+        if (roughRaw) env->ReleaseByteArrayElements(roughness, roughRaw, JNI_ABORT);
+        return JNI_FALSE;
+    }
+
+    const bool ok = g_renderer.loadTerrainTextures(
+        reinterpret_cast<const uint8_t*>(baseRaw), static_cast<size_t>(baseSize),
+        reinterpret_cast<const uint8_t*>(normalRaw), static_cast<size_t>(normalSize),
+        reinterpret_cast<const uint8_t*>(roughRaw), static_cast<size_t>(roughnessSize));
+
+    env->ReleaseByteArrayElements(baseColor, baseRaw, JNI_ABORT);
+    env->ReleaseByteArrayElements(normal, normalRaw, JNI_ABORT);
+    env->ReleaseByteArrayElements(roughness, roughRaw, JNI_ABORT);
     return ok ? JNI_TRUE : JNI_FALSE;
 }
 
