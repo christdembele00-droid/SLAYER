@@ -1,6 +1,6 @@
 import * as THREE from "three";
 export class CrowdSystem{
-  readonly group=new THREE.Group();private phase=0;private readonly mesh:THREE.InstancedMesh;private readonly anchors:Float32Array;private readonly count:number;
+  readonly group=new THREE.Group();private phase=0;private readonly mesh:THREE.InstancedMesh;private readonly anchors:Float32Array;private readonly count:number;private accumulator=0;private readonly dummy=new THREE.Object3D();
   constructor(count=1800){
     this.count=count;const geo=new THREE.CapsuleGeometry(.10,.24,3,6),mat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.92,vertexColors:true});
     this.mesh=new THREE.InstancedMesh(geo,mat,count);this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);this.anchors=new Float32Array(count*4);
