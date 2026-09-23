@@ -17,6 +17,7 @@ export class SceneRenderer{
   private readonly composer:EffectComposer;
   private readonly bloom:UnrealBloomPass;
   private qualityRatio=1;
+  private postProcessing=false;
 
   constructor(container:HTMLElement){
     this.container=container;
@@ -31,6 +32,7 @@ export class SceneRenderer{
     this.renderer.setSize(container.clientWidth,container.clientHeight,false);
 
     this.composer=new EffectComposer(this.renderer);
+    this.composer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.0));
     this.composer.addPass(new RenderPass(this.scene,this.camera));
     this.bloom=new UnrealBloomPass(new THREE.Vector2(container.clientWidth,container.clientHeight),.16,.72,.88);
     this.composer.addPass(this.bloom);
@@ -98,5 +100,5 @@ export class SceneRenderer{
     this.bloom.threshold=this.qualityRatio<.9?.92:.84;
   }
 
-  render(){this.composer.render();}
+  render(){this.postProcessing?this.composer.render():this.renderer.render(this.scene,this.camera);}
 }
