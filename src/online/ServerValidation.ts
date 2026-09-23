@@ -15,6 +15,9 @@ export class ServerValidation {
       && packet.power >= 0
       && packet.power <= 1
       && Number.isFinite(packet.clientTime)
+      && packet.clientTime >= 0
+      && typeof packet.playerId === "string"
+      && packet.playerId.length > 0
       && ACTIONS.has(packet.action);
   }
 }
