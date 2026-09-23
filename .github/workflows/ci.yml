@@ -87,8 +87,9 @@ jobs:
       - name: Check release workflow separation
         run: |
           set -euo pipefail
-          if grep -R --line-number --fixed-strings "gradle -p engine/filament/android assembleRelease bundleRelease" .github/workflows/ci.yml; then
+          pattern='^[[:space:]]+gradle -p engine/filament/android assembleRelease bundleRelease'
+          if grep -REn "$pattern" .github/workflows/ci.yml; then
             echo "Release build command must stay in android-release.yml"
             exit 1
           fi
-          grep -R --line-number --fixed-strings "gradle -p engine/filament/android assembleRelease bundleRelease" .github/workflows/android-release.yml
+          grep -Eq "$pattern" .github/workflows/android-release.yml
