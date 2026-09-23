@@ -437,6 +437,13 @@ public final class MainActivity extends Activity {
         return Math.max(1, Math.round(value * scale));
     }
 
+    private void removeGameControls() {
+        if (gameControls != null) {
+            root.removeView(gameControls);
+            gameControls = null;
+        }
+    }
+
     private void applyGameLoopScenario(long elapsedMs) {
         if (testScenario <= 0 || elapsedMs < 250) return;
 
