@@ -14,6 +14,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
+import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.FrameLayout;
 import android.widget.TextView;
@@ -146,17 +147,25 @@ final class SlayerMenuController {
         heroShade.setBackground(shadeBg);
         hero.addView(heroShade, new FrameLayout.LayoutParams(-1, -1));
 
+        ImageView logoIcon = new ImageView(activity);
+        logoIcon.setImageResource(com.slayer.filament.R.drawable.ic_slayer);
+        logoIcon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        FrameLayout.LayoutParams logoLp = new FrameLayout.LayoutParams(px(44), px(44), Gravity.TOP | Gravity.LEFT);
+        logoLp.leftMargin = pad;
+        logoLp.topMargin = px(16);
+        hero.addView(logoIcon, logoLp);
+
         TextView heroTitle = label("SLAYER", 31f, true);
         heroTitle.setLetterSpacing(.18f);
         FrameLayout.LayoutParams htp = new FrameLayout.LayoutParams(-2, px(50), Gravity.TOP | Gravity.LEFT);
-        htp.leftMargin = pad;
+        htp.leftMargin = pad + px(52);
         htp.topMargin = px(18);
         hero.addView(heroTitle, htp);
 
         TextView season = label("FOOTBALL 2026  •  MATCHDAY", 11f, true);
         season.setTextColor(0xFFBFEFFF);
         FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(-2, px(36), Gravity.TOP | Gravity.LEFT);
-        sp.leftMargin = pad + px(2);
+        sp.leftMargin = pad + px(54);
         sp.topMargin = px(62);
         hero.addView(season, sp);
 
