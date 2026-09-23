@@ -21,6 +21,10 @@ const cloudinary = {
   jerseyBaseColor: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790125058/slayer/players/textures/kits/cotton_jersey_diff_1k.png",
   jerseyNormal: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790125063/slayer/players/textures/kits/cotton_jersey_nor_gl_1k.png",
   jerseyRoughness: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790125067/slayer/players/textures/kits/cotton_jersey_rough_1k.png",
+  ballZip: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790125238/slayer/ball/models/football_balloon_cc0",
+  goalZip: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790125246/slayer/stadium/models/soccer_goal_cc0",
+  particleZip: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790125253/slayer/effects/particles/kenney_particle_pack_cc0",
+  rainZip: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790125258/slayer/effects/weather/rain_drop_cc0",
 };
 
 function signedCloudinaryRawUrl(url) {
@@ -108,6 +112,35 @@ async function extractZipEntry(zipFile, entry, destination) {
   });
 }
 
+async function prepareModelFromZip(zipFile, destination, label) {
+  const entries = (await exec("unzip", ["-Z1", zipFile])).stdout
+    .split("\n").map(x => x.trim()).filter(Boolean).filter(x => !x.endsWith("/"));
+  const glbEntry = entries.find(x => x.toLowerCase().endsWith(".glb"));
+  if (glbEntry) {
+    await extractZipEntry(zipFile, glbEntry, destination);
+    await ensureFile(destination, label);
+    return { mode: "glb", source: glbEntry };
+  }
+
+  const gltfEntry = entries.find(x => x.toLowerCase().endsWith(".gltf"));
+  const objEntry = entries.find(x => x.toLowerCase().endsWith(".obj"));
+  const sourceEntry = gltfEntry || objEntry;
+  const tool = await findExecutable("gltfpack");
+  if (!sourceEntry || !tool) {
+    throw new Error("Unable to convert " + label + ": no GLB and no gltfpack-compatible model.");
+  }
+
+  const extractDir = join(tmp, label.replace(/[^a-z0-9_-]/gi, "_"));
+  await mkdir(extractDir, { recursive: true });
+  await exec("unzip", ["-q", zipFile, "-d", extractDir]);
+  const sourcePath = join(extractDir, sourceEntry);
+  await exec(tool, ["-i", sourcePath, "-o", destination, "-noq"], {
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  await ensureFile(destination, label);
+  return { mode: "converted", source: sourceEntry };
+}
+
 await mkdir(out, { recursive: true });
 const tmp = join(root, ".slayer-asset-cache");
 const fieldSourceDir = join(tmp, "soccer_field_source");
@@ -124,6 +157,12 @@ const grassRoughnessFile = join(out, "textures/grass_roughness_1k.png");
 const jerseyBaseColorFile = join(out, "textures/jersey_basecolor_1k.png");
 const jerseyNormalFile = join(out, "textures/jersey_normal_1k.png");
 const jerseyRoughnessFile = join(out, "textures/jersey_roughness_1k.png");
+const ballZip = join(tmp, "football_balloon_cc0.zip");
+const goalZip = join(tmp, "soccer_goal_cc0.zip");
+const particleZip = join(out, "effects/particle_pack_cc0.zip");
+const rainZip = join(out, "effects/rain_drop_cc0.zip");
+const ballModel = join(out, "models/ball.glb");
+const goalModel = join(out, "models/goal.glb");
 const envExr2 = join(tmp, "stadium_01_1k.exr");
 const fieldZip = join(tmp, "soccer_field_cc0.zip");
 const envExr = join(tmp, "orlando_stadium_1k.exr");
@@ -140,6 +179,10 @@ await download(cloudinary.grassRoughness, grassRoughnessFile);
 await download(cloudinary.jerseyBaseColor, jerseyBaseColorFile);
 await download(cloudinary.jerseyNormal, jerseyNormalFile);
 await download(cloudinary.jerseyRoughness, jerseyRoughnessFile);
+await download(cloudinary.ballZip, ballZip);
+await download(cloudinary.goalZip, goalZip);
+await download(cloudinary.particleZip, particleZip);
+await download(cloudinary.rainZip, rainZip);
 
 // Generate geometry LODs from the same source player when the Filament host
 // tool is available. LOD assets are deliberately optional: the runtime uses
@@ -162,6 +205,12 @@ if (gltfpack) {
 } else {
   console.log("gltfpack not available; keeping runtime animation-rate LOD only.");
 }
+
+await mkdir(join(out, "effects"), { recursive: true });
+const ballInfo = await prepareModelFromZip(ballZip, ballModel, "Ball GLB");
+const goalInfo = await prepareModelFromZip(goalZip, goalModel, "Goal GLB");
+console.log("Prepared ball:", JSON.stringify(ballInfo));
+console.log("Prepared goal:", JSON.stringify(goalInfo));
 
 const zipList = (await exec("unzip", ["-Z1", fieldZip])).stdout
   .split("\n")
@@ -288,13 +337,13 @@ try {
   console.log(error.stdout || error.message);
 }
 
-async function locateKtx(expected, suffix) {
+async function locateKtx(directory, expected, suffix) {
   try {
     await ensureFile(expected, "Generated KTX asset");
     return expected;
   } catch {}
 
-  const { stdout } = await exec("find", [iblDir, "-type", "f", "-name", "*" + suffix + ".ktx"]);
+  const { stdout } = await exec("find", [directory, "-type", "f", "-name", "*" + suffix + ".ktx"]);
   const candidates = stdout.split("\n").map(x => x.trim()).filter(Boolean);
   if (candidates.length !== 1) {
     throw new Error("cmgen did not produce a unique " + suffix + ".ktx file. Found: " + (candidates.join(", ") || "none"));
@@ -302,8 +351,8 @@ async function locateKtx(expected, suffix) {
   return candidates[0];
 }
 
-const resolvedIbl = await locateKtx(generated[0], "_ibl");
-const resolvedSkybox = await locateKtx(generated[1], "_skybox");
+const resolvedIbl = await locateKtx(iblDir, generated[0], "_ibl");
+const resolvedSkybox = await locateKtx(iblDir, generated[1], "_skybox");
 
 if (resolvedIbl !== generated[0]) await exec("cp", [resolvedIbl, generated[0]]);
 if (resolvedSkybox !== generated[1]) await exec("cp", [resolvedSkybox, generated[1]]);
@@ -315,8 +364,8 @@ for (const file of generated) {
 const secondIbl = join(iblDir2, "stadium_01_1k_ibl.ktx");
 const secondSkybox = join(iblDir2, "stadium_01_1k_skybox.ktx");
 await exec(cmgen, ["--quiet", "-f", "ktx", "-x", iblDir2, envExr2]);
-const secondIblResolved = await locateKtx(secondIbl, "_ibl");
-const secondSkyboxResolved = await locateKtx(secondSkybox, "_skybox");
+const secondIblResolved = await locateKtx(iblDir2, secondIbl, "_ibl");
+const secondSkyboxResolved = await locateKtx(iblDir2, secondSkybox, "_skybox");
 if (secondIblResolved !== secondIbl) await exec("cp", [secondIblResolved, secondIbl]);
 if (secondSkyboxResolved !== secondSkybox) await exec("cp", [secondSkyboxResolved, secondSkybox]);
 
@@ -359,6 +408,10 @@ const manifest = {
       ibl: "ibl/stadium_01/stadium_01_1k_ibl.ktx",
       skybox: "ibl/stadium_01/stadium_01_1k_skybox.ktx"
     },
+    ball: { path: "models/ball.glb", source: ballInfo.source, mode: ballInfo.mode, sha256: await sha256(ballModel) },
+    goal: { path: "models/goal.glb", source: goalInfo.source, mode: goalInfo.mode, sha256: await sha256(goalModel) },
+    particle_pack: { path: "effects/particle_pack_cc0.zip", sha256: await sha256(particleZip) },
+    rain_particle: { path: "effects/rain_drop_cc0.zip", sha256: await sha256(rainZip) },
     ibl: { path: "ibl/orlando_stadium/orlando_stadium_1k_ibl.ktx" },
     skybox: { path: "ibl/orlando_stadium/orlando_stadium_1k_skybox.ktx" },
   },
