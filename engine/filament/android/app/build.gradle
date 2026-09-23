@@ -78,4 +78,5 @@ dependencies {
     // Firebase Auth is the identity layer; match state never travels through Firebase.
     implementation platform("com.google.firebase:firebase-bom:34.19.0")
     implementation "com.google.firebase:firebase-auth"
+    implementation "com.squareup.okhttp3:okhttp-android:5.5.0"
 }
