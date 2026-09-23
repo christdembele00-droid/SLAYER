@@ -7,6 +7,7 @@ on:
 permissions: { contents: read }
 jobs:
   build-native-release:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
       VERSION_NAME: ${{ inputs.version_name }}
