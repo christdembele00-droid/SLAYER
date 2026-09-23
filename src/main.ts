@@ -233,12 +233,16 @@ authButton.addEventListener("click",async()=>{
     authStatus.textContent="Connexion...";
     const user=await loginWithGoogle();
     await verifyBackendSession();
+    const token=await user.getIdToken();
+    const wsBase=slayerApiUrl.replace(/^https:/,"wss:").replace(/^http:/,"ws:");
+    online=new WebSocketClient();
+    online.connect(wsBase+"/ws/"+encodeURIComponent(user.uid),token);
     authButton.dataset.signedIn="1";
     authButton.textContent="Déconnexion";
     authStatus.textContent=(user.displayName || user.email || "Joueur")+" connecté";
   }catch(error){
     console.error("[SLAYER] Firebase authentication failed.",error);
-    authStatus.textContent=error instanceof Error ? error.message : "Échec de connexion";
+    if(error && typeof error==="object" && "code" in error && (error as {code?:string}).code==="auth/unauthorized-domain"){ authStatus.textContent="Domaine Firebase non autorisé"; } else { authStatus.textContent=error instanceof Error ? error.message : "Échec de connexion"; }
   }finally{
     authButton.disabled=!firebaseReady;
   }
