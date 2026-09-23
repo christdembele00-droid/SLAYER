@@ -83,4 +83,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - run: '! grep -R --line-number --fixed-strings "assembleRelease" .github/workflows/ci.yml && grep -R --line-number --fixed-strings "bundleRelease" .github/workflows/android-release.yml'
+      - name: Check release workflow separation
+        run: |
+          set -euo pipefail
+          if grep -R --line-number --fixed-strings "assembleRelease" .github/workflows/ci.yml; then
+            echo "assembleRelease must stay out of CI debug workflow"
+            exit 1
+          fi
+          grep -R --line-number --fixed-strings "bundleRelease" .github/workflows/android-release.yml
