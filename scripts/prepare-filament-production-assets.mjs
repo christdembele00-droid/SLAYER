@@ -176,7 +176,7 @@ await download(cloudinary.animation, animationFile);
 await download(cloudinary.animation2, animationFile2);
 await download(cloudinary.field, fieldZip);
 await download(cloudinary.environment1, envExr);
-await download(cloudinary.environment12, envExr2);
+await download(cloudinary.environment2, envExr2);
 await download(cloudinary.grass_basecolor, grassBaseColorFile);
 await download(cloudinary.grass_normal, grassNormalFile);
 await download(cloudinary.grass_roughness, grassRoughnessFile);
