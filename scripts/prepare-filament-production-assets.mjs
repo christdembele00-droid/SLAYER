@@ -418,7 +418,7 @@ if (secondSkyboxResolved !== secondSkybox) await exec("cp", [secondSkyboxResolve
 const manifest = {
   generated_at: new Date().toISOString(),
   source: "Cloudinary SLAYER asset catalog",
-  renderer: "Filament Vulkan",
+  renderer: "filament-vulkan",
   assets: {
     player: { path: "models/player.glb", sha256: await sha256(playerFile) },
     player_lod1: {
