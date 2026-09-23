@@ -33,6 +33,7 @@ import { PerformanceMonitor } from "./performance/PerformanceMonitor";
 import { GPUProfiler } from "./performance/GPUProfiler";
 import { AdvancedBallControl } from "./gameplay/AdvancedBallControl";
 import { MatchPresentation } from "./render/MatchPresentation";
+import { MatchFlowSystem } from "./gameplay/MatchFlowSystem";
 
 const app=document.querySelector<HTMLDivElement>("#app");
 if(!app) throw new Error("SLAYER root element not found");
@@ -83,6 +84,8 @@ ball.setPosition({x:0,y:.11,z:0});
 const interactions=new InteractionSystem();
 const goalkeepers=new GKSystem();
 const gameplay=new GameplaySystem(interactions);
+const matchFlow=new MatchFlowSystem();
+matchFlow.reset(ball);
 const advancedBallControl=new AdvancedBallControl();
 const transitions=new TransitionSystem();
 const ai=new FootballAI();
@@ -132,7 +135,7 @@ const playerSelection=new PlayerSelectionSystem(controlledId);
 const nextAIActionAt=new Map<string,number>();
 function ensureControlledPlayerPossession(): void {
   const p=players.get(controlledId);
-  if(!p || !["FirstHalf","SecondHalf","ExtraTimeFirstHalf","ExtraTimeSecondHalf"].includes(match.snapshot().phase) || ball.state.controlledByPlayerId) return;
+  if(!p || !["FirstHalf","SecondHalf","ExtraTime"].includes(match.phase) || ball.state.controlledByPlayerId) return;
   const d=Math.hypot(p.state.position.x-ball.state.position.x,p.state.position.z-ball.state.position.z);
   if(d<1.35) {
     p.state.ballMode="Control";
@@ -278,6 +281,7 @@ function startMatch(): void {
     ball.setPosition({x:0,y:.11,z:0});
     ball.state.state="Controlled";
     ball.state.controlledByPlayerId=controlledId;
+    matchFlow.reset(ball);
   }
 }
 const keyboard={w:false,a:false,s:false,d:false};
@@ -313,34 +317,7 @@ document.addEventListener("visibilitychange",()=>{
   if(pageVisible && !rafId) rafId=requestAnimationFrame(frame);
 });
 // Goal-net reaction: feed impacts from fast shots into the nearest net.
-let previousBallZ=ball.state.position.z;
-
-
-function detectGoal(): void {
-  const p=ball.state.position;
-  if(Math.abs(p.x)>3.66 || Math.abs(p.y)>2.44) return;
-  if(p.z>=52.5) {
-    match.goal("home",{ballPosition:{...p}});
-    ball.setPosition({x:0,y:.11,z:0});
-    ball.state.velocity={x:0,y:0,z:0};
-    ball.state.state="Free";
-    ball.state.controlledByPlayerId=undefined;
-    match.restartAfterGoal("away");
-    match.completeRestart();
-    ensureControlledPlayerPossession();
-    return;
-  }
-  if(p.z<=-52.5) {
-    match.goal("away",{ballPosition:{...p}});
-    ball.setPosition({x:0,y:.11,z:0});
-    ball.state.velocity={x:0,y:0,z:0};
-    ball.state.state="Free";
-    ball.state.controlledByPlayerId=undefined;
-    match.restartAfterGoal("home");
-    match.completeRestart();
-    ensureControlledPlayerPossession();
-  }
-}
+let previousBallPosition={...ball.state.position};
 
 function resolveActionDirection(playerId:string,action:PlayerAction,direction:{x:number;y:number;z:number}):{x:number;y:number;z:number}{
   const actor=players.get(playerId);
@@ -377,14 +354,32 @@ function resolveActionDirection(playerId:string,action:PlayerAction,direction:{x
   return direction;
 }
 
-function executeAction(playerId:string, action:PlayerAction, direction:{x:number;y:number;z:number}, power:number): void {
+function executeAction(playerId:string, action:PlayerAction, direction:{x:number;y:number;z:number}, power:number) {
   const supported:PlayerAction[]=[
     "Control","Dribble","ProtectBall","Shoot","Pass","ThroughBall","Cross","Clearance",
     "Tackle","StandingTackle","SlideTackle","Intercept","Press","Contain"
   ];
-  if(!supported.includes(action))return;
+  if(!supported.includes(action))return {success:false,action,quality:0,reason:"unsupported"} as const;
   const resolved=resolveActionDirection(playerId,action,direction);
-  gameplay.execute(players,ball,playerId,action,resolved,power);
+  return gameplay.execute(players,ball,playerId,action,resolved,power);
+}
+
+function handleGameplayResult(playerId:string,result:{reason:string}): void {
+  if(result.reason!=="foul" && result.reason!=="penalty_awarded") return;
+  const offender=players.get(playerId);
+  if(!offender) return;
+  const restartTeam=offender.data.teamId==="home" ? "away" : "home";
+  if(result.reason==="penalty_awarded"){
+    const penaltyZ=restartTeam==="home" ? 39.1 : -39.1;
+    matchFlow.restart(match,ball,players,"Penalty",restartTeam,{x:0,y:.11,z:penaltyZ});
+  }else{
+    const position={
+      x:Math.max(-33.5,Math.min(33.5,ball.state.position.x)),
+      y:.11,
+      z:Math.max(-51.5,Math.min(51.5,ball.state.position.z))
+    };
+    matchFlow.restart(match,ball,players,"FreeKick",restartTeam,position);
+  }
 }
 
 function frame(now:number){
@@ -416,6 +411,7 @@ function frame(now:number){
     input.setAction("None",0);
   }
 
+  ensureControlledPlayerPossession();
   const human=input.snapshot();
   aiAccumulator+=delta;
   if(aiAccumulator>=.10){
@@ -437,13 +433,15 @@ function frame(now:number){
     if(!intent || intent.action==="None") continue;
     const nextAt=nextAIActionAt.get(p.data.playerId)??0;
     if(match.clock.seconds<nextAt) continue;
-    executeAction(p.data.playerId,intent.action,intent.targetDirection,intent.power);
+    const result=executeAction(p.data.playerId,intent.action,intent.targetDirection,intent.power);
+    handleGameplayResult(p.data.playerId,result);
     nextAIActionAt.set(p.data.playerId,match.clock.seconds+0.28);
     p.state.lastIntent={...intent,action:"None",power:0};
   }
 
   if(human.action!=="None") {
-    executeAction(controlledId,human.action,human.targetDirection,human.power);
+    const result=executeAction(controlledId,human.action,human.targetDirection,human.power);
+    handleGameplayResult(controlledId,result);
     input.setAction("None",0);
   }
 
@@ -457,10 +455,10 @@ function frame(now:number){
   const controlledPlayer=players.get(controlledId);
   if(controlledPlayer) advancedBallControl.update(controlledPlayer,ball,delta,controlledPlayer.state.action==="Dribble"?"Burst":"None");
   const ballSpeed=Math.hypot(ball.state.velocity.x,ball.state.velocity.y,ball.state.velocity.z);
-  const crossedGoalLine=(previousBallZ > -52.0 && ball.state.position.z <= -52.0) || (previousBallZ < 52.0 && ball.state.position.z >= 52.0);
+  const crossedGoalLine=(previousBallPosition.z > -52.0 && ball.state.position.z <= -52.0) || (previousBallPosition.z < 52.0 && ball.state.position.z >= 52.0);
   if(ballSpeed>10 && crossedGoalLine) nets[ball.state.position.z<0?0:1].impact(new THREE.Vector3(ball.state.position.x,ball.state.position.y,0),Math.min(2,ballSpeed/15));
-  previousBallZ=ball.state.position.z;
-  detectGoal();
+  matchFlow.update(ball,players,match);
+  previousBallPosition={...ball.state.position};
   match.update(delta);
   world.update(delta);
   ball.setSurface(world.weather==="Rain" ? "GrassWet" : "GrassDry",world.pitch.wetness);
