@@ -11,8 +11,12 @@ const out = join(root, "benchmarks/filament-v0.1/android/app/src/main/assets");
 const cloudinary = {
   player: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790110996/slayer/players/models/player_base.glb",
   animation: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790111001/slayer/players/animations/universal_animation_library_mannequin.glb",
+  animation2: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790124661/slayer/players/animations/universal_animation_library_2_standard",
   fieldZip: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790111012/slayer/stadium/models/soccer_field_cc0.zip",
   environment: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790111036/slayer/stadium/ibl/orlando_stadium_1k.exr",
+  grassBaseColor: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790124684/slayer/stadium/textures/leafy_grass_diff_1k.png",
+  grassNormal: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790124688/slayer/stadium/textures/leafy_grass_nor_gl_1k.png",
+  grassRoughness: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790124694/slayer/stadium/textures/leafy_grass_rough_1k.png",
 };
 
 function signedCloudinaryRawUrl(url) {
@@ -109,13 +113,21 @@ const playerFile = join(out, "models/player.glb");
 const playerLod1File = join(out, "models/player_lod1.glb");
 const playerLod2File = join(out, "models/player_lod2.glb");
 const animationFile = join(out, "models/animation_library.glb");
+const animationFile2 = join(out, "models/animation_library_2_standard");
+const grassBaseColorFile = join(out, "textures/grass_basecolor_1k.png");
+const grassNormalFile = join(out, "textures/grass_normal_1k.png");
+const grassRoughnessFile = join(out, "textures/grass_roughness_1k.png");
 const fieldZip = join(tmp, "soccer_field_cc0.zip");
 const envExr = join(tmp, "orlando_stadium_1k.exr");
 
 await download(cloudinary.player, playerFile);
 await download(cloudinary.animation, animationFile);
+await download(cloudinary.animation2, animationFile2);
 await download(cloudinary.fieldZip, fieldZip);
 await download(cloudinary.environment, envExr);
+await download(cloudinary.grassBaseColor, grassBaseColorFile);
+await download(cloudinary.grassNormal, grassNormalFile);
+await download(cloudinary.grassRoughness, grassRoughnessFile);
 
 // Generate geometry LODs from the same source player when the Filament host
 // tool is available. LOD assets are deliberately optional: the runtime uses
@@ -294,18 +306,27 @@ const manifest = {
     player: { path: "models/player.glb", sha256: await sha256(playerFile) },
     player_lod1: {
       path: "models/player_lod1.glb",
-      generated: Boolean(gltfpack),
-      ...(gltfpack ? { sha256: await sha256(playerLod1File) } : {}),
+      generated: Boolean(await stat(playerLod1File).catch(() => null)),
+      ...(await stat(playerLod1File).catch(() => null) ? { sha256: await sha256(playerLod1File) } : {}),
     },
     player_lod2: {
       path: "models/player_lod2.glb",
-      generated: Boolean(gltfpack),
-      ...(gltfpack ? { sha256: await sha256(playerLod2File) } : {}),
+      generated: Boolean(await stat(playerLod2File).catch(() => null)),
+      ...(await stat(playerLod2File).catch(() => null) ? { sha256: await sha256(playerLod2File) } : {}),
     },
     pitch: { path: "models/pitch.glb", sha256: await sha256(extractedPitch) },
     animation_library: {
       path: "models/animation_library.glb",
       sha256: await sha256(animationFile),
+    },
+    animation_library_2_standard: {
+      path: "models/animation_library_2_standard",
+      sha256: await sha256(animationFile2),
+    },
+    grass_pbr: {
+      baseColor: "textures/grass_basecolor_1k.png",
+      normal: "textures/grass_normal_1k.png",
+      roughness: "textures/grass_roughness_1k.png"
     },
     ibl: { path: "ibl/orlando_stadium/orlando_stadium_1k_ibl.ktx" },
     skybox: { path: "ibl/orlando_stadium/orlando_stadium_1k_skybox.ktx" },
