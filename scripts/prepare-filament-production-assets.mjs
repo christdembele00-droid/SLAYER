@@ -281,6 +281,23 @@ if (glb) {
 }
 
 await ensureFile(extractedPitch, "Pitch GLB");
+
+const blenderFoundation = await findExecutable("blender");
+if (!blenderFoundation) throw new Error("Blender is required for SLAYER procedural stadium/crowd foundations");
+const foundationStadium = join(out, "models/stadium.glb");
+const foundationCrowd = join(out, "crowd/crowd.glb");
+await mkdir(dirname(foundationStadium), { recursive: true });
+await mkdir(dirname(foundationCrowd), { recursive: true });
+await exec(blenderFoundation, [
+  "--background",
+  "--python",
+  join(root, "scripts/generate_slayer_foundations.py"),
+  "--",
+  foundationStadium,
+  foundationCrowd,
+], { maxBuffer: 64 * 1024 * 1024 });
+await ensureFile(foundationStadium, "Procedural stadium GLB");
+await ensureFile(foundationCrowd, "Procedural crowd GLB");
 const pitchData = await readFile(extractedPitch);
 if (pitchData.subarray(0, 4).toString() !== "glTF") {
   throw new Error("Generated pitch asset is not a valid GLB");
@@ -408,6 +425,8 @@ const manifest = {
       ibl: "ibl/stadium_01/stadium_01_1k_ibl.ktx",
       skybox: "ibl/stadium_01/stadium_01_1k_skybox.ktx"
     },
+    stadium_foundation: { path: "models/stadium.glb", source: "procedural-original" },
+    crowd_foundation: { path: "crowd/crowd.glb", source: "procedural-original" },
     ball: { path: "models/ball.glb", source: ballInfo.source, mode: ballInfo.mode, sha256: await sha256(ballModel) },
     goal: { path: "models/goal.glb", source: goalInfo.source, mode: goalInfo.mode, sha256: await sha256(goalModel) },
     particle_pack: { path: "effects/particle_pack_cc0.zip", sha256: await sha256(particleZip) },
