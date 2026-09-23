@@ -142,6 +142,13 @@
   },
   "cloudinary_current_assets": [
     "slayer/players/models/player_base.glb",
+    "slayer/players/models/human_parts_cc0",
+    "slayer/players/models/head_basemesh_male_cc0",
+    "slayer/players/models/head_basemesh_female_cc0",
+    "slayer/players/models/face2_cc0",
+    "slayer/players/models/hair_long_male_cc0",
+    "slayer/players/models/hair_upcomb_male_cc0",
+    "slayer/players/models/hair_ponytail_female_cc0",
     "slayer/players/roster/slayer_roster.json",
     "slayer/players/animations/universal_animation_library_mannequin.glb",
     "slayer/players/animations/animation_library_standard.gltf",
@@ -149,20 +156,28 @@
     "slayer/players/textures/kits/cotton_jersey_diff_1k",
     "slayer/players/textures/kits/cotton_jersey_nor_gl_1k",
     "slayer/players/textures/kits/cotton_jersey_rough_1k",
+    "slayer/players/textures/skin/eye_blue_cc0",
+    "slayer/players/textures/skin/eye_brown_cc0",
+    "slayer/players/textures/skin/eye_green_cc0",
+    "slayer/players/textures/skin/annotated_skin_reference_cc0",
     "slayer/stadium/models/soccer_field_cc0.zip",
     "slayer/stadium/models/soccerfield_cc0_measurements",
+    "slayer/stadium/models/soccer_goal_cc0",
     "slayer/stadium/textures/grass_leafy_preview.png",
     "slayer/stadium/textures/leafy_grass_diff_1k",
     "slayer/stadium/textures/leafy_grass_nor_gl_1k",
     "slayer/stadium/textures/leafy_grass_rough_1k",
     "slayer/stadium/ibl/orlando_stadium_1k.exr",
     "slayer/stadium/ibl/stadium_01_1k",
+    "slayer/ball/models/football_balloon_cc0",
+    "slayer/effects/particles/kenney_particle_pack_cc0",
+    "slayer/effects/weather/rain_drop_cc0",
     "slayer/emblems/atlas_fc",
     "slayer/emblems/lagoon_united",
     "slayer/ui/basic_soccer_pack_cc0",
     "slayer/audio/crowd/crowd_shouting_cc0"
   ],
-  "count": 20,
+  "count": 35,
   "source_references": {
     "poly_haven_cc0": "https://polyhaven.com/license",
     "stadium_01": "https://polyhaven.com/a/stadium_01",
@@ -171,5 +186,17 @@
     "open_game_art_basic_soccer_pack": "https://opengameart.org/content/basic-soccer-pack",
     "open_game_art_crowd": "https://opengameart.org/content/crowd-shoutingspeaking-ambience"
   },
-  "final_release_rule": "Only original, CC0, or properly licensed assets may ship. Source packs are not automatically treated as final high-end player/stadium content."
+  "final_release_rule": "Only original, CC0, or properly licensed assets may ship. Source packs are not automatically treated as final high-end player/stadium content.",
+  "status_by_category": {
+    "player_body": "source_ready_final_hd_needed",
+    "player_face": "base_mesh_ready_hd_skin_face_variants_needed",
+    "player_hair": "base_variants_ready_more_styles_needed",
+    "animation": "libraries_ready_football_specific_retargeting_needed",
+    "pitch_pbr": "runtime_ready_1k",
+    "stadium": "pitch_goal_ready_full_stadium_and_crowd_needed",
+    "ball": "runtime_ready_source",
+    "weather_vfx": "source_ready_runtime_integration_in_progress",
+    "audio": "crowd_source_ready_commentary_and_match_sfx_needed",
+    "ui": "source_ready_final_original_ui_needed"
+  }
 }
