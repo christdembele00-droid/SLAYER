@@ -10,7 +10,15 @@
 | GLB loading | IMPLEMENTED |
 | 22 player instances | IMPLEMENTED |
 | Per-instance locomotion animation controllers | IMPLEMENTED |
+| Animation-rate LOD for distant players | IMPLEMENTED |
+| Optional geometry LOD generation | IMPLEMENTED IN ASSET PIPELINE |
 | PBR pitch fallback | IMPLEMENTED |
+| Authored grass/player PBR material sources | IMPLEMENTED |
+| HDR/IBL + skybox pipeline | IMPLEMENTED |
+| ACES + TAA + GTAO + bloom | IMPLEMENTED |
+| Day / twilight / night lighting | IMPLEMENTED |
+| Native weather geometry path | IMPLEMENTED |
+| Multiple camera modes | IMPLEMENTED |
 | Android debug APK build | VERIFIED IN CI |
 | Android release AAB build | AVAILABLE IN RELEASE WORKFLOW |
 | 1-player FPS | NOT MEASURED ON TARGET DEVICE |
@@ -18,8 +26,11 @@
 | 22-player FPS | NOT MEASURED ON TARGET DEVICE |
 | Physical Android validation | NOT DONE |
 | 60 FPS validation | NOT DONE |
+| Final production player faces/kits | CONTENT GAP |
+| Final crowd/stadium variants | CONTENT GAP |
+| Final advanced weather/replay FX | CONTENT GAP |
 
-This status intentionally distinguishes automated build validation from measured device performance.
+This status intentionally distinguishes automated build validation from measured device performance and final content delivery.
 
 ## Backend policy
 
