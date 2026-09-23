@@ -98,7 +98,10 @@ struct NativeRenderer {
     gltfio::TextureProvider* stbDecoder = nullptr;
     gltfio::FilamentAsset* playerAsset = nullptr;
     gltfio::FilamentAsset* stadiumAsset = nullptr;
+    gltfio::FilamentAsset* ballAsset = nullptr;
+    gltfio::FilamentAsset* goalAsset = nullptr;
     std::vector<gltfio::FilamentInstance*> playerInstances;
+    std::vector<gltfio::FilamentInstance*> goalInstances;
     slayer::SlayerSettings settings{};
     float playerAnimationTime = 0.0f;
     uint32_t playerAnimationIndex = 0;
@@ -517,6 +520,93 @@ struct NativeRenderer {
         return true;
     }
 
+    bool loadBallGlb(const uint8_t* bytes, size_t size) {
+        if (!engine || !bytes || size == 0 || !gltfMaterials) return false;
+        if (!assetLoader) assetLoader = gltfio::AssetLoader::create({engine, gltfMaterials});
+        if (!assetLoader) return false;
+
+        if (ballAsset) {
+            if (scene) scene->removeEntities(ballAsset->getEntities(), ballAsset->getEntityCount());
+            assetLoader->destroyAsset(ballAsset);
+            ballAsset = nullptr;
+        }
+
+        ballAsset = assetLoader->createAsset(bytes, static_cast<uint32_t>(size));
+        if (!ballAsset) return false;
+
+        if (!resourceLoader) {
+            gltfio::ResourceConfiguration config{};
+            config.engine = engine;
+            config.normalizeSkinningWeights = true;
+            resourceLoader = new gltfio::ResourceLoader(config);
+            stbDecoder = gltfio::createStbProvider(engine);
+            if (stbDecoder) {
+                resourceLoader->addTextureProvider("image/png", stbDecoder);
+                resourceLoader->addTextureProvider("image/jpeg", stbDecoder);
+                resourceLoader->addTextureProvider("image/webp", stbDecoder);
+            }
+        }
+
+        if (!resourceLoader->loadResources(ballAsset)) {
+            assetLoader->destroyAsset(ballAsset);
+            ballAsset = nullptr;
+            return false;
+        }
+
+        scene->addEntities(ballAsset->getEntities(), ballAsset->getEntityCount());
+        return true;
+    }
+
+    bool loadGoalGlb(const uint8_t* bytes, size_t size) {
+        if (!engine || !bytes || size == 0 || !gltfMaterials) return false;
+        if (!assetLoader) assetLoader = gltfio::AssetLoader::create({engine, gltfMaterials});
+        if (!assetLoader) return false;
+
+        if (goalAsset) {
+            if (scene) {
+                for (auto* instance : goalInstances) {
+                    if (instance) scene->removeEntities(instance->getEntities(), instance->getEntityCount());
+                }
+            }
+            assetLoader->destroyAsset(goalAsset);
+            goalAsset = nullptr;
+            goalInstances.clear();
+        }
+
+        goalInstances.assign(2, nullptr);
+        goalAsset = assetLoader->createInstancedAsset(
+            bytes, static_cast<uint32_t>(size), goalInstances.data(), goalInstances.size());
+        if (!goalAsset) {
+            goalInstances.clear();
+            return false;
+        }
+
+        if (!resourceLoader) {
+            gltfio::ResourceConfiguration config{};
+            config.engine = engine;
+            config.normalizeSkinningWeights = true;
+            resourceLoader = new gltfio::ResourceLoader(config);
+            stbDecoder = gltfio::createStbProvider(engine);
+            if (stbDecoder) {
+                resourceLoader->addTextureProvider("image/png", stbDecoder);
+                resourceLoader->addTextureProvider("image/jpeg", stbDecoder);
+                resourceLoader->addTextureProvider("image/webp", stbDecoder);
+            }
+        }
+
+        if (!resourceLoader->loadResources(goalAsset)) {
+            assetLoader->destroyAsset(goalAsset);
+            goalAsset = nullptr;
+            goalInstances.clear();
+            return false;
+        }
+
+        for (auto* instance : goalInstances) {
+            if (instance) scene->addEntities(instance->getEntities(), instance->getEntityCount());
+        }
+        return true;
+    }
+
     bool loadPlayerGlb(const uint8_t* bytes, size_t size) {
         if (!engine || !bytes || size == 0 || !gltfMaterials) return false;
 
@@ -666,6 +756,37 @@ struct NativeRenderer {
             }
         }
 
+        float ballX = 0.0f, ballY = 0.22f, ballZ = 0.0f;
+        slayer_game_get_ball(&ballX, &ballY, &ballZ);
+        if (ballAsset) {
+            const Entity root = ballAsset->getRoot();
+            auto& tm = engine->getTransformManager();
+            if (tm.hasComponent(root)) {
+                tm.setTransform(
+                    tm.getInstance(root),
+                    filament::math::mat4f::translation(
+                        filament::math::float3{ballX, ballY, ballZ}));
+            }
+        }
+
+        if (goalAsset && goalInstances.size() == 2) {
+            auto& tm = engine->getTransformManager();
+            const float goalPositions[2] = {-34.0f, 34.0f};
+            for (size_t i = 0; i < goalInstances.size(); ++i) {
+                auto* instance = goalInstances[i];
+                if (!instance) continue;
+                const Entity root = instance->getRoot();
+                if (!tm.hasComponent(root)) continue;
+                const float z = goalPositions[i];
+                const float angle = i == 0 ? 3.1415926535f : 0.0f;
+                const auto rotation = filament::math::mat4f::rotation(
+                    angle, filament::math::float3{0.0f, 1.0f, 0.0f});
+                const auto translation = filament::math::mat4f::translation(
+                    filament::math::float3{0.0f, 0.0f, z});
+                tm.setTransform(tm.getInstance(root), translation * rotation);
+            }
+        }
+
         const uint32_t animCount = std::min<uint32_t>(
             playerCount, static_cast<uint32_t>(animationControllers.size()));
         if (animCount > 0 && dt > 0.0001f) {
@@ -755,6 +876,14 @@ struct NativeRenderer {
         if (playerAsset && scene) {
             scene->removeEntities(playerAsset->getEntities(), playerAsset->getEntityCount());
         }
+        if (ballAsset && scene) {
+            scene->removeEntities(ballAsset->getEntities(), ballAsset->getEntityCount());
+        }
+        if (goalAsset && scene) {
+            for (auto* instance : goalInstances) {
+                if (instance) scene->removeEntities(instance->getEntities(), instance->getEntityCount());
+            }
+        }
         if (stadiumAsset && scene) {
             scene->removeEntities(stadiumAsset->getEntities(), stadiumAsset->getEntityCount());
         }
@@ -762,6 +891,15 @@ struct NativeRenderer {
             assetLoader->destroyAsset(playerAsset);
             playerAsset = nullptr;
 
+        }
+        if (ballAsset && assetLoader) {
+            assetLoader->destroyAsset(ballAsset);
+            ballAsset = nullptr;
+        }
+        if (goalAsset && assetLoader) {
+            assetLoader->destroyAsset(goalAsset);
+            goalAsset = nullptr;
+            goalInstances.clear();
         }
         if (stadiumAsset && assetLoader) {
             assetLoader->destroyAsset(stadiumAsset);
@@ -977,6 +1115,36 @@ Java_com_slayer_filament_MainActivity_nativeLoadStadium(
     jbyte* raw = env->GetByteArrayElements(data, nullptr);
     if (!raw) return JNI_FALSE;
     const bool ok = g_renderer.loadStadiumGlb(reinterpret_cast<const uint8_t*>(raw), static_cast<size_t>(size));
+    env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_slayer_filament_MainActivity_nativeLoadBall(
+        JNIEnv* env, jobject, jbyteArray data) {
+    if (!env || !data) return JNI_FALSE;
+    const jsize size = env->GetArrayLength(data);
+    if (size <= 0) return JNI_FALSE;
+    jbyte* raw = env->GetByteArrayElements(data, nullptr);
+    if (!raw) return JNI_FALSE;
+    const bool ok = g_renderer.loadBallGlb(
+        reinterpret_cast<const uint8_t*>(raw),
+        static_cast<size_t>(size));
+    env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_slayer_filament_MainActivity_nativeLoadGoal(
+        JNIEnv* env, jobject, jbyteArray data) {
+    if (!env || !data) return JNI_FALSE;
+    const jsize size = env->GetArrayLength(data);
+    if (size <= 0) return JNI_FALSE;
+    jbyte* raw = env->GetByteArrayElements(data, nullptr);
+    if (!raw) return JNI_FALSE;
+    const bool ok = g_renderer.loadGoalGlb(
+        reinterpret_cast<const uint8_t*>(raw),
+        static_cast<size_t>(size));
     env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
     return ok ? JNI_TRUE : JNI_FALSE;
 }
