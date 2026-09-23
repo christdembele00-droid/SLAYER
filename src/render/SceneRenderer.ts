@@ -28,7 +28,7 @@ export class SceneRenderer{
     this.renderer.shadowMap.enabled=true;
     this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
     this.renderer.info.autoReset=true;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.25));
     this.renderer.setSize(container.clientWidth,container.clientHeight,false);
 
     this.composer=new EffectComposer(this.renderer);
@@ -91,7 +91,7 @@ export class SceneRenderer{
     this.renderer.shadowMap.enabled=enabled;
     this.sun.castShadow=enabled;
     if(enabled){
-      const size=this.qualityRatio>=1.15?4096:this.qualityRatio>=.9?2048:1024;
+      const size=this.qualityRatio>=1.15?2048:this.qualityRatio>=.9?1536:1024;
       this.sun.shadow.mapSize.set(size,size);
     }
     this.scene.fog=new THREE.FogExp2(0x07100e,this.qualityRatio<.78?.0024:this.qualityRatio<.92?.00195:.00145);
