@@ -156,8 +156,9 @@ public final class MainActivity extends Activity {
             nativeReady = true;
             nativeSetSettings(10, true, true, 5, 1, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 1,
                     60, 2, true, 0, true, 0, .55f, .85f, .80f, .90f);
-            loadBundledEnvironment();
-            loadBundledTerrainMaterial();
+            // Keep the first match frame on the minimal Vulkan path. IBL and
+            // terrain texture uploads are optional visual upgrades and are loaded
+            // only after the core scene is confirmed alive.
             loadBundledStadium();
             loadBundledBallAndGoals();
             loadBundledPlayer();
