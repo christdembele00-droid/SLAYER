@@ -144,16 +144,22 @@ final class SlayerMenuController {
         hp.topMargin = px(112);
         menuOverlay.addView(hero, hp);
 
-        TextView teams = label("ATLAS FC     VS     LAGOON UNITED", 20f, true);
+        TextView teams = label("ATLAS FC  •  VS  •  LAGOON UNITED", 17f, true);
         teams.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams teamsP = new FrameLayout.LayoutParams(-1, px(60), Gravity.TOP);
+        teams.setMaxLines(1);
+        teams.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        FrameLayout.LayoutParams teamsP = new FrameLayout.LayoutParams(-1, px(54), Gravity.TOP);
+        teamsP.leftMargin = px(12);
+        teamsP.rightMargin = px(12);
         teamsP.topMargin = px(142);
         menuOverlay.addView(teams, teamsP);
 
-        Button quick = button("▶  MATCH RAPIDE", 18f);
+        Button quick = button("▶  MATCH RAPIDE", 17f);
         quick.setTextColor(Color.BLACK);
         quick.setBackgroundColor(0xFFFFD400);
-        FrameLayout.LayoutParams qp = new FrameLayout.LayoutParams(px(390), px(70), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        android.util.DisplayMetrics qdm = activity.getResources().getDisplayMetrics();
+        int qWidth = Math.min(Math.round(qdm.widthPixels * 0.78f), px(390));
+        FrameLayout.LayoutParams qp = new FrameLayout.LayoutParams(Math.max(px(190), qWidth), px(64), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
         qp.topMargin = px(225);
         menuOverlay.addView(quick, qp);
         quick.setOnClickListener(v -> onStartMatch.run());
@@ -186,9 +192,19 @@ final class SlayerMenuController {
 
     private void addModeCard(String text, int left, int top, int width, int height, Runnable action) {
         Button b = button(text, 14f);
-        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(px(width), px(height), Gravity.TOP | Gravity.LEFT);
-        p.leftMargin = px(left);
-        p.topMargin = px(top);
+        android.util.DisplayMetrics dm = activity.getResources().getDisplayMetrics();
+        int screenWidth = Math.max(320, dm.widthPixels);
+        int outer = Math.max(px(14), Math.round(screenWidth * 0.045f));
+        int gap = Math.max(px(8), Math.round(screenWidth * 0.025f));
+        int cardWidth = Math.max(px(120), (screenWidth - (outer * 2) - gap) / 2);
+        int cardHeight = Math.max(px(52), Math.min(px(height), Math.round(cardWidth * 0.26f)));
+        int column = left > 200 ? 1 : 0;
+        int row = top > 350 ? 1 : 0;
+        int x = outer + column * (cardWidth + gap);
+        int y = Math.max(px(300), px(300) + row * (cardHeight + gap));
+        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(cardWidth, cardHeight, Gravity.TOP | Gravity.LEFT);
+        p.leftMargin = x;
+        p.topMargin = y;
         menuOverlay.addView(b, p);
         b.setOnClickListener(v -> action.run());
     }
