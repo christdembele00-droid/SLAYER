@@ -3,9 +3,9 @@ import { configureShadow } from "./GraphicsQuality";
 import { StadiumEnvironment } from "./StadiumEnvironment";
 import { Sky } from "three/addons/objects/Sky.js";
 
-export class SceneRenderer {
+export class SceneRenderer{
   readonly scene=new THREE.Scene();
-  readonly camera=new THREE.PerspectiveCamera(58,1,.08,420);
+  readonly camera=new THREE.PerspectiveCamera(54,1,.05,500);
   readonly renderer:THREE.WebGLRenderer;
   private readonly container:HTMLElement;
   private readonly sun:THREE.DirectionalLight;
@@ -13,78 +13,55 @@ export class SceneRenderer {
   private readonly sky:Sky;
   private qualityRatio=1;
 
-
   constructor(container:HTMLElement){
     this.container=container;
-    this.renderer=new THREE.WebGLRenderer({
-      antialias:true,
-      powerPreference:"high-performance",
-      alpha:false,
-      stencil:false,
-      depth:true,
-      preserveDrawingBuffer:false
-    });
+    this.renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:"high-performance",alpha:false,stencil:false,depth:true,preserveDrawingBuffer:false});
     this.renderer.outputColorSpace=THREE.SRGBColorSpace;
     this.renderer.toneMapping=THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure=1.08;
-    this.renderer.shadowMap.autoUpdate=true;
+    this.renderer.toneMappingExposure=1.06;
     this.renderer.shadowMap.enabled=true;
     this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
     this.renderer.info.autoReset=true;
-    this.renderer.localClippingEnabled=false;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));
-    this.renderer.outputColorSpace=THREE.SRGBColorSpace;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
     this.renderer.setSize(container.clientWidth,container.clientHeight,false);
 
     this.stadiumEnvironment=new StadiumEnvironment(this.renderer,this.scene);
     this.sky=new Sky();
     this.sky.scale.setScalar(450);
     const skyMaterial=this.sky.material as THREE.ShaderMaterial;
-    skyMaterial.uniforms["turbidity"].value=7;
-    skyMaterial.uniforms["rayleigh"].value=1.6;
-    skyMaterial.uniforms["mieCoefficient"].value=.004;
-    skyMaterial.uniforms["mieDirectionalG"].value=.82;
-    const sunDirection=new THREE.Vector3(-.35,.82,.28).normalize();
-    skyMaterial.uniforms["sunPosition"].value.copy(sunDirection);
+    skyMaterial.uniforms["turbidity"].value=5.2;
+    skyMaterial.uniforms["rayleigh"].value=.95;
+    skyMaterial.uniforms["mieCoefficient"].value=.0022;
+    skyMaterial.uniforms["mieDirectionalG"].value=.88;
+    skyMaterial.uniforms["sunPosition"].value=new THREE.Vector3(-.28,.88,.36).normalize();
     this.scene.add(this.sky);
-    this.scene.background=new THREE.Color(0x06100d);
-    this.scene.fog=new THREE.Fog(0x06100d,75,240);
 
-    this.camera.position.set(0,18,28);
-    this.camera.lookAt(0,0,0);
+    this.scene.background=new THREE.Color(0x060b0c);
+    this.scene.fog=new THREE.FogExp2(0x07100e,.00165);
 
-    const hemi=new THREE.HemisphereLight(0xdff4ff,0x0b2116,2.0);
+    this.camera.position.set(0,12.5,27);
+    this.camera.lookAt(0,1.2,0);
+
+    const hemi=new THREE.HemisphereLight(0xdbefff,0x06140c,1.45);
     this.scene.add(hemi);
 
-    this.sun=new THREE.DirectionalLight(0xfff1d6,3.6);
-    this.sun.position.set(-35,55,25);
+    this.sun=new THREE.DirectionalLight(0xfff2dd,3.1);
+    this.sun.position.set(-42,68,34);
     configureShadow(this.sun,2048);
-    this.sun.shadow.bias=-0.00018;
-    this.sun.shadow.normalBias=0.018;
+    this.sun.shadow.bias=-.00012;
+    this.sun.shadow.normalBias=.012;
     this.scene.add(this.sun);
-    this.sun.position.copy(new THREE.Vector3(-45,70,35));
 
-    const fill=new THREE.DirectionalLight(0x9fd7ff,1.15);
-    fill.position.set(35,24,-35);
+    const fill=new THREE.DirectionalLight(0x8fc9ff,.62);
+    fill.position.set(35,26,-38);
     this.scene.add(fill);
 
-    const rim=new THREE.DirectionalLight(0x8affd0,.7);
-    rim.position.set(-10,18,-55);
+    const rim=new THREE.DirectionalLight(0x6fffc1,.54);
+    rim.position.set(-18,20,-58);
     this.scene.add(rim);
 
-    this.addAtmosphere();
     container.appendChild(this.renderer.domElement);
     window.addEventListener("resize",()=>this.resize());
-  }
-
-  private addAtmosphere(){
-    const haze=new THREE.Mesh(
-      new THREE.RingGeometry(72,145,128),
-      new THREE.MeshBasicMaterial({color:0x183a2d,transparent:true,opacity:.13,side:THREE.DoubleSide,depthWrite:false})
-    );
-    haze.rotation.x=-Math.PI/2;
-    haze.position.y=-.05;
-    this.scene.add(haze);
   }
 
   resize(){
@@ -94,20 +71,18 @@ export class SceneRenderer {
   }
 
   setQuality(pixelRatio:number){
-    this.qualityRatio=Math.min(Math.max(pixelRatio,.65),1.35);
+    this.qualityRatio=THREE.MathUtils.clamp(pixelRatio,.65,1.35);
     this.renderer.setPixelRatio(this.qualityRatio);
-    this.renderer.toneMappingExposure=this.qualityRatio>=1.15?1.12:this.qualityRatio>=.9?1.08:1.03;
-    const enableShadows=this.qualityRatio>=.8;
-    this.renderer.shadowMap.enabled=enableShadows;
-    this.sun.castShadow=enableShadows;
-    if(enableShadows){
+    this.renderer.toneMappingExposure=this.qualityRatio>=1.15?1.08:this.qualityRatio>=.9?1.06:1.02;
+    const enabled=this.qualityRatio>=.78;
+    this.renderer.shadowMap.enabled=enabled;
+    this.sun.castShadow=enabled;
+    if(enabled){
       const size=this.qualityRatio>=1.15?4096:this.qualityRatio>=.9?2048:1024;
       this.sun.shadow.mapSize.set(size,size);
     }
-    this.scene.fog=new THREE.Fog(0x06100d,75,this.qualityRatio<.75?150:this.qualityRatio<.9?190:240);
+    this.scene.fog=new THREE.FogExp2(0x07100e,this.qualityRatio<.78?.0024:this.qualityRatio<.92?.00195:.00145);
   }
 
-  render(){
-    this.renderer.render(this.scene,this.camera);
-  }
+  render(){this.renderer.render(this.scene,this.camera);}
 }
