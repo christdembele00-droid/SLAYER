@@ -10,6 +10,7 @@ import android.graphics.Canvas;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.GridLayout;
@@ -213,7 +214,7 @@ final class SlayerMenuController {
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeWidth(d(2));
             p.setColor(0x79D8FFF0);
-            canvas.drawLine(w*.5f, h*.48f, w*.5f, h);
+            canvas.drawLine(w*.5f, h*.48f, w*.5f, h, p);
             canvas.drawOval(new RectF(w*.28f, h*.57f, w*.72f, h*.93f), p);
             p.setStyle(Paint.Style.FILL);
 
