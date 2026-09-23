@@ -5,6 +5,8 @@
 
 namespace slayer {
 
+enum class PlayerAction : uint8_t { None=0, Pass=1, Shoot=2, Tackle=3, Dribble=4 };
+
 enum class MatchPhase : uint8_t { PreKickoff, FirstHalf, HalfTime, SecondHalf, ExtraTime, Penalties, FullTime };
 enum class TacticalStyle : uint8_t { Balanced, Possession, Pressing, Counter, Defensive };
 
@@ -31,6 +33,7 @@ struct PlayerState {
     bool controlled=false;
     bool offside=false;
     bool carded=false;
+    PlayerAction action=PlayerAction::None;
 };
 
 struct MatchState {
@@ -44,6 +47,8 @@ struct MatchState {
     uint32_t fouls=0;
     uint32_t cards=0;
     uint32_t selected=0;
+    int16_t possession=-1;
+    uint8_t lastTouchTeam=0;
     bool paused=false;
 };
 
@@ -63,6 +68,7 @@ private:
     void updateBall(float dt);
     void resolveRules();
     void updateFatigue(float dt);
+    void resolvePlayerCollisions();
     void updateTactics();
     void setupTeams();
     MatchState state_{};
@@ -70,6 +76,7 @@ private:
     float secondAccumulator_=0;
     float fixedAccumulator_=0;
     float phaseAccumulator_=0;
+    float tackleCooldown_=0.0f;
     SlayerSettings settings_{};
 };
 
