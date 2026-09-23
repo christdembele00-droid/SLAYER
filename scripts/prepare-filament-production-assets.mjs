@@ -106,6 +106,8 @@ const fieldSourceDir = join(tmp, "soccer_field_source");
 await mkdir(fieldSourceDir, { recursive: true });
 
 const playerFile = join(out, "models/player.glb");
+const playerLod1File = join(out, "models/player_lod1.glb");
+const playerLod2File = join(out, "models/player_lod2.glb");
 const animationFile = join(out, "models/animation_library.glb");
 const fieldZip = join(tmp, "soccer_field_cc0.zip");
 const envExr = join(tmp, "orlando_stadium_1k.exr");
@@ -114,6 +116,24 @@ await download(cloudinary.player, playerFile);
 await download(cloudinary.animation, animationFile);
 await download(cloudinary.fieldZip, fieldZip);
 await download(cloudinary.environment, envExr);
+
+// Generate geometry LODs from the same source player when the Filament host
+// tool is available. LOD assets are deliberately optional: the runtime uses
+// animation-rate LOD today, avoiding a 3x instance-memory multiplier.
+const gltfpack = await findExecutable("gltfpack");
+if (gltfpack) {
+  await exec(gltfpack, ["-i", playerFile, "-o", playerLod1File, "-km", "-si", "0.55"], {
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  await exec(gltfpack, ["-i", playerFile, "-o", playerLod2File, "-km", "-si", "0.30"], {
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  await ensureFile(playerLod1File, "Player LOD1 GLB");
+  await ensureFile(playerLod2File, "Player LOD2 GLB");
+  console.log("Generated player geometry LODs with gltfpack.");
+} else {
+  console.log("gltfpack not available; keeping runtime animation-rate LOD only.");
+}
 
 const zipList = (await exec("unzip", ["-Z1", fieldZip])).stdout
   .split("\n")
@@ -241,6 +261,16 @@ const manifest = {
   renderer: "Filament Vulkan",
   assets: {
     player: { path: "models/player.glb", sha256: await sha256(playerFile) },
+    player_lod1: {
+      path: "models/player_lod1.glb",
+      generated: Boolean(gltfpack),
+      ...(gltfpack ? { sha256: await sha256(playerLod1File) } : {}),
+    },
+    player_lod2: {
+      path: "models/player_lod2.glb",
+      generated: Boolean(gltfpack),
+      ...(gltfpack ? { sha256: await sha256(playerLod2File) } : {}),
+    },
     pitch: { path: "models/pitch.glb", sha256: await sha256(extractedPitch) },
     animation_library: {
       path: "models/animation_library.glb",
