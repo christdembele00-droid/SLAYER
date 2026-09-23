@@ -305,6 +305,13 @@ window.addEventListener("keyup",event=>{
 let last=window.performance.now();
 let lastUiUpdate=0;
 let aiAccumulator=0;
+let nextFrameAt=0;
+let rafId=0;
+let pageVisible=!document.hidden;
+document.addEventListener("visibilitychange",()=>{
+  pageVisible=!document.hidden;
+  if(pageVisible && !rafId) rafId=requestAnimationFrame(frame);
+});
 // Goal-net reaction: feed impacts from fast shots into the nearest net.
 let previousBallZ=ball.state.position.z;
 
@@ -381,13 +388,21 @@ function executeAction(playerId:string, action:PlayerAction, direction:{x:number
 }
 
 function frame(now:number){
-  const rawFrameMs=now-last;
-  const delta=Math.min(rawFrameMs/1000,.05);
+  rafId=0;
+  if(!pageVisible){return;}
+  // Render and simulate at a stable 60 Hz even on 90/120/144 Hz displays.
+  if(now<nextFrameAt){
+    rafId=requestAnimationFrame(frame);
+    return;
+  }
+  nextFrameAt=now+16.666;
+  const rawFrameMs=Math.min(now-last,50);
+  const delta=rawFrameMs/1000;
   last=now;
 
   if(!matchStarted){
     renderer.render();
-    requestAnimationFrame(frame);
+    rafId=requestAnimationFrame(frame);
     return;
   }
 
@@ -484,6 +499,6 @@ function frame(now:number){
   if(online && human.action!=="None"){ online.send({type:"intent",data:{playerId:controlledId,moveX:human.moveDirection.x,moveZ:human.moveDirection.z,action:human.action,power:human.power,clientTime:Date.now()}}); }
 
   renderer.render();
-  requestAnimationFrame(frame);
+  rafId=requestAnimationFrame(frame);
 }
-requestAnimationFrame(frame);
+rafId=requestAnimationFrame(frame);
