@@ -19,7 +19,7 @@ export class GoalNetCloth {
       return new THREE.Vector3(this.width*(x/this.cols-.5),this.height*y/this.rows,0);
     });
     this.velocity=this.rest.map(()=>new THREE.Vector3());
-    this.mesh=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0xffffff,wireframe:true,transparent:true,opacity:.65}));
+    this.mesh=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0xeaf2f3,wireframe:true,transparent:true,opacity:.58}));
     this.mesh.position.y=height/2;
     void depth;
   }
