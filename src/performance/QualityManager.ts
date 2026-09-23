@@ -7,14 +7,18 @@ export class QualityManager {
   private lastTier:QualityTier="High";
   private cooldown=0;
   private adaptive=true;
+  private analysisAccumulator=0;
 
   setAdaptive(enabled:boolean):void{this.adaptive=enabled;}
 
   update(frameMs:number,delta=1/60):boolean {
     this.history.push(Math.max(.01,frameMs));
-    if(!this.adaptive)return false;
     if(this.history.length>120)this.history.shift();
+    if(!this.adaptive)return false;
+    this.analysisAccumulator+=delta;
     if(this.cooldown>0)this.cooldown-=delta;
+    if(this.analysisAccumulator<.5)return false;
+    this.analysisAccumulator=0;
     const sorted=[...this.history].sort((a,b)=>a-b);
     const avg=this.history.reduce((a,b)=>a+b,0)/this.history.length;
     const p95=sorted[Math.min(sorted.length-1,Math.floor(sorted.length*.95))];
