@@ -14,7 +14,7 @@ const cloudinary = {
   animation2: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790124661/slayer/players/animations/universal_animation_library_2_standard",
   fieldZip: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790111012/slayer/stadium/models/soccer_field_cc0.zip",
   environment: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790111036/slayer/stadium/ibl/orlando_stadium_1k.exr",
-  environment2: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790125054/slayer/stadium/ibl/stadium_01_1k.exr",
+  // Cloudinary public_id is extensionless; keep the remote URL exact and\n  // give the local download its EXR extension for cmgen/tooling.\n  environment2: "https://res.cloudinary.com/bk4jm7px/raw/upload/v1790125054/slayer/stadium/ibl/stadium_01_1k",
   grassBaseColor: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790124684/slayer/stadium/textures/leafy_grass_diff_1k.png",
   grassNormal: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790124688/slayer/stadium/textures/leafy_grass_nor_gl_1k.png",
   grassRoughness: "https://res.cloudinary.com/bk4jm7px/image/upload/v1790124694/slayer/stadium/textures/leafy_grass_rough_1k.png",
