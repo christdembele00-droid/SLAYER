@@ -344,9 +344,16 @@ function executeAction(playerId:string, action:PlayerAction, direction:{x:number
 function frame(now:number){
   const rawFrameMs=now-last;
   const delta=Math.min(rawFrameMs/1000,.05);
+  last=now;
+
+  if(!matchStarted){
+    renderer.render();
+    requestAnimationFrame(frame);
+    return;
+  }
+
   const perf=performanceMonitor.sample(rawFrameMs,delta);
   const gpu=gpuProfiler.sample(renderer.renderer,rawFrameMs,delta);
-  last=now;
 
   const human=input.snapshot();
   aiAccumulator+=delta;
